@@ -1,0 +1,7 @@
+NUL
+/vendor/
+/node_modules/
+.env
+/config.php
+*.log
+.claude/

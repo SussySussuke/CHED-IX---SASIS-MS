@@ -1,0 +1,72 @@
+/* Theme CSS Variables and Dark Mode Support */
+
+:root {
+  /* Default Light Mode Colors */
+  --color-primary: #1e40af;
+  --color-secondary: #64748b;
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-danger: #dc2626;
+  --color-info: #0891b2;
+}
+
+/* Light Mode (default) */
+.light {
+  color-scheme: light;
+}
+
+/* Dark Mode */
+.dark {
+  color-scheme: dark;
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* Remove transitions for specific elements to avoid layout jank */
+input,
+textarea,
+select,
+button {
+  transition: none;
+}
+
+/* Scrollbar styling for dark mode */
+.dark::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.dark::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.dark::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 6px;
+}
+
+.dark::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Light mode scrollbar */
+.light::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.light::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+.light::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 6px;
+}
+
+.light::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
