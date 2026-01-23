@@ -36,7 +36,7 @@ class AnnexAController extends Controller
             ? $currentYear . '-' . ($currentYear + 1)
             : ($currentYear - 1) . '-' . $currentYear;
 
-        return inertia('HEI/AnnexA/Create', [
+        return inertia('HEI/Forms/AnnexACreate', [
             'availableYears' => $availableYears,
             'existingBatches' => $existingBatches,
             'defaultYear' => $defaultYear
@@ -120,7 +120,7 @@ class AnnexAController extends Controller
             $batch->programs()->create($program);
         }
 
-        return redirect()->route('hei.annex-a.history')->with('success', $message);
+        return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
     public function history()
@@ -156,14 +156,14 @@ class AnnexAController extends Controller
         $batch = AnnexABatch::where('batch_id', $batchId)->first();
 
         if (!$batch) {
-            return redirect()->route('hei.annex-a.history')->withErrors([
+            return redirect()->route('hei.submissions.history')->withErrors([
                 'error' => 'Batch not found.'
             ]);
         }
 
         // Check ownership
         if ($batch->hei_id !== Auth::user()->hei_id) {
-            return redirect()->route('hei.annex-a.history')->withErrors([
+            return redirect()->route('hei.submissions.history')->withErrors([
                 'error' => 'Unauthorized access.'
             ]);
         }
@@ -187,7 +187,7 @@ class AnnexAController extends Controller
         // Default to the batch's academic year
         $defaultYear = $batch->academic_year;
 
-        return inertia('HEI/AnnexA/Create', [
+        return inertia('HEI/Forms/AnnexACreate', [
             'availableYears' => $availableYears,
             'existingBatches' => $existingBatches,
             'defaultYear' => $defaultYear,
@@ -228,6 +228,6 @@ class AnnexAController extends Controller
             'cancelled_notes' => $validated['cancelled_notes'] ?? null,
         ]);
 
-        return redirect()->route('hei.annex-a.history')->with('success', 'Request cancelled successfully.');
+        return redirect()->route('hei.submissions.history')->with('success', 'Request cancelled successfully.');
     }
 }

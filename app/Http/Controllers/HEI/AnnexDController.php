@@ -22,9 +22,52 @@ class AnnexDController extends Controller
         }
 
         // Get all submissions for this HEI
-        $existingBatches = AnnexDBatch::where('hei_id', $heiId)
+        $existingBatches = AnnexDSubmission::where('hei_id', $heiId)
             ->whereIn('status', ['submitted', 'published', 'request'])
             ->get()
+            ->map(function ($submission) {
+                return [
+                    'submission_id' => $submission->submission_id,
+                    'academic_year' => $submission->academic_year,
+                    'status' => $submission->status,
+                    'formData' => [
+                        'version_publication_date' => $submission->version_publication_date,
+                        'officer_in_charge' => $submission->officer_in_charge,
+                        'handbook_committee' => $submission->handbook_committee,
+                        'dissemination_orientation' => $submission->dissemination_orientation,
+                        'orientation_dates' => $submission->orientation_dates,
+                        'mode_of_delivery' => $submission->mode_of_delivery,
+                        'dissemination_uploaded' => $submission->dissemination_uploaded,
+                        'dissemination_others' => $submission->dissemination_others,
+                        'dissemination_others_text' => $submission->dissemination_others_text,
+                        'type_digital' => $submission->type_digital,
+                        'type_printed' => $submission->type_printed,
+                        'type_others' => $submission->type_others,
+                        'type_others_text' => $submission->type_others_text,
+                        'has_academic_policies' => $submission->has_academic_policies,
+                        'has_admission_requirements' => $submission->has_admission_requirements,
+                        'has_code_of_conduct' => $submission->has_code_of_conduct,
+                        'has_scholarships' => $submission->has_scholarships,
+                        'has_student_publication' => $submission->has_student_publication,
+                        'has_housing_services' => $submission->has_housing_services,
+                        'has_disability_services' => $submission->has_disability_services,
+                        'has_student_council' => $submission->has_student_council,
+                        'has_refund_policies' => $submission->has_refund_policies,
+                        'has_drug_education' => $submission->has_drug_education,
+                        'has_foreign_students' => $submission->has_foreign_students,
+                        'has_disaster_management' => $submission->has_disaster_management,
+                        'has_safe_spaces' => $submission->has_safe_spaces,
+                        'has_anti_hazing' => $submission->has_anti_hazing,
+                        'has_anti_bullying' => $submission->has_anti_bullying,
+                        'has_violence_against_women' => $submission->has_violence_against_women,
+                        'has_gender_fair' => $submission->has_gender_fair,
+                        'has_others' => $submission->has_others,
+                        'has_others_text' => $submission->has_others_text,
+                    ],
+                    'created_at' => $submission->created_at,
+                    'updated_at' => $submission->updated_at,
+                ];
+            })
             ->keyBy('academic_year');
 
         // Determine default year based on deadline
@@ -34,7 +77,7 @@ class AnnexDController extends Controller
             ? $currentYear . '-' . ($currentYear + 1)
             : ($currentYear - 1) . '-' . $currentYear;
 
-        return inertia('HEI/AnnexD/Create', [
+        return inertia('HEI/Forms/AnnexDCreate', [
             'availableYears' => $availableYears,
             'existingBatches' => $existingBatches,
             'defaultYear' => $defaultYear
@@ -136,7 +179,7 @@ class AnnexDController extends Controller
             ...$validated,
         ]);
 
-        return redirect()->route('hei.annex-d.history')->with('success', $message);
+        return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
     public function history()
@@ -155,19 +198,19 @@ class AnnexDController extends Controller
         $submission = AnnexDSubmission::where('submission_id', $submissionId)->first();
 
         if (!$submission) {
-            return redirect()->route('hei.annex-d.history')->withErrors([
+            return redirect()->route('hei.submissions.history')->withErrors([
                 'error' => 'Submission not found.'
             ]);
         }
 
         // Check ownership
         if ($submission->hei_id !== Auth::user()->hei_id) {
-            return redirect()->route('hei.annex-d.history')->withErrors([
+            return redirect()->route('hei.submissions.history')->withErrors([
                 'error' => 'Unauthorized access.'
             ]);
         }
 
-        return inertia('HEI/AnnexD/Create', [
+        return inertia('HEI/Forms/AnnexDCreate', [
             'existingSubmission' => false,
             'formData' => $submission
         ]);
@@ -206,6 +249,6 @@ class AnnexDController extends Controller
             'cancelled_notes' => $validated['cancelled_notes'] ?? null,
         ]);
 
-        return redirect()->route('hei.annex-d.history')->with('success', 'Request cancelled successfully.');
+        return redirect()->route('hei.submissions.history')->with('success', 'Request cancelled successfully.');
     }
 }

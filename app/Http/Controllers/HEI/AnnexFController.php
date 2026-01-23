@@ -26,6 +26,20 @@ class AnnexFController extends BaseAnnexController
             ->whereIn('status', ['submitted', 'published', 'request'])
             ->with('activities')
             ->get()
+            ->map(function ($batch) {
+                return [
+                    'batch_id' => $batch->batch_id,
+                    'academic_year' => $batch->academic_year,
+                    'status' => $batch->status,
+                    'activities' => $batch->activities,
+                    'formData' => [
+                        'procedure_mechanism' => $batch->procedure_mechanism,
+                        'complaint_desk' => $batch->complaint_desk,
+                    ],
+                    'created_at' => $batch->created_at,
+                    'updated_at' => $batch->updated_at,
+                ];
+            })
             ->keyBy('academic_year');
 
         // Determine default year based on deadline
@@ -35,7 +49,7 @@ class AnnexFController extends BaseAnnexController
             ? $currentYear . '-' . ($currentYear + 1)
             : ($currentYear - 1) . '-' . $currentYear;
 
-        return inertia('HEI/AnnexF/Create', [
+        return inertia('HEI/Forms/AnnexFCreate', [
             'availableYears' => $availableYears,
             'existingBatches' => $existingBatches,
             'defaultYear' => $defaultYear
@@ -85,7 +99,7 @@ class AnnexFController extends BaseAnnexController
             $batch->activities()->create($activity);
         }
 
-        return redirect()->route('hei.annex-f.history')->with('success', $message);
+        return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
     public function history()
@@ -120,14 +134,14 @@ class AnnexFController extends BaseAnnexController
         $batch = AnnexFBatch::where('batch_id', $batchId)->first();
 
         if (!$batch) {
-            return redirect()->route('hei.annex-f.history')->withErrors([
+            return redirect()->route('hei.submissions.history')->withErrors([
                 'error' => 'Batch not found.'
             ]);
         }
 
         // Check ownership
         if ($batch->hei_id !== Auth::user()->hei_id) {
-            return redirect()->route('hei.annex-f.history')->withErrors([
+            return redirect()->route('hei.submissions.history')->withErrors([
                 'error' => 'Unauthorized access.'
             ]);
         }
@@ -146,12 +160,26 @@ class AnnexFController extends BaseAnnexController
             ->whereIn('status', ['submitted', 'published', 'request'])
             ->with('activities')
             ->get()
+            ->map(function ($b) {
+                return [
+                    'batch_id' => $b->batch_id,
+                    'academic_year' => $b->academic_year,
+                    'status' => $b->status,
+                    'activities' => $b->activities,
+                    'formData' => [
+                        'procedure_mechanism' => $b->procedure_mechanism,
+                        'complaint_desk' => $b->complaint_desk,
+                    ],
+                    'created_at' => $b->created_at,
+                    'updated_at' => $b->updated_at,
+                ];
+            })
             ->keyBy('academic_year');
 
         // Default to the batch's academic year
         $defaultYear = $batch->academic_year;
 
-        return inertia('HEI/AnnexF/Create', [
+        return inertia('HEI/Forms/AnnexFCreate', [
             'availableYears' => $availableYears,
             'existingBatches' => $existingBatches,
             'defaultYear' => $defaultYear,
@@ -184,6 +212,6 @@ class AnnexFController extends BaseAnnexController
             'cancelled_notes' => $validated['cancelled_notes'] ?? null,
         ]);
 
-        return redirect()->route('hei.annex-f.history')->with('success', 'Request cancelled successfully.');
+        return redirect()->route('hei.submissions.history')->with('success', 'Request cancelled successfully.');
     }
 }

@@ -40,7 +40,7 @@ DROP TABLE IF EXISTS annex_b_programs;
 DROP TABLE IF EXISTS annex_b_batches;
 DROP TABLE IF EXISTS annex_a_programs;
 DROP TABLE IF EXISTS annex_a_batches;
-DROP TABLE IF EXISTS general_information;
+DROP TABLE IF EXISTS summary;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS heis;
 
@@ -89,8 +89,8 @@ CREATE TABLE settings (
     INDEX idx_key (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- General Information table
-CREATE TABLE general_information (
+-- Summary table (institutional information)
+CREATE TABLE summary (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     hei_id BIGINT UNSIGNED NOT NULL,
     academic_year VARCHAR(20) NOT NULL,
@@ -137,8 +137,8 @@ INSERT INTO settings (`key`, value, created_at, updated_at) VALUES
 ('annual_submission_deadline', CONCAT(YEAR(NOW()), '-09-01 00:00:00'), NOW(), NOW()),
 ('maintenance_mode', '0', NOW(), NOW());
 
--- Sample Data for General Information
-INSERT INTO general_information (hei_id, academic_year, status, population_male, population_female, population_intersex, population_total, submitted_org_chart, hei_website, sas_website, social_media_contacts, student_handbook, student_publication, created_at, updated_at) VALUES
+-- Sample Data for Summary
+INSERT INTO summary (hei_id, academic_year, status, population_male, population_female, population_intersex, population_total, submitted_org_chart, hei_website, sas_website, social_media_contacts, student_handbook, student_publication, created_at, updated_at) VALUES
 (1, '2024-2025', 'published', 12000, 13500, 50, 25550, 'yes', 'https://up.edu.ph', 'https://sas.up.edu.ph', '["facebook.com/upofficial", "twitter.com/up_diliman", "sas@up.edu.ph"]', '2024 Edition', 'Philippine Collegian', NOW(), NOW()),
 (2, '2024-2025', 'submitted', 8500, 9200, 30, 17730, 'yes', 'https://dlsu.edu.ph', 'https://studentaffairs.dlsu.edu.ph', '["facebook.com/dlsumanila", "info@dlsu.edu.ph"]', 'January 2024', 'The Lasallian', NOW(), NOW()),
 (3, '2024-2025', 'published', 7800, 8600, 25, 16425, 'yes', 'https://ateneo.edu', 'https://osa.ateneo.edu', '["facebook.com/ateneoofficial", "osa@ateneo.edu"]', '2024-2025 Academic Year', 'The Guidon', NOW(), NOW());
@@ -576,7 +576,8 @@ CREATE TABLE annex_j_programs (
     batch_id VARCHAR(36) NOT NULL,
     title_of_program VARCHAR(255) NOT NULL,
     organizer VARCHAR(255) NOT NULL,
-    number_of_participants INT NOT NULL,
+    participants_online INT NULL DEFAULT 0,
+    participants_face_to_face INT NULL DEFAULT 0,
     remarks TEXT NULL,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL,
@@ -713,7 +714,8 @@ CREATE TABLE annex_n_activities (
     title_of_activity VARCHAR(255) NOT NULL,
     implementation_date DATE NOT NULL,
     implementation_venue VARCHAR(255) NOT NULL,
-    number_of_participants INT NOT NULL,
+    participants_online INT NULL DEFAULT 0,
+    participants_face_to_face INT NULL DEFAULT 0,
     organizer VARCHAR(255) NOT NULL,
     remarks TEXT NULL,
     created_at TIMESTAMP NULL,

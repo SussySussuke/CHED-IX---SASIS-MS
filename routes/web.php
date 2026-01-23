@@ -5,7 +5,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\SuperAdmin\AdminManagementController;
 use App\Http\Controllers\Admin\HEIManagementController;
-use App\Http\Controllers\HEI\GeneralInformationController;
+use App\Http\Controllers\HEI\SummaryController;
 use App\Http\Controllers\HEI\AnnexAController;
 use App\Http\Controllers\HEI\AnnexBController;
 use App\Http\Controllers\HEI\AnnexCController;
@@ -70,9 +70,10 @@ Route::middleware('auth')->group(function () {
         Route::put('/heis/{hei}', [HEIManagementController::class, 'update'])->name('admin.heis.update');
         Route::delete('/heis/{hei}', [HEIManagementController::class, 'destroy'])->name('admin.heis.destroy');
 
+        // Submission routes
         Route::get('/submissions', [App\Http\Controllers\Admin\SubmissionController::class, 'index'])->name('admin.submissions.index');
-        Route::get('/submissions/requests', [App\Http\Controllers\Admin\SubmissionController::class, 'requests'])->name('admin.submissions.requests');
-        Route::get('/submissions/{id}', [App\Http\Controllers\Admin\SubmissionController::class, 'show'])->name('admin.submissions.show');
+        Route::get('/submissions/{heiId}', [App\Http\Controllers\Admin\SubmissionController::class, 'show'])->name('admin.submissions.show');
+        Route::get('/submissions/{annexType}/{batchId}/data', [App\Http\Controllers\Admin\SubmissionController::class, 'getBatchData'])->name('admin.submissions.batch-data');
         Route::post('/submissions/{id}/approve', [App\Http\Controllers\Admin\SubmissionController::class, 'approve'])->name('admin.submissions.approve');
         Route::post('/submissions/{id}/reject', [App\Http\Controllers\Admin\SubmissionController::class, 'reject'])->name('admin.submissions.reject');
 
@@ -83,6 +84,28 @@ Route::middleware('auth')->group(function () {
         Route::get('/ched-contacts', function () {
             return inertia('Admin/CHEDContacts');
         })->name('admin.ched-contacts');
+
+        // M&E Reports routes
+        Route::prefix('mer')->group(function () {
+            // Form 1 routes
+            Route::get('/form1', [App\Http\Controllers\Admin\MERFormController::class, 'form1Index'])->name('admin.mer.form1.index');
+            Route::get('/form1/{heiId}/{academicYear}', [App\Http\Controllers\Admin\MERFormController::class, 'form1Load'])->name('admin.mer.form1.load');
+
+            // Form 2 routes
+            Route::get('/form2', [App\Http\Controllers\Admin\MERFormController::class, 'form2Index'])->name('admin.mer.form2.index');
+            Route::get('/form2/{heiId}/{academicYear}', [App\Http\Controllers\Admin\MERFormController::class, 'form2Load'])->name('admin.mer.form2.load');
+
+            // Form 3 routes
+            Route::get('/form3', [App\Http\Controllers\Admin\MERFormController::class, 'form3Index'])->name('admin.mer.form3.index');
+            Route::get('/form3/{heiId}/{academicYear}', [App\Http\Controllers\Admin\MERFormController::class, 'form3Load'])->name('admin.mer.form3.load');
+
+            // CHED Remarks API routes
+            Route::post('/remarks/toggle', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'toggle'])->name('admin.mer.remarks.toggle');
+            Route::post('/remarks/set', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'setRemark'])->name('admin.mer.remarks.set');
+            Route::post('/remarks/batch', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'batchSave'])->name('admin.mer.remarks.batch');
+            Route::get('/remarks/{heiId}/{academicYear}', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'getRemarks'])->name('admin.mer.remarks.get');
+            Route::get('/remarks/summary/{heiId}/{academicYear}', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'getSummary'])->name('admin.mer.remarks.summary');
+        });
     });
 
     // HEI routes
@@ -91,12 +114,16 @@ Route::middleware('auth')->group(function () {
             return inertia('HEI/Dashboard');
         })->name('hei.dashboard');
 
-        Route::get('/general-information/create', [GeneralInformationController::class, 'create'])->name('hei.general-information.create');
-        Route::post('/general-information', [GeneralInformationController::class, 'store'])->name('hei.general-information.store');
-        Route::get('/general-information/{id}/edit', [GeneralInformationController::class, 'edit'])->name('hei.general-information.edit');
-        Route::put('/general-information/{id}', [GeneralInformationController::class, 'update'])->name('hei.general-information.update');
-        Route::post('/general-information/{id}/cancel', [GeneralInformationController::class, 'cancel'])->name('hei.general-information.cancel');
-        Route::get('/general-information/history', [GeneralInformationController::class, 'history'])->name('hei.general-information.history');
+        // Unified submission routes
+        Route::get('/submissions/history', [App\Http\Controllers\HEI\SubmissionController::class, 'history'])->name('hei.submissions.history');
+        Route::get('/submissions/{annex}/{batchId}/data', [App\Http\Controllers\HEI\SubmissionController::class, 'getBatchData'])->name('hei.submissions.data');
+
+        Route::get('/summary/create', [SummaryController::class, 'create'])->name('hei.summary.create');
+        Route::post('/summary', [SummaryController::class, 'store'])->name('hei.summary.store');
+        Route::get('/summary/{id}/edit', [SummaryController::class, 'edit'])->name('hei.summary.edit');
+        Route::put('/summary/{id}', [SummaryController::class, 'update'])->name('hei.summary.update');
+        Route::post('/summary/{id}/cancel', [SummaryController::class, 'cancel'])->name('hei.summary.cancel');
+        Route::get('/summary/history', [SummaryController::class, 'history'])->name('hei.summary.history');
 
         // Annex A routes
         Route::get('/annex-a/submit', [AnnexAController::class, 'create'])->name('hei.annex-a.submit');

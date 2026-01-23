@@ -3,182 +3,458 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Submission;
 use App\Models\HEI;
+use App\Models\CHEDRemark;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class SubmissionController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Show all HEIs with submission stats
+     */
+    public function index()
     {
-        // Current academic year (can be auto-calculated based on current date)
-        $currentYear = '2026-2027';
-        $defaultStatus = 'submitted';
+        $heis = HEI::where('is_active', true)
+            ->withCount([
+                'annexABatches as pending_requests' => function ($query) {
+                    $query->where('status', 'request');
+                }
+            ])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($hei) {
+                // Get total pending requests across ALL annex types
+                $pendingCount = $this->getPendingRequestsCount($hei->id);
 
-        // Start with base query
-        $query = Submission::with('hei');
+                return [
+                    'id' => $hei->id,
+                    'name' => $hei->name,
+                    'code' => $hei->code,
+                    'pending_requests' => $pendingCount,
+                ];
+            });
 
-        // Filter by status (default to 'submitted')
-        if ($request->has('status') && $request->status) {
-            $query->where('status', $request->status);
-        } else {
-            // Default to 'submitted' status
-            $query->where('status', $defaultStatus);
-        }
-
-        // Filter by HEI if provided
-        if ($request->has('hei_id') && $request->hei_id) {
-            $query->where('hei_id', $request->hei_id);
-        }
-
-        // Filter by academic year
-        if ($request->has('year') && $request->year && $request->year !== 'All Time') {
-            $query->where('academic_year', $request->year);
-        } elseif (!$request->has('year') || !$request->year) {
-            // Default to current year if no filter provided
-            $query->where('academic_year', $currentYear);
-        }
-        // If 'All Time' is selected, no year filter is applied
-
-        $submissions = $query->orderBy('created_at', 'desc')->get();
-
-        // Get all HEIs for filter dropdown
-        $heis = HEI::orderBy('name')->get();
-
-        // Get unique academic years for filter dropdown
-        $academicYears = Submission::select('academic_year')
-            ->distinct()
-            ->orderBy('academic_year', 'desc')
-            ->pluck('academic_year')
-            ->toArray();
-
-        // Add "All Time" option at the end
-        $academicYears[] = 'All Time';
+        // Total pending requests for badge
+        $totalPending = $heis->sum('pending_requests');
 
         return inertia('Admin/Submissions/Index', [
-            'submissions' => $submissions,
             'heis' => $heis,
+            'totalPending' => $totalPending,
+        ]);
+    }
+
+    /**
+     * Show all submissions for a specific HEI
+     */
+    public function show($heiId)
+    {
+        $hei = HEI::findOrFail($heiId);
+
+        $annexTypes = $this->getAnnexTypes();
+        $submissions = [];
+
+        // Add Summary submissions
+        $summarySubmissions = \App\Models\Summary::where('hei_id', $heiId)
+            ->orderBy('academic_year', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($submission) {
+                return [
+                    'id' => $submission->id,
+                    'batch_id' => $submission->id,
+                    'annex' => 'SUMMARY',
+                    'form_name' => 'Summary - School Detail',
+                    'academic_year' => $submission->academic_year,
+                    'status' => $submission->status,
+                    'submitted_at' => $submission->created_at,
+                    'request_notes' => $submission->request_notes ?? null,
+                ];
+            });
+
+        $submissions = array_merge($submissions, $summarySubmissions->toArray());
+
+        foreach ($annexTypes as $code => $config) {
+            $batches = $config['model']::where('hei_id', $heiId)
+                ->orderBy('academic_year', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($batch) use ($code, $config) {
+                    return [
+                        'id' => $batch->id,
+                        'batch_id' => $batch->batch_id ?? $batch->id,
+                        'annex' => $code,
+                        'form_name' => $config['name'],
+                        'academic_year' => $batch->academic_year,
+                        'status' => $batch->status,
+                        'submitted_at' => $batch->created_at,
+                        'request_notes' => $batch->request_notes ?? null,
+                    ];
+                });
+
+            $submissions = array_merge($submissions, $batches->toArray());
+        }
+
+        // Sort by academic year desc, then by created_at desc
+        usort($submissions, function ($a, $b) {
+            $yearCompare = strcmp($b['academic_year'], $a['academic_year']);
+            if ($yearCompare !== 0) return $yearCompare;
+            return strtotime($b['submitted_at']) - strtotime($a['submitted_at']);
+        });
+
+        // Get available academic years
+        $academicYears = $this->getAvailableAcademicYears();
+
+        return inertia('Admin/Submissions/Show', [
+            'hei' => $hei,
+            'submissions' => $submissions,
             'academicYears' => $academicYears,
-            'currentYear' => $currentYear,
-            'filters' => [
-                'hei_id' => $request->hei_id,
-                'year' => $request->year ?? $currentYear,
-                'status' => $request->status ?? $defaultStatus,
-            ]
         ]);
     }
 
-    public function requests(Request $request)
+    /**
+     * Approve a request and publish it
+     */
+    public function approve(Request $request, $id)
     {
-        // Get all submissions with status 'request' (pending overwrite approval)
-        $query = Submission::with('hei')
-            ->where('status', 'request');
+        $validated = $request->validate([
+            'annex_type' => 'required|string|in:A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,SUMMARY',
+        ]);
 
-        // Filter by HEI if provided
-        if ($request->has('hei_id') && $request->hei_id) {
-            $query->where('hei_id', $request->hei_id);
+        $annexType = $validated['annex_type'];
+
+        // Handle Summary
+        if ($annexType === 'SUMMARY') {
+            DB::beginTransaction();
+            try {
+                $newSubmission = \App\Models\Summary::findOrFail($id);
+
+                if ($newSubmission->status !== 'request') {
+                    return back()->with('error', 'Only requests can be approved.');
+                }
+
+                // Find the old published submission
+                $oldSubmission = \App\Models\Summary::where('hei_id', $newSubmission->hei_id)
+                    ->where('academic_year', $newSubmission->academic_year)
+                    ->where('status', 'published')
+                    ->first();
+
+                // Archive old submission if exists
+                if ($oldSubmission) {
+                    $oldSubmission->update(['status' => 'overwritten']);
+                }
+
+                // Publish the new submission
+                $newSubmission->update(['status' => 'published']);
+
+                DB::commit();
+
+                return back()->with('success', 'Request approved successfully. Previous submission has been overwritten.');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return back()->with('error', 'Failed to approve request: ' . $e->getMessage());
+            }
         }
 
-        // Sort by oldest first
-        $submissions = $query->orderBy('created_at', 'asc')->get();
+        $modelClass = $this->getModelClass($annexType);
 
-        // Get all HEIs for filter dropdown
-        $heis = HEI::orderBy('name')->get();
-
-        return inertia('Admin/Submissions/Requests', [
-            'submissions' => $submissions,
-            'heis' => $heis,
-            'filters' => [
-                'hei_id' => $request->hei_id,
-            ]
-        ]);
-    }
-
-    public function show($id)
-    {
-        $submission = Submission::with('hei')->findOrFail($id);
-
-        // Find the current 'submitted' record for the same HEI and academic year
-        $currentSubmitted = null;
-        if ($submission->status === 'request') {
-            $currentSubmitted = Submission::where('hei_id', $submission->hei_id)
-                ->where('academic_year', $submission->academic_year)
-                ->where('status', 'submitted')
-                ->first();
-        }
-
-        return inertia('Admin/Submissions/View', [
-            'submission' => $submission,
-            'currentSubmitted' => $currentSubmitted
-        ]);
-    }
-
-    public function approve($id)
-    {
         DB::beginTransaction();
 
         try {
-            $requestSubmission = Submission::findOrFail($id);
+            $newBatch = $modelClass::findOrFail($id);
 
-            // Only allow approving 'request' status
-            if ($requestSubmission->status !== 'request') {
-                return redirect()->back()->withErrors([
-                    'error' => 'Only submissions with status "request" can be approved.'
-                ]);
+            if ($newBatch->status !== 'request') {
+                return back()->with('error', 'Only requests can be approved.');
             }
 
-            // Find current 'submitted' for the same HEI and academic year
-            $currentSubmitted = Submission::where('hei_id', $requestSubmission->hei_id)
-                ->where('academic_year', $requestSubmission->academic_year)
-                ->where('status', 'submitted')
+            // Find the old published batch
+            $oldBatch = $modelClass::where('hei_id', $newBatch->hei_id)
+                ->where('academic_year', $newBatch->academic_year)
+                ->where('status', 'published')
                 ->first();
 
-            // Mark current 'submitted' as 'overwritten'
-            if ($currentSubmitted) {
-                $currentSubmitted->update(['status' => 'overwritten']);
+            // Archive old batch remarks if exists
+            if ($oldBatch) {
+                CHEDRemark::archiveBatchRemarks($oldBatch->batch_id ?? $oldBatch->id);
+                $oldBatch->update(['status' => 'overwritten']);
             }
 
-            // Change 'request' to 'submitted'
-            $requestSubmission->update(['status' => 'submitted']);
+            // Publish the new batch
+            $newBatch->update(['status' => 'published']);
 
             DB::commit();
 
-            return redirect()->route('admin.submissions.requests')->with('success', 'Request approved successfully!');
+            return back()->with('success', 'Request approved successfully. Previous batch has been overwritten.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withErrors([
-                'error' => 'Failed to approve request: ' . $e->getMessage()
-            ]);
+            return back()->with('error', 'Failed to approve request: ' . $e->getMessage());
         }
     }
 
-    public function reject($id)
+    /**
+     * Reject a request
+     */
+    public function reject(Request $request, $id)
     {
-        DB::beginTransaction();
+        $validated = $request->validate([
+            'annex_type' => 'required|string|in:A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,SUMMARY',
+            'rejection_reason' => 'nullable|string|max:500',
+        ]);
 
-        try {
-            $requestSubmission = Submission::findOrFail($id);
+        $annexType = $validated['annex_type'];
 
-            // Only allow rejecting 'request' status
-            if ($requestSubmission->status !== 'request') {
-                return redirect()->back()->withErrors([
-                    'error' => 'Only submissions with status "request" can be rejected.'
-                ]);
+        // Handle Summary
+        if ($annexType === 'SUMMARY') {
+            $submission = \App\Models\Summary::findOrFail($id);
+
+            if ($submission->status !== 'request') {
+                return back()->with('error', 'Only requests can be rejected.');
             }
 
-            // Change 'request' to 'rejected'
-            $requestSubmission->update(['status' => 'rejected']);
+            $submission->update([
+                'status' => 'rejected',
+                'cancelled_notes' => $validated['rejection_reason'] ?? 'Rejected by admin',
+            ]);
 
-            DB::commit();
+            return back()->with('success', 'Request rejected successfully.');
+        }
 
-            return redirect()->route('admin.submissions.requests')->with('success', 'Request rejected successfully!');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors([
-                'error' => 'Failed to reject request: ' . $e->getMessage()
+        $modelClass = $this->getModelClass($annexType);
+
+        $batch = $modelClass::findOrFail($id);
+
+        if ($batch->status !== 'request') {
+            return back()->with('error', 'Only requests can be rejected.');
+        }
+
+        $batch->update([
+            'status' => 'rejected',
+            'cancelled_notes' => $validated['rejection_reason'] ?? 'Rejected by admin',
+        ]);
+
+        return back()->with('success', 'Request rejected successfully.');
+    }
+
+    /**
+     * Get batch data with related entities
+     */
+    public function getBatchData($annexType, $batchId)
+    {
+        // Handle Summary
+        if ($annexType === 'SUMMARY') {
+            $summary = \App\Models\Summary::findOrFail($batchId);
+
+            return response()->json([
+                'summary' => $summary,
             ]);
         }
+
+        $annexTypes = $this->getAnnexTypes();
+
+        if (!isset($annexTypes[$annexType])) {
+            return response()->json(['error' => 'Invalid annex type'], 400);
+        }
+
+        $config = $annexTypes[$annexType];
+        $modelClass = $config['model'];
+
+        // Handle different ID fields for different annexes
+        if ($annexType === 'D' || $annexType === 'G') {
+            // These use 'id' or 'submission_id' instead of batch_id
+            $query = $modelClass::where('id', $batchId)
+                ->orWhere('submission_id', $batchId);
+
+            // Eager load relationships for G
+            if ($annexType === 'G') {
+                $query->with(['editorialBoards', 'otherPublications', 'programs']);
+            }
+
+            $batch = $query->firstOrFail();
+        } else {
+            $query = $modelClass::where('batch_id', $batchId)
+                ->orWhere('id', $batchId);
+
+            // Eager load relationships for H
+            if ($annexType === 'H') {
+                $query->with(['admissionServices', 'admissionStatistics']);
+            }
+
+            // Eager load relationships for M
+            if ($annexType === 'M') {
+                $query->with(['statistics', 'services']);
+            }
+
+            $batch = $query->firstOrFail();
+        }
+
+        // Return annex-specific data structure
+        if ($annexType === 'G') {
+            return response()->json([
+                'editorial_boards' => $batch->editorialBoards,
+                'other_publications' => $batch->otherPublications,
+                'programs' => $batch->programs,
+                'form_data' => [
+                    'official_school_name' => $batch->official_school_name,
+                    'student_publication_name' => $batch->student_publication_name,
+                    'publication_fee_per_student' => $batch->publication_fee_per_student,
+                    'adviser_name' => $batch->adviser_name,
+                ]
+            ]);
+        }
+
+        if ($annexType === 'H') {
+            return response()->json([
+                'admission_services' => $batch->admissionServices,
+                'admission_statistics' => $batch->admissionStatistics,
+            ]);
+        }
+
+        if ($annexType === 'M') {
+            // Transform statistics to flatten year_data into separate columns
+            $statistics = $batch->statistics->map(function ($stat) {
+                $yearData = $stat->year_data ?? [];
+
+                return [
+                    'id' => $stat->id,
+                    'category' => $stat->category,
+                    'subcategory' => $stat->subcategory,
+                    'is_subtotal' => $stat->is_subtotal,
+                    'ay_2023_2024_enrollment' => $yearData['2023-2024']['enrollment'] ?? 0,
+                    'ay_2023_2024_graduates' => $yearData['2023-2024']['graduates'] ?? 0,
+                    'ay_2022_2023_enrollment' => $yearData['2022-2023']['enrollment'] ?? 0,
+                    'ay_2022_2023_graduates' => $yearData['2022-2023']['graduates'] ?? 0,
+                    'ay_2021_2022_enrollment' => $yearData['2021-2022']['enrollment'] ?? 0,
+                    'ay_2021_2022_graduates' => $yearData['2021-2022']['graduates'] ?? 0,
+                ];
+            });
+
+            return response()->json([
+                'statistics' => $statistics,
+                'services' => $batch->services,
+            ]);
+        }
+
+        if ($annexType === 'D') {
+            return response()->json([
+                'submission' => $batch,
+            ]);
+        }
+
+        // For standard Handsontable-based annexes
+        $data = [
+            'batch' => $batch,
+            'entities' => []
+        ];
+
+        // Load related entities if relation exists
+        if ($config['relation']) {
+            try {
+                // Check if relation method exists
+                if (method_exists($batch, $config['relation'])) {
+                    $data['entities'] = $batch->{$config['relation']}()->get();
+                }
+            } catch (\Exception $e) {
+                // Relation doesn't exist, return empty entities
+                $data['entities'] = [];
+            }
+        }
+
+        return response()->json($data);
+    }
+
+    /**
+     * Get total pending requests count for an HEI
+     */
+    private function getPendingRequestsCount($heiId)
+    {
+        $models = [
+            \App\Models\Summary::class,
+            \App\Models\AnnexABatch::class,
+            \App\Models\AnnexBBatch::class,
+            \App\Models\AnnexCBatch::class,
+            \App\Models\AnnexDSubmission::class,
+            \App\Models\AnnexEBatch::class,
+            \App\Models\AnnexFBatch::class,
+            \App\Models\AnnexGSubmission::class,
+            \App\Models\AnnexHBatch::class,
+            \App\Models\AnnexIBatch::class,
+            \App\Models\AnnexJBatch::class,
+            \App\Models\AnnexKBatch::class,
+            \App\Models\AnnexLBatch::class,
+            \App\Models\AnnexMBatch::class,
+            \App\Models\AnnexNBatch::class,
+            \App\Models\AnnexOBatch::class,
+        ];
+
+        $count = 0;
+        foreach ($models as $model) {
+            $count += $model::where('hei_id', $heiId)
+                ->where('status', 'request')
+                ->count();
+        }
+
+        return $count;
+    }
+
+    /**
+     * Get annex types configuration
+     */
+    private function getAnnexTypes()
+    {
+        return [
+            'A' => ['model' => \App\Models\AnnexABatch::class, 'name' => 'List of Programs Offered', 'relation' => 'programs'],
+            'B' => ['model' => \App\Models\AnnexBBatch::class, 'name' => 'Curricular Programs', 'relation' => 'programs'],
+            'C' => ['model' => \App\Models\AnnexCBatch::class, 'name' => 'Enrolment', 'relation' => 'programs'],
+            'D' => ['model' => \App\Models\AnnexDSubmission::class, 'name' => 'Graduates', 'relation' => null],
+            'E' => ['model' => \App\Models\AnnexEBatch::class, 'name' => 'Student Services', 'relation' => 'organizations'],
+            'F' => ['model' => \App\Models\AnnexFBatch::class, 'name' => 'Institutional Linkages', 'relation' => 'activities'],
+            'G' => ['model' => \App\Models\AnnexGSubmission::class, 'name' => 'Research', 'relation' => null],
+            'H' => ['model' => \App\Models\AnnexHBatch::class, 'name' => 'Admission Statistics', 'relation' => 'admissionStatistics'],
+            'I' => ['model' => \App\Models\AnnexIBatch::class, 'name' => 'Scholarship Grants', 'relation' => 'scholarships'],
+            'J' => ['model' => \App\Models\AnnexJBatch::class, 'name' => 'Faculty Development', 'relation' => 'programs'],
+            'K' => ['model' => \App\Models\AnnexKBatch::class, 'name' => 'Governance', 'relation' => 'committees'],
+            'L' => ['model' => \App\Models\AnnexLBatch::class, 'name' => 'Physical Facilities', 'relation' => 'housing'],
+            'M' => ['model' => \App\Models\AnnexMBatch::class, 'name' => 'Library Services', 'relation' => 'statistics'],
+            'N' => ['model' => \App\Models\AnnexNBatch::class, 'name' => 'Extension Services', 'relation' => 'activities'],
+            'O' => ['model' => \App\Models\AnnexOBatch::class, 'name' => 'Institutional Sustainability', 'relation' => 'programs'],
+        ];
+    }
+
+    /**
+     * Get model class by annex type
+     */
+    private function getModelClass($annexType)
+    {
+        $annexTypes = $this->getAnnexTypes();
+        return $annexTypes[$annexType]['model'];
+    }
+
+    /**
+     * Get available academic years from existing submissions
+     */
+    private function getAvailableAcademicYears()
+    {
+        $years = collect();
+
+        $tables = [
+            'annex_a_batches',
+            'annex_b_batches',
+            'annex_c_batches',
+        ];
+
+        foreach ($tables as $table) {
+            $tableYears = DB::table($table)
+                ->select('academic_year')
+                ->distinct()
+                ->pluck('academic_year');
+
+            $years = $years->merge($tableYears);
+        }
+
+        return $years->unique()
+            ->filter()
+            ->sort()
+            ->values()
+            ->toArray();
     }
 }

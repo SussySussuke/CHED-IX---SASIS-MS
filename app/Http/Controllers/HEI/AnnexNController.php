@@ -35,7 +35,7 @@ class AnnexNController extends BaseAnnexController
             ? $currentYear . '-' . ($currentYear + 1)
             : ($currentYear - 1) . '-' . $currentYear;
 
-        return inertia('HEI/AnnexN/Create', [
+        return inertia('HEI/Forms/AnnexNCreate', [
             'availableYears' => $availableYears,
             'existingBatches' => $existingBatches,
             'defaultYear' => $defaultYear
@@ -52,7 +52,8 @@ class AnnexNController extends BaseAnnexController
             'activities.*.title_of_activity' => 'required|string|max:255',
             'activities.*.implementation_date' => 'required|date',
             'activities.*.implementation_venue' => 'required|string|max:255',
-            'activities.*.number_of_participants' => 'required|integer|min:0',
+            'activities.*.participants_online' => 'nullable|integer|min:0',
+            'activities.*.participants_face_to_face' => 'nullable|integer|min:0',
             'activities.*.organizer' => 'required|string|max:255',
             'activities.*.remarks' => 'nullable|string',
             'request_notes' => 'nullable|string|max:1000',
@@ -81,10 +82,17 @@ class AnnexNController extends BaseAnnexController
         ]);
 
         foreach ($validated['activities'] as $activity) {
-            $batch->activities()->create($activity);
+            $batch->activities()->create([
+                'title_of_activity' => $activity['title_of_activity'],
+                'implementation_date' => $activity['implementation_date'],
+                'implementation_venue' => $activity['implementation_venue'],
+                'number_of_participants' => ($activity['participants_online'] ?? 0) + ($activity['participants_face_to_face'] ?? 0),
+                'organizer' => $activity['organizer'],
+                'remarks' => $activity['remarks'] ?? null,
+            ]);
         }
 
-        return redirect()->route('hei.annex-n.history')->with('success', $message);
+        return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
     public function history()
@@ -117,14 +125,14 @@ class AnnexNController extends BaseAnnexController
         $batch = AnnexNBatch::where('batch_id', $batchId)->first();
 
         if (!$batch) {
-            return redirect()->route('hei.annex-n.history')->withErrors([
+            return redirect()->route('hei.submissions.history')->withErrors([
                 'error' => 'Batch not found.'
             ]);
         }
 
         // Check ownership
         if ($batch->hei_id !== Auth::user()->hei_id) {
-            return redirect()->route('hei.annex-n.history')->withErrors([
+            return redirect()->route('hei.submissions.history')->withErrors([
                 'error' => 'Unauthorized access.'
             ]);
         }
@@ -148,7 +156,7 @@ class AnnexNController extends BaseAnnexController
         // Default to the batch's academic year
         $defaultYear = $batch->academic_year;
 
-        return inertia('HEI/AnnexN/Create', [
+        return inertia('HEI/Forms/AnnexNCreate', [
             'availableYears' => $availableYears,
             'existingBatches' => $existingBatches,
             'defaultYear' => $defaultYear,
@@ -181,6 +189,6 @@ class AnnexNController extends BaseAnnexController
             'cancelled_notes' => $validated['cancelled_notes'] ?? null,
         ]);
 
-        return redirect()->route('hei.annex-n.history')->with('success', 'Request cancelled successfully.');
+        return redirect()->route('hei.submissions.history')->with('success', 'Request cancelled successfully.');
     }
 }

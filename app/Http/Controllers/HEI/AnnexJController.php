@@ -35,7 +35,7 @@ class AnnexJController extends BaseAnnexController
             ? $currentYear . '-' . ($currentYear + 1)
             : ($currentYear - 1) . '-' . $currentYear;
 
-        return inertia('HEI/AnnexJ/Create', [
+        return inertia('HEI/Forms/AnnexJCreate', [
             'availableYears' => $availableYears,
             'existingBatches' => $existingBatches,
             'defaultYear' => $defaultYear
@@ -51,7 +51,8 @@ class AnnexJController extends BaseAnnexController
             'programs' => 'required|array|min:1',
             'programs.*.title_of_program' => 'required|string|max:255',
             'programs.*.organizer' => 'required|string|max:255',
-            'programs.*.number_of_participants' => 'required|integer|min:0',
+            'programs.*.participants_online' => 'nullable|integer|min:0',
+            'programs.*.participants_face_to_face' => 'nullable|integer|min:0',
             'programs.*.remarks' => 'nullable|string',
             'request_notes' => 'nullable|string|max:1000',
         ]);
@@ -79,10 +80,15 @@ class AnnexJController extends BaseAnnexController
         ]);
 
         foreach ($validated['programs'] as $program) {
-            $batch->programs()->create($program);
+            $batch->programs()->create([
+                'title_of_program' => $program['title_of_program'],
+                'organizer' => $program['organizer'],
+                'number_of_participants' => ($program['participants_online'] ?? 0) + ($program['participants_face_to_face'] ?? 0),
+                'remarks' => $program['remarks'] ?? null,
+            ]);
         }
 
-        return redirect()->route('hei.annex-j.history')->with('success', $message);
+        return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
     public function history()
@@ -115,14 +121,14 @@ class AnnexJController extends BaseAnnexController
         $batch = AnnexJBatch::where('batch_id', $batchId)->first();
 
         if (!$batch) {
-            return redirect()->route('hei.annex-j.history')->withErrors([
+            return redirect()->route('hei.submissions.history')->withErrors([
                 'error' => 'Batch not found.'
             ]);
         }
 
         // Check ownership
         if ($batch->hei_id !== Auth::user()->hei_id) {
-            return redirect()->route('hei.annex-j.history')->withErrors([
+            return redirect()->route('hei.submissions.history')->withErrors([
                 'error' => 'Unauthorized access.'
             ]);
         }
@@ -146,7 +152,7 @@ class AnnexJController extends BaseAnnexController
         // Default to the batch's academic year
         $defaultYear = $batch->academic_year;
 
-        return inertia('HEI/AnnexJ/Create', [
+        return inertia('HEI/Forms/AnnexJCreate', [
             'availableYears' => $availableYears,
             'existingBatches' => $existingBatches,
             'defaultYear' => $defaultYear,
@@ -179,6 +185,6 @@ class AnnexJController extends BaseAnnexController
             'cancelled_notes' => $validated['cancelled_notes'] ?? null,
         ]);
 
-        return redirect()->route('hei.annex-j.history')->with('success', 'Request cancelled successfully.');
+        return redirect()->route('hei.submissions.history')->with('success', 'Request cancelled successfully.');
     }
 }

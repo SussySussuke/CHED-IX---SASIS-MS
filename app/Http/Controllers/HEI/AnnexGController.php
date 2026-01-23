@@ -37,7 +37,7 @@ class AnnexGController extends BaseAnnexController
             ? $currentYear . '-' . ($currentYear + 1)
             : ($currentYear - 1) . '-' . $currentYear;
 
-        return inertia('HEI/AnnexG/Create', [
+        return inertia('HEI/Forms/AnnexGCreate', [
             'availableYears' => $availableYears,
             'existingBatches' => $existingBatches,
             'defaultYear' => $defaultYear
@@ -138,7 +138,7 @@ class AnnexGController extends BaseAnnexController
             }
         }
 
-        return redirect()->route('hei.annex-g.history')->with('success', $message);
+        return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
     public function history()
@@ -191,12 +191,12 @@ class AnnexGController extends BaseAnnexController
         $submission = AnnexGSubmission::where('submission_id', $submissionId)->first();
 
         if (!$submission || !$this->checkOwnership($submission, $this->getHeiId())) {
-            return redirect()->route('hei.annex-g.history')->withErrors([
+            return redirect()->route('hei.submissions.history')->withErrors([
                 'error' => $submission ? 'Unauthorized access.' : 'Submission not found.'
             ]);
         }
 
-        return inertia('HEI/AnnexG/Create', [
+        return inertia('HEI/Forms/AnnexGCreate', [
             'existingSubmission' => false,
             'editorialBoards' => $submission->editorialBoards,
             'otherPublications' => $submission->otherPublications,
@@ -247,6 +247,6 @@ class AnnexGController extends BaseAnnexController
             'cancelled_notes' => $validated['cancelled_notes'] ?? null,
         ]);
 
-        return redirect()->route('hei.annex-g.history')->with('success', 'Request cancelled successfully.');
+        return redirect()->route('hei.submissions.history')->with('success', 'Request cancelled successfully.');
     }
 }

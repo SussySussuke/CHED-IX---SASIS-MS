@@ -3,7 +3,7 @@ import AppLayout from './AppLayout';
 import Sidebar from '../Components/Common/Sidebar';
 import { PERMISSIONS } from '../Utils/permissions';
 import PermissionGate from '../Components/Common/PermissionGate';
-import { IoGrid, IoSchool, IoDocumentText, IoDocument, IoCall } from 'react-icons/io5';
+import { IoGrid, IoSchool, IoDocumentText, IoDocument, IoCall, IoStatsChart } from 'react-icons/io5';
 
 const AdminLayout = ({ title, children, pendingCount = 0 }) => {
   const sidebarLinks = [
@@ -18,19 +18,29 @@ const AdminLayout = ({ title, children, pendingCount = 0 }) => {
       icon: <IoSchool />
     },
     {
+      href: '/admin/submissions',
       label: 'Submissions',
+      icon: <IoDocumentText />,
+      badge: pendingCount > 0 ? pendingCount : null
+    },
+    {
+      label: 'M&E Reports',
       divider: true,
       children: [
         {
-          href: '/admin/submissions',
-          label: 'All Submissions',
-          icon: <IoDocumentText />
+          href: '/admin/mer/form1',
+          label: 'Student Welfare Services (A-D)',
+          icon: <IoStatsChart />
         },
         {
-          href: '/admin/submissions/requests',
-          label: 'Pending Requests',
-          icon: <IoDocumentText />,
-          badge: pendingCount > 0 ? pendingCount : null
+          href: '/admin/mer/form2',
+          label: 'Student Welfare Services (E-G)',
+          icon: <IoStatsChart />
+        },
+        {
+          href: '/admin/mer/form3',
+          label: 'Institutional Programs (H-O)',
+          icon: <IoStatsChart />
         }
       ]
     },
