@@ -3,44 +3,18 @@
 namespace App\Http\Controllers\HEI;
 
 use App\Models\AnnexGSubmission;
-use App\Models\AnnexGEditorialBoard;
-use App\Models\AnnexGOtherPublication;
-use App\Models\AnnexGProgram;
-use App\Models\Setting;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class AnnexGController extends BaseAnnexController
 {
     public function create()
     {
-        $currentYear = date('Y');
-        $heiId = Auth::user()->hei_id;
-
-        // Generate all available academic years (1994 to current year)
-        $availableYears = [];
-        for ($year = 1994; $year <= $currentYear; $year++) {
-            $availableYears[] = $year . '-' . ($year + 1);
-        }
-
-        // Get all submissions for this HEI
-        $existingBatches = AnnexGSubmission::where('hei_id', $heiId)
-            ->whereIn('status', ['submitted', 'published', 'request'])
-            ->with(['programs', 'editorialBoards', 'otherPublications'])
-            ->get()
-            ->keyBy('academic_year');
-
-        // Determine default year based on deadline
-        $deadline = Setting::getDeadline();
-        $isPastDeadline = $deadline && (new \DateTime()) > $deadline;
-        $defaultYear = $isPastDeadline
-            ? $currentYear . '-' . ($currentYear + 1)
-            : ($currentYear - 1) . '-' . $currentYear;
+        $heiId = $this->getHeiId();
 
         return inertia('HEI/Forms/AnnexGCreate', [
-            'availableYears' => $availableYears,
-            'existingBatches' => $existingBatches,
-            'defaultYear' => $defaultYear
+            'availableYears' => $this->getAvailableYears(),
+            'existingBatches' => $this->getExistingBatches(AnnexGSubmission::class, $heiId, ['programs', 'editorialBoards', 'otherPublications']),
+            'defaultYear' => $this->getDefaultYear()
         ]);
     }
 
@@ -84,7 +58,6 @@ class AnnexGController extends BaseAnnexController
 
         $academicYear = $validated['academic_year'];
 
-        // Validate year is not in the future
         $yearError = $this->validateAcademicYear($academicYear);
         if ($yearError) {
             return redirect()->back()->withErrors($yearError)->withInput();
@@ -189,11 +162,11 @@ class AnnexGController extends BaseAnnexController
     public function edit($submissionId)
     {
         $submission = AnnexGSubmission::where('submission_id', $submissionId)->first();
+        $heiId = $this->getHeiId();
 
-        if (!$submission || !$this->checkOwnership($submission, $this->getHeiId())) {
-            return redirect()->route('hei.submissions.history')->withErrors([
-                'error' => $submission ? 'Unauthorized access.' : 'Submission not found.'
-            ]);
+        $error = $this->validateEditRequest($submission, $heiId);
+        if ($error) {
+            return redirect()->route('hei.submissions.history')->withErrors($error);
         }
 
         return inertia('HEI/Forms/AnnexGCreate', [
@@ -225,17 +198,11 @@ class AnnexGController extends BaseAnnexController
     public function cancel(Request $request, $submissionId)
     {
         $submission = AnnexGSubmission::where('submission_id', $submissionId)->first();
+        $heiId = $this->getHeiId();
 
-        if (!$submission || !$this->checkOwnership($submission, $this->getHeiId())) {
-            return redirect()->back()->withErrors([
-                'error' => $submission ? 'Unauthorized access.' : 'Submission not found.'
-            ]);
-        }
-
-        if ($submission->status !== 'request') {
-            return redirect()->back()->withErrors([
-                'error' => 'Only submissions with status "request" can be cancelled.'
-            ]);
+        $error = $this->validateCancelRequest($submission, $heiId);
+        if ($error) {
+            return redirect()->back()->withErrors($error);
         }
 
         $validated = $request->validate([

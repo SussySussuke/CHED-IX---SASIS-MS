@@ -2,26 +2,15 @@
 
 namespace App\Http\Controllers\HEI;
 
-use App\Http\Controllers\Controller;
 use App\Models\AnnexDSubmission;
-use App\Models\Setting;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
-class AnnexDController extends Controller
+class AnnexDController extends BaseAnnexController
 {
     public function create()
     {
-        $currentYear = date('Y');
-        $heiId = Auth::user()->hei_id;
+        $heiId = $this->getHeiId();
 
-        // Generate all available academic years (1994 to current year)
-        $availableYears = [];
-        for ($year = 1994; $year <= $currentYear; $year++) {
-            $availableYears[] = $year . '-' . ($year + 1);
-        }
-
-        // Get all submissions for this HEI
         $existingBatches = AnnexDSubmission::where('hei_id', $heiId)
             ->whereIn('status', ['submitted', 'published', 'request'])
             ->get()
@@ -70,23 +59,16 @@ class AnnexDController extends Controller
             })
             ->keyBy('academic_year');
 
-        // Determine default year based on deadline
-        $deadline = Setting::getDeadline();
-        $isPastDeadline = $deadline && (new \DateTime()) > $deadline;
-        $defaultYear = $isPastDeadline
-            ? $currentYear . '-' . ($currentYear + 1)
-            : ($currentYear - 1) . '-' . $currentYear;
-
         return inertia('HEI/Forms/AnnexDCreate', [
-            'availableYears' => $availableYears,
+            'availableYears' => $this->getAvailableYears(),
             'existingBatches' => $existingBatches,
-            'defaultYear' => $defaultYear
+            'defaultYear' => $this->getDefaultYear()
         ]);
     }
 
     public function store(Request $request)
     {
-        $currentYear = date('Y');
+        $heiId = $this->getHeiId();
 
         $validated = $request->validate([
             'academic_year' => 'required|string|regex:/^\d{4}-\d{4}$/',
@@ -127,51 +109,18 @@ class AnnexDController extends Controller
 
         $academicYear = $validated['academic_year'];
 
-        // Validate year is not in the future
-        $selectedYear = (int) substr($academicYear, 0, 4);
-        if ($selectedYear > $currentYear) {
-            return redirect()->back()->withErrors([
-                'academic_year' => 'Cannot submit for future academic years.'
-            ])->withInput();
+        $yearError = $this->validateAcademicYear($academicYear);
+        if ($yearError) {
+            return redirect()->back()->withErrors($yearError)->withInput();
         }
 
-        $heiId = Auth::user()->hei_id;
-
-        // Check for existing submission for this year
-        $existingSubmission = AnnexDSubmission::where('hei_id', $heiId)
-            ->where('academic_year', $academicYear)
-            ->whereIn('status', ['submitted', 'published', 'request'])
-            ->first();
-
-        $newStatus = 'submitted';
-        $message = 'Annex D submitted successfully! Waiting for publish date.';
+        $existingSubmission = $this->getExistingRecord(AnnexDSubmission::class, $academicYear, $heiId);
+        [$newStatus, $message] = $this->determineStatusAndMessage($existingSubmission, 'Annex D');
 
         if ($existingSubmission) {
-            if ($existingSubmission->status === 'submitted') {
-                // Before publish: overwrite previous submitted
-                AnnexDSubmission::where('hei_id', $heiId)
-                    ->where('academic_year', $academicYear)
-                    ->where('status', 'submitted')
-                    ->update(['status' => 'overwritten']);
-
-                $message = 'Previous submission replaced. New submission waiting for publish date.';
-            } elseif ($existingSubmission->status === 'published') {
-                // After publish: create request
-                $newStatus = 'request';
-                $message = 'Update request submitted successfully! Waiting for admin approval.';
-            } elseif ($existingSubmission->status === 'request') {
-                // Replace existing request
-                AnnexDSubmission::where('hei_id', $heiId)
-                    ->where('academic_year', $academicYear)
-                    ->where('status', 'request')
-                    ->update(['status' => 'overwritten']);
-
-                $newStatus = 'request';
-                $message = 'Previous request replaced. New request waiting for admin approval.';
-            }
+            $this->overwriteExisting(AnnexDSubmission::class, $heiId, $academicYear, $existingSubmission->status);
         }
 
-        // Create new submission
         AnnexDSubmission::create([
             'hei_id' => $heiId,
             'academic_year' => $academicYear,
@@ -184,7 +133,7 @@ class AnnexDController extends Controller
 
     public function history()
     {
-        $submissions = AnnexDSubmission::where('hei_id', Auth::user()->hei_id)
+        $submissions = AnnexDSubmission::where('hei_id', $this->getHeiId())
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -196,18 +145,11 @@ class AnnexDController extends Controller
     public function edit($submissionId)
     {
         $submission = AnnexDSubmission::where('submission_id', $submissionId)->first();
+        $heiId = $this->getHeiId();
 
-        if (!$submission) {
-            return redirect()->route('hei.submissions.history')->withErrors([
-                'error' => 'Submission not found.'
-            ]);
-        }
-
-        // Check ownership
-        if ($submission->hei_id !== Auth::user()->hei_id) {
-            return redirect()->route('hei.submissions.history')->withErrors([
-                'error' => 'Unauthorized access.'
-            ]);
+        $error = $this->validateEditRequest($submission, $heiId);
+        if ($error) {
+            return redirect()->route('hei.submissions.history')->withErrors($error);
         }
 
         return inertia('HEI/Forms/AnnexDCreate', [
@@ -219,25 +161,11 @@ class AnnexDController extends Controller
     public function cancel(Request $request, $submissionId)
     {
         $submission = AnnexDSubmission::where('submission_id', $submissionId)->first();
+        $heiId = $this->getHeiId();
 
-        if (!$submission) {
-            return redirect()->back()->withErrors([
-                'error' => 'Submission not found.'
-            ]);
-        }
-
-        // Check ownership
-        if ($submission->hei_id !== Auth::user()->hei_id) {
-            return redirect()->back()->withErrors([
-                'error' => 'Unauthorized access.'
-            ]);
-        }
-
-        // Only allow cancelling 'request' status
-        if ($submission->status !== 'request') {
-            return redirect()->back()->withErrors([
-                'error' => 'Only submissions with status "request" can be cancelled.'
-            ]);
+        $error = $this->validateCancelRequest($submission, $heiId);
+        if ($error) {
+            return redirect()->back()->withErrors($error);
         }
 
         $validated = $request->validate([

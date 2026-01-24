@@ -2,6 +2,7 @@ import React from 'react';
 import { IoCheckmarkCircle } from 'react-icons/io5';
 import { HotTable } from '@handsontable/react';
 
+// Annex D Renderer
 export const renderAnnexD = (data, isDark) => {
     const submission = data.submission || data.batch;
     if (!submission) {
@@ -15,6 +16,11 @@ export const renderAnnexD = (data, isDark) => {
                 { label: 'Version Publication Date', key: 'version_publication_date' },
                 { label: 'Officer in Charge', key: 'officer_in_charge' },
                 { label: 'Handbook Committee', key: 'handbook_committee' },
+            ]
+        },
+        {
+            title: 'MODE OF DISSEMINATION',
+            fields: [
                 { label: 'Dissemination Orientation', key: 'dissemination_orientation', isBoolean: true },
                 { label: 'Orientation Dates', key: 'orientation_dates' },
                 { label: 'Mode of Delivery', key: 'mode_of_delivery' },
@@ -93,29 +99,77 @@ export const renderAnnexD = (data, isDark) => {
     );
 };
 
+// Annex G Renderer
+export const renderAnnexG = (data, isDark) => {
+    const formData = data.form_data;
+    const editorialBoards = data.editorial_boards || [];
+
+    const editorialBoardColumns = [
+        { data: 'name', title: 'Name', type: 'text', readOnly: true, width: 200 },
+        { data: 'position_in_editorial_board', title: 'Position', type: 'text', readOnly: true, width: 200 },
+        { data: 'degree_program_year_level', title: 'Degree Program & Year', type: 'text', readOnly: true, width: 250 }
+    ];
+
+    return (
+        <div className="space-y-4">
+            {formData && (
+                <div className="bg-white dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Publication Information</h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                        {formData.official_school_name && (
+                            <div>
+                                <span className="font-medium text-gray-600 dark:text-gray-400">School Name:</span>
+                                <p className="text-gray-900 dark:text-white">{formData.official_school_name}</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+            {editorialBoards.length > 0 && (
+                <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Editorial Board Members</h3>
+                    <div className="overflow-auto">
+                        <HotTable
+                            data={editorialBoards}
+                            colHeaders={true}
+                            rowHeaders={true}
+                            columns={editorialBoardColumns}
+                            height="auto"
+                            licenseKey="non-commercial-and-evaluation"
+                            stretchH="all"
+                            className={isDark ? 'dark-table' : ''}
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Annex H Renderer
 export const renderAnnexH = (data, isDark) => {
     const admissionServices = data.admission_services || [];
     const admissionStatistics = data.admission_statistics || [];
 
     const servicesColumns = [
-        { data: 'service_type', title: 'Service Type', type: 'text', readOnly: true, width: 350 },
-        { data: 'with', title: 'With', type: 'checkbox', readOnly: true, width: 80 },
-        { data: 'supporting_documents', title: 'Supporting Documents', type: 'text', readOnly: true, width: 250 },
-        { data: 'remarks', title: 'Remarks', type: 'text', readOnly: true, width: 250 },
+        { data: 'service_type', title: 'Service Type', type: 'text', readOnly: true, width: 250 },
+        { data: 'with', title: 'Available', type: 'checkbox', readOnly: true, width: 100, className: 'htCenter htMiddle' },
+        { data: 'supporting_documents', title: 'Supporting Documents', type: 'text', readOnly: true, width: 200 },
+        { data: 'remarks', title: 'Remarks', type: 'text', readOnly: true, width: 200 }
     ];
 
     const statisticsColumns = [
-        { data: 'program', title: 'Program', type: 'text', readOnly: true, width: 300 },
+        { data: 'program', title: 'Program', type: 'text', readOnly: true, width: 250 },
         { data: 'applicants', title: 'Applicants', type: 'numeric', readOnly: true, width: 120 },
         { data: 'admitted', title: 'Admitted', type: 'numeric', readOnly: true, width: 120 },
-        { data: 'enrolled', title: 'Enrolled', type: 'numeric', readOnly: true, width: 120 },
+        { data: 'enrolled', title: 'Enrolled', type: 'numeric', readOnly: true, width: 120 }
     ];
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             {admissionServices.length > 0 && (
                 <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Admission Services/Requirements ({admissionServices.length})</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Admission Services ({admissionServices.length} entries)</h3>
                     <div className="overflow-auto">
                         <HotTable
                             data={admissionServices}
@@ -124,7 +178,6 @@ export const renderAnnexH = (data, isDark) => {
                             columns={servicesColumns}
                             height="auto"
                             licenseKey="non-commercial-and-evaluation"
-                            readOnly={true}
                             stretchH="all"
                             className={isDark ? 'dark-table' : ''}
                         />
@@ -133,7 +186,7 @@ export const renderAnnexH = (data, isDark) => {
             )}
             {admissionStatistics.length > 0 && (
                 <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Admission Statistics ({admissionStatistics.length})</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Admission Statistics ({admissionStatistics.length} entries)</h3>
                     <div className="overflow-auto">
                         <HotTable
                             data={admissionStatistics}
@@ -142,92 +195,309 @@ export const renderAnnexH = (data, isDark) => {
                             columns={statisticsColumns}
                             height="auto"
                             licenseKey="non-commercial-and-evaluation"
-                            readOnly={true}
                             stretchH="all"
                             className={isDark ? 'dark-table' : ''}
                         />
                     </div>
                 </div>
             )}
-            {admissionServices.length === 0 && admissionStatistics.length === 0 && (
-                <p className="text-gray-500 dark:text-gray-400">No data available.</p>
+        </div>
+    );
+};
+
+// Annex M Renderer (keeping the complex one from original)
+export const renderAnnexM = (data, isDark) => {
+    const statistics = data.statistics || [];
+    const services = data.services || [];
+
+    // Extract years from year_data
+    let years = [];
+    if (statistics.length > 0) {
+        const yearSet = new Set();
+        statistics.forEach(stat => {
+            let yearData = stat.year_data;
+            if (typeof yearData === 'string') {
+                try {
+                    yearData = JSON.parse(yearData);
+                } catch (e) {
+                    console.error('Failed to parse year_data:', e);
+                    return;
+                }
+            }
+            if (yearData && typeof yearData === 'object' && !Array.isArray(yearData)) {
+                Object.keys(yearData).forEach(year => yearSet.add(year));
+            }
+        });
+        years = Array.from(yearSet).sort();
+    }
+
+    const SECTIONS = [
+        'A. Persons with Disabilities',
+        'B. Indigenous People',
+        'C. Dependents of Solo Parents / Solo Parents',
+        'D. Other students with special needs',
+    ];
+    const servicesBySection = {};
+    SECTIONS.forEach(section => {
+        servicesBySection[section] = services.filter(s => s.section === section);
+    });
+
+    const getYearData = (row) => {
+        let yearData = row.year_data;
+        if (typeof yearData === 'string') {
+            try {
+                yearData = JSON.parse(yearData);
+            } catch (e) {
+                return {};
+            }
+        }
+        return yearData || {};
+    };
+
+    const getTotalEnrollment = (row) => {
+        const yearData = getYearData(row);
+        return years.reduce((sum, year) =>
+            sum + (parseInt(yearData[year]?.enrollment) || 0), 0);
+    };
+
+    const getTotalGraduates = (row) => {
+        const yearData = getYearData(row);
+        return years.reduce((sum, year) =>
+            sum + (parseInt(yearData[year]?.graduates) || 0), 0);
+    };
+
+    const renderStatisticsTable = () => {
+        let currentCategory = null;
+        let categoryRowCount = 0;
+        const categoryStartIndices = {};
+
+        statistics.forEach((row, index) => {
+            if (row.category !== currentCategory) {
+                if (currentCategory !== null) {
+                    categoryStartIndices[currentCategory] = { start: index - categoryRowCount, count: categoryRowCount };
+                }
+                currentCategory = row.category;
+                categoryRowCount = 1;
+            } else {
+                categoryRowCount++;
+            }
+        });
+        if (currentCategory !== null) {
+            categoryStartIndices[currentCategory] = { start: statistics.length - categoryRowCount, count: categoryRowCount };
+        }
+
+        return (
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th rowSpan="2" className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">Category</th>
+                            <th rowSpan="2" className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">Subcategory</th>
+                            {years.map(year => (
+                                <th key={year} colSpan="2" className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">
+                                    AY {year}
+                                </th>
+                            ))}
+                            <th colSpan="2" className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">Total</th>
+                        </tr>
+                        <tr>
+                            {years.map(year => (
+                                <React.Fragment key={year}>
+                                    <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Enroll</th>
+                                    <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Grad</th>
+                                </React.Fragment>
+                            ))}
+                            <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Enroll</th>
+                            <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Grad</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {statistics.map((row, index) => {
+                            const isFirstInCategory = index === 0 || statistics[index - 1].category !== row.category;
+                            const categoryInfo = categoryStartIndices[row.category];
+                            const rowspan = isFirstInCategory ? categoryInfo.count : 0;
+                            const isReadOnly = row.is_subtotal || row.category === 'TOTAL';
+                            const bgClass = isReadOnly ? 'bg-gray-100 dark:bg-gray-700/50 font-semibold' : 'bg-white dark:bg-gray-800';
+
+                            return (
+                                <tr key={index} className={bgClass}>
+                                    {isFirstInCategory && (
+                                        <td rowSpan={rowspan} className="px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-600 align-top">
+                                            {row.category}
+                                        </td>
+                                    )}
+                                    <td className="px-3 py-2 text-sm border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                                        {row.subcategory || (row.category === 'TOTAL' ? 'TOTAL' : '')}
+                                    </td>
+                                    {years.map(year => {
+                                        const yearData = getYearData(row);
+                                        return (
+                                            <React.Fragment key={year}>
+                                                <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                                                    {yearData[year]?.enrollment ?? 0}
+                                                </td>
+                                                <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                                                    {yearData[year]?.graduates ?? 0}
+                                                </td>
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                    <td className="px-2 py-2 text-sm text-center font-semibold border-r border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                                        {getTotalEnrollment(row)}
+                                    </td>
+                                    <td className="px-2 py-2 text-sm text-center font-semibold bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                                        {getTotalGraduates(row)}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
+    const renderServicesTable = (section) => {
+        const sectionServices = servicesBySection[section] || [];
+        
+        if (sectionServices.length === 0) {
+            return (
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic ml-4">No services for this section.</p>
+            );
+        }
+
+        return (
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Category</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Institutional Services/Programs/Activities</th>
+                            <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">No. of Beneficiaries/Participants</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {sectionServices.map((service, index) => (
+                            <tr key={index}>
+                                <td className="px-3 py-2 text-sm border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                                    {service.category || '-'}
+                                </td>
+                                <td className="px-3 py-2 text-sm border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                                    {service.institutional_services_programs_activities}
+                                </td>
+                                <td className="px-3 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                                    {service.number_of_beneficiaries_participants?.toLocaleString()}
+                                </td>
+                                <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
+                                    {service.remarks || '-'}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
+    return (
+        <div className="space-y-6">
+            {statistics.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Table 1: Statistics</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        Enrollment and graduate statistics across the last three academic years.
+                    </p>
+                    {renderStatisticsTable()}
+                </div>
+            )}
+            {services.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Table 2: Services</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        Institutional services, programs, and activities for each category of students with special needs.
+                    </p>
+                    <div className="space-y-4">
+                        {SECTIONS.map(section => (
+                            <div key={section}>
+                                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">{section}</h4>
+                                {renderServicesTable(section)}
+                            </div>
+                        ))}
+                    </div>
+                </div>
             )}
         </div>
     );
 };
 
-export const renderAnnexM = (data, isDark) => {
-    const statistics = data.statistics || [];
-    const services = data.services || [];
+// Summary Renderer
+export const renderSummary = (data) => {
+    const info = data.summary;
+    if (!info) return <p className="text-gray-500 dark:text-gray-400">No data available.</p>;
 
     return (
-        <div className="space-y-4">
-            {statistics.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Summary</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Enrollment and Graduate Statistics ({statistics.length} rows)</h3>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 text-sm">
-                            <thead className="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase border-r border-gray-200 dark:border-gray-600">Category</th>
-                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase border-r border-gray-200 dark:border-gray-600">Subcategory</th>
-                                    <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase border-r border-gray-200 dark:border-gray-600">2023-2024 Enroll</th>
-                                    <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase border-r border-gray-200 dark:border-gray-600">2023-2024 Grad</th>
-                                    <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase border-r border-gray-200 dark:border-gray-600">2022-2023 Enroll</th>
-                                    <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase border-r border-gray-200 dark:border-gray-600">2022-2023 Grad</th>
-                                    <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase border-r border-gray-200 dark:border-gray-600">2021-2022 Enroll</th>
-                                    <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">2021-2022 Grad</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                {statistics.map((row, index) => (
-                                    <tr key={index} className={row.is_subtotal ? 'bg-gray-100 dark:bg-gray-700 font-semibold' : ''}>
-                                        <td className="px-2 py-2 text-sm border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{row.category}</td>
-                                        <td className="px-2 py-2 text-sm border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{row.subcategory || 'TOTAL'}</td>
-                                        <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{row.ay_2023_2024_enrollment}</td>
-                                        <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{row.ay_2023_2024_graduates}</td>
-                                        <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{row.ay_2022_2023_enrollment}</td>
-                                        <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{row.ay_2022_2023_graduates}</td>
-                                        <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{row.ay_2021_2022_enrollment}</td>
-                                        <td className="px-2 py-2 text-sm text-center text-gray-900 dark:text-gray-100">{row.ay_2021_2022_graduates}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">Academic Year:</span>
+                    <p className="text-gray-900 dark:text-white">{info.academic_year}</p>
                 </div>
-            )}
-            {services.length > 0 && (
                 <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Institutional Services and Programs ({services.length} entries)</h3>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 text-sm">
-                            <thead className="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase border-r border-gray-200 dark:border-gray-600">Section</th>
-                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase border-r border-gray-200 dark:border-gray-600">Category</th>
-                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase border-r border-gray-200 dark:border-gray-600">Services/Programs/Activities</th>
-                                    <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase border-r border-gray-200 dark:border-gray-600">Beneficiaries</th>
-                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Remarks</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                {services.map((row, index) => (
-                                    <tr key={index}>
-                                        <td className="px-2 py-2 text-sm border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{row.section}</td>
-                                        <td className="px-2 py-2 text-sm border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{row.category}</td>
-                                        <td className="px-2 py-2 text-sm border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{row.institutional_services_programs_activities}</td>
-                                        <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{row.number_of_beneficiaries_participants}</td>
-                                        <td className="px-2 py-2 text-sm text-gray-900 dark:text-gray-100">{row.remarks || '-'}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">Status:</span>
+                    <p className="text-gray-900 dark:text-white capitalize">{info.status}</p>
                 </div>
-            )}
-            {statistics.length === 0 && services.length === 0 && (
-                <p className="text-gray-500 dark:text-gray-400">No data available.</p>
+                <div>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">Male Population:</span>
+                    <p className="text-gray-900 dark:text-white">{info.population_male?.toLocaleString()}</p>
+                </div>
+                <div>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">Female Population:</span>
+                    <p className="text-gray-900 dark:text-white">{info.population_female?.toLocaleString()}</p>
+                </div>
+                <div>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">Intersex Population:</span>
+                    <p className="text-gray-900 dark:text-white">{info.population_intersex?.toLocaleString()}</p>
+                </div>
+                <div>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">Total Population:</span>
+                    <p className="text-gray-900 dark:text-white">{info.population_total?.toLocaleString()}</p>
+                </div>
+                {info.hei_website && (
+                    <div>
+                        <span className="font-medium text-gray-600 dark:text-gray-400">HEI Website:</span>
+                        <p className="text-gray-900 dark:text-white break-all">{info.hei_website}</p>
+                    </div>
+                )}
+                {info.sas_website && (
+                    <div>
+                        <span className="font-medium text-gray-600 dark:text-gray-400">SAS Website:</span>
+                        <p className="text-gray-900 dark:text-white break-all">{info.sas_website}</p>
+                    </div>
+                )}
+                {info.student_handbook && (
+                    <div>
+                        <span className="font-medium text-gray-600 dark:text-gray-400">Student Handbook:</span>
+                        <p className="text-gray-900 dark:text-white">{info.student_handbook}</p>
+                    </div>
+                )}
+                {info.student_publication && (
+                    <div>
+                        <span className="font-medium text-gray-600 dark:text-gray-400">Student Publication:</span>
+                        <p className="text-gray-900 dark:text-white">{info.student_publication}</p>
+                    </div>
+                )}
+            </div>
+            {info.social_media_contacts && info.social_media_contacts.length > 0 && (
+                <div className="mt-4">
+                    <span className="font-medium text-gray-600 dark:text-gray-400">Social Media Contacts:</span>
+                    <ul className="list-disc list-inside text-gray-900 dark:text-white mt-1">
+                        {info.social_media_contacts.map((contact, idx) => (
+                            <li key={idx} className="break-all">{contact}</li>
+                        ))}
+                    </ul>
+                </div>
             )}
         </div>
     );

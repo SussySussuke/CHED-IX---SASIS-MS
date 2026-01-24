@@ -2,50 +2,25 @@
 
 namespace App\Http\Controllers\HEI;
 
-use App\Http\Controllers\Controller;
 use App\Models\AnnexCBatch;
-use App\Models\AnnexCProgram;
-use App\Models\Setting;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
-class AnnexCController extends Controller
+class AnnexCController extends BaseAnnexController
 {
     public function create()
     {
-        $currentYear = date('Y');
-        $heiId = Auth::user()->hei_id;
-
-        // Generate all available academic years (1994 to current year)
-        $availableYears = [];
-        for ($year = 1994; $year <= $currentYear; $year++) {
-            $availableYears[] = $year . '-' . ($year + 1);
-        }
-
-        // Get all submissions for this HEI
-        $existingBatches = AnnexCBatch::where('hei_id', $heiId)
-            ->whereIn('status', ['submitted', 'published', 'request'])
-            ->with('programs')
-            ->get()
-            ->keyBy('academic_year');
-
-        // Determine default year based on deadline
-        $deadline = Setting::getDeadline();
-        $isPastDeadline = $deadline && (new \DateTime()) > $deadline;
-        $defaultYear = $isPastDeadline
-            ? $currentYear . '-' . ($currentYear + 1)
-            : ($currentYear - 1) . '-' . $currentYear;
+        $heiId = $this->getHeiId();
 
         return inertia('HEI/Forms/AnnexCCreate', [
-            'availableYears' => $availableYears,
-            'existingBatches' => $existingBatches,
-            'defaultYear' => $defaultYear
+            'availableYears' => $this->getAvailableYears(),
+            'existingBatches' => $this->getExistingBatches(AnnexCBatch::class, $heiId, ['programs']),
+            'defaultYear' => $this->getDefaultYear()
         ]);
     }
 
     public function store(Request $request)
     {
-        $currentYear = date('Y');
+        $heiId = $this->getHeiId();
 
         $validated = $request->validate([
             'academic_year' => 'required|string|regex:/^\d{4}-\d{4}$/',
@@ -62,51 +37,18 @@ class AnnexCController extends Controller
 
         $academicYear = $validated['academic_year'];
 
-        // Validate year is not in the future
-        $selectedYear = (int) substr($academicYear, 0, 4);
-        if ($selectedYear > $currentYear) {
-            return redirect()->back()->withErrors([
-                'academic_year' => 'Cannot submit for future academic years.'
-            ])->withInput();
+        $yearError = $this->validateAcademicYear($academicYear);
+        if ($yearError) {
+            return redirect()->back()->withErrors($yearError)->withInput();
         }
 
-        $heiId = Auth::user()->hei_id;
-
-        // Check for existing submission for this year
-        $existingBatch = AnnexCBatch::where('hei_id', $heiId)
-            ->where('academic_year', $academicYear)
-            ->whereIn('status', ['submitted', 'published', 'request'])
-            ->first();
-
-        $newStatus = 'submitted';
-        $message = 'Annex C batch submitted successfully! Waiting for publish date.';
+        $existingBatch = $this->getExistingRecord(AnnexCBatch::class, $academicYear, $heiId);
+        [$newStatus, $message] = $this->determineStatusAndMessage($existingBatch, 'Annex C');
 
         if ($existingBatch) {
-            if ($existingBatch->status === 'submitted') {
-                // Before publish: overwrite previous submitted
-                AnnexCBatch::where('hei_id', $heiId)
-                    ->where('academic_year', $academicYear)
-                    ->where('status', 'submitted')
-                    ->update(['status' => 'overwritten']);
-
-                $message = 'Previous submission replaced. New submission waiting for publish date.';
-            } elseif ($existingBatch->status === 'published') {
-                // After publish: create request
-                $newStatus = 'request';
-                $message = 'Update request submitted successfully! Waiting for admin approval.';
-            } elseif ($existingBatch->status === 'request') {
-                // Replace existing request
-                AnnexCBatch::where('hei_id', $heiId)
-                    ->where('academic_year', $academicYear)
-                    ->where('status', 'request')
-                    ->update(['status' => 'overwritten']);
-
-                $newStatus = 'request';
-                $message = 'Previous request replaced. New request waiting for admin approval.';
-            }
+            $this->overwriteExisting(AnnexCBatch::class, $heiId, $academicYear, $existingBatch->status);
         }
 
-        // Create new batch
         $batch = AnnexCBatch::create([
             'hei_id' => $heiId,
             'academic_year' => $academicYear,
@@ -114,7 +56,6 @@ class AnnexCController extends Controller
             'request_notes' => $validated['request_notes'] ?? null,
         ]);
 
-        // Create programs
         foreach ($validated['programs'] as $program) {
             $batch->programs()->create($program);
         }
@@ -124,7 +65,7 @@ class AnnexCController extends Controller
 
     public function history()
     {
-        $batches = AnnexCBatch::where('hei_id', Auth::user()->hei_id)
+        $batches = AnnexCBatch::where('hei_id', $this->getHeiId())
             ->withCount('programs')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -138,13 +79,8 @@ class AnnexCController extends Controller
     {
         $batch = AnnexCBatch::where('batch_id', $batchId)->first();
 
-        if (!$batch) {
-            return response()->json([], 404);
-        }
-
-        // Check ownership
-        if ($batch->hei_id !== Auth::user()->hei_id) {
-            return response()->json([], 403);
+        if (!$batch || !$this->checkOwnership($batch, $this->getHeiId())) {
+            return response()->json([], $batch ? 403 : 404);
         }
 
         return response()->json($batch->programs);
@@ -153,43 +89,17 @@ class AnnexCController extends Controller
     public function edit($batchId)
     {
         $batch = AnnexCBatch::where('batch_id', $batchId)->first();
+        $heiId = $this->getHeiId();
 
-        if (!$batch) {
-            return redirect()->route('hei.submissions.history')->withErrors([
-                'error' => 'Batch not found.'
-            ]);
+        $error = $this->validateEditRequest($batch, $heiId);
+        if ($error) {
+            return redirect()->route('hei.submissions.history')->withErrors($error);
         }
-
-        // Check ownership
-        if ($batch->hei_id !== Auth::user()->hei_id) {
-            return redirect()->route('hei.submissions.history')->withErrors([
-                'error' => 'Unauthorized access.'
-            ]);
-        }
-
-        $currentYear = date('Y');
-        $heiId = Auth::user()->hei_id;
-
-        // Generate all available academic years (1994 to current year)
-        $availableYears = [];
-        for ($year = 1994; $year <= $currentYear; $year++) {
-            $availableYears[] = $year . '-' . ($year + 1);
-        }
-
-        // Get all submissions for this HEI
-        $existingBatches = AnnexCBatch::where('hei_id', $heiId)
-            ->whereIn('status', ['submitted', 'published', 'request'])
-            ->with('programs')
-            ->get()
-            ->keyBy('academic_year');
-
-        // Default to the batch's academic year
-        $defaultYear = $batch->academic_year;
 
         return inertia('HEI/Forms/AnnexCCreate', [
-            'availableYears' => $availableYears,
-            'existingBatches' => $existingBatches,
-            'defaultYear' => $defaultYear,
+            'availableYears' => $this->getAvailableYears(),
+            'existingBatches' => $this->getExistingBatches(AnnexCBatch::class, $heiId, ['programs']),
+            'defaultYear' => $batch->academic_year,
             'isEditing' => true
         ]);
     }
@@ -197,25 +107,11 @@ class AnnexCController extends Controller
     public function cancel(Request $request, $batchId)
     {
         $batch = AnnexCBatch::where('batch_id', $batchId)->first();
+        $heiId = $this->getHeiId();
 
-        if (!$batch) {
-            return redirect()->back()->withErrors([
-                'error' => 'Batch not found.'
-            ]);
-        }
-
-        // Check ownership
-        if ($batch->hei_id !== Auth::user()->hei_id) {
-            return redirect()->back()->withErrors([
-                'error' => 'Unauthorized access.'
-            ]);
-        }
-
-        // Only allow cancelling 'request' status
-        if ($batch->status !== 'request') {
-            return redirect()->back()->withErrors([
-                'error' => 'Only batches with status "request" can be cancelled.'
-            ]);
+        $error = $this->validateCancelRequest($batch, $heiId);
+        if ($error) {
+            return redirect()->back()->withErrors($error);
         }
 
         $validated = $request->validate([

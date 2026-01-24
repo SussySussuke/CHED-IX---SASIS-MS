@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\HEI;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Auth;
 
 abstract class BaseAnnexController extends Controller
@@ -128,12 +129,11 @@ abstract class BaseAnnexController extends Controller
         if ($existingRecord->status === 'submitted') {
             $newStatus = 'submitted';
             $message = 'Previous submission replaced. New submission waiting for publish date.';
-        } elseif ($existingRecord->status === 'published') {
+        } elseif ($existingRecord->status === 'published' || $existingRecord->status === 'request') {
             $newStatus = 'request';
-            $message = 'Update request submitted successfully! Waiting for admin approval.';
-        } elseif ($existingRecord->status === 'request') {
-            $newStatus = 'request';
-            $message = 'Previous request replaced. New request waiting for admin approval.';
+            $message = $existingRecord->status === 'request'
+                ? 'Previous request replaced. New request waiting for admin approval.'
+                : 'Update request submitted successfully! Waiting for admin approval.';
         }
 
         return [$newStatus, $message];
@@ -141,13 +141,23 @@ abstract class BaseAnnexController extends Controller
 
     /**
      * Overwrite existing records based on status
+     * When overwriting 'published' or 'request', always overwrite ALL requests for that year
      */
     protected function overwriteExisting($model, int $heiId, string $academicYear, string $status): void
     {
-        $model::where('hei_id', $heiId)
-            ->where('academic_year', $academicYear)
-            ->where('status', $status)
-            ->update(['status' => 'overwritten']);
+        if ($status === 'published' || $status === 'request') {
+            // Always overwrite ALL existing requests for this year
+            $model::where('hei_id', $heiId)
+                ->where('academic_year', $academicYear)
+                ->where('status', 'request')
+                ->update(['status' => 'overwritten']);
+        } else {
+            // For 'submitted', only overwrite that specific status
+            $model::where('hei_id', $heiId)
+                ->where('academic_year', $academicYear)
+                ->where('status', $status)
+                ->update(['status' => 'overwritten']);
+        }
     }
 
     /**
@@ -156,5 +166,67 @@ abstract class BaseAnnexController extends Controller
     protected function checkOwnership($record, int $heiId): bool
     {
         return $record && $record->hei_id === $heiId;
+    }
+
+    /**
+     * Get default year based on deadline setting
+     */
+    protected function getDefaultYear(): string
+    {
+        $currentYear = date('Y');
+        $deadline = Setting::getDeadline();
+        $isPastDeadline = $deadline && (new \DateTime()) > $deadline;
+        
+        return $isPastDeadline
+            ? $currentYear . '-' . ($currentYear + 1)
+            : ($currentYear - 1) . '-' . $currentYear;
+    }
+
+    /**
+     * Get existing batches for create/edit views
+     */
+    protected function getExistingBatches($model, int $heiId, array $withRelations = [])
+    {
+        return $model::where('hei_id', $heiId)
+            ->whereIn('status', ['submitted', 'published', 'request'])
+            ->with($withRelations)
+            ->get()
+            ->keyBy('academic_year');
+    }
+
+    /**
+     * Common validation for cancel action
+     */
+    protected function validateCancelRequest($batch, int $heiId): ?array
+    {
+        if (!$batch) {
+            return ['error' => 'Batch not found.'];
+        }
+
+        if (!$this->checkOwnership($batch, $heiId)) {
+            return ['error' => 'Unauthorized access.'];
+        }
+
+        if ($batch->status !== 'request') {
+            return ['error' => 'Only batches with status "request" can be cancelled.'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Common validation for edit action
+     */
+    protected function validateEditRequest($batch, int $heiId): ?array
+    {
+        if (!$batch) {
+            return ['error' => 'Batch not found.'];
+        }
+
+        if (!$this->checkOwnership($batch, $heiId)) {
+            return ['error' => 'Unauthorized access.'];
+        }
+
+        return null;
     }
 }

@@ -30,7 +30,6 @@ class SubmissionController extends Controller
                     'id' => $submission->id,
                     'batch_id' => $submission->id,
                     'annex' => 'SUMMARY',
-                    'form_name' => 'Summary - School Detail',
                     'academic_year' => $submission->academic_year,
                     'status' => $submission->status,
                     'submitted_at' => $submission->created_at,
@@ -47,12 +46,11 @@ class SubmissionController extends Controller
                 ->orderBy('academic_year', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->get()
-                ->map(function ($batch) use ($code, $config) {
+                ->map(function ($batch) use ($code) {
                     return [
                         'id' => $batch->id,
                         'batch_id' => $batch->batch_id ?? $batch->id,
                         'annex' => $code,
-                        'form_name' => $config['name'],
                         'academic_year' => $batch->academic_year,
                         'status' => $batch->status,
                         'submitted_at' => $batch->created_at,
@@ -220,25 +218,26 @@ class SubmissionController extends Controller
 
     /**
      * Get annex types configuration
+     * Note: Display names are handled by frontend (formConfig.js ANNEX_NAMES)
      */
     private function getAnnexTypes()
     {
         return [
-            'A' => ['model' => \App\Models\AnnexABatch::class, 'name' => 'List of Programs Offered', 'relation' => 'programs'],
-            'B' => ['model' => \App\Models\AnnexBBatch::class, 'name' => 'Curricular Programs', 'relation' => 'programs'],
-            'C' => ['model' => \App\Models\AnnexCBatch::class, 'name' => 'Enrolment', 'relation' => 'programs'],
-            'D' => ['model' => \App\Models\AnnexDSubmission::class, 'name' => 'Graduates', 'relation' => null],
-            'E' => ['model' => \App\Models\AnnexEBatch::class, 'name' => 'Student Services', 'relation' => 'organizations'],
-            'F' => ['model' => \App\Models\AnnexFBatch::class, 'name' => 'Institutional Linkages', 'relation' => 'activities'],
-            'G' => ['model' => \App\Models\AnnexGSubmission::class, 'name' => 'Research', 'relation' => null],
-            'H' => ['model' => \App\Models\AnnexHBatch::class, 'name' => 'Admission Statistics', 'relation' => 'admissionStatistics'],
-            'I' => ['model' => \App\Models\AnnexIBatch::class, 'name' => 'Scholarship Grants', 'relation' => 'scholarships'],
-            'J' => ['model' => \App\Models\AnnexJBatch::class, 'name' => 'Faculty Development', 'relation' => 'programs'],
-            'K' => ['model' => \App\Models\AnnexKBatch::class, 'name' => 'Governance', 'relation' => 'committees'],
-            'L' => ['model' => \App\Models\AnnexLBatch::class, 'name' => 'Physical Facilities', 'relation' => 'housing'],
-            'M' => ['model' => \App\Models\AnnexMBatch::class, 'name' => 'Library Services', 'relation' => 'statistics'],
-            'N' => ['model' => \App\Models\AnnexNBatch::class, 'name' => 'Extension Services', 'relation' => 'activities'],
-            'O' => ['model' => \App\Models\AnnexOBatch::class, 'name' => 'Institutional Sustainability', 'relation' => 'programs'],
+            'A' => ['model' => \App\Models\AnnexABatch::class, 'relation' => 'programs'],
+            'B' => ['model' => \App\Models\AnnexBBatch::class, 'relation' => 'programs'],
+            'C' => ['model' => \App\Models\AnnexCBatch::class, 'relation' => 'programs'],
+            'D' => ['model' => \App\Models\AnnexDSubmission::class, 'relation' => null],
+            'E' => ['model' => \App\Models\AnnexEBatch::class, 'relation' => 'organizations'],
+            'F' => ['model' => \App\Models\AnnexFBatch::class, 'relation' => 'activities'],
+            'G' => ['model' => \App\Models\AnnexGSubmission::class, 'relation' => null],
+            'H' => ['model' => \App\Models\AnnexHBatch::class, 'relation' => 'admissionStatistics'],
+            'I' => ['model' => \App\Models\AnnexIBatch::class, 'relation' => 'scholarships'],
+            'J' => ['model' => \App\Models\AnnexJBatch::class, 'relation' => 'programs'],
+            'K' => ['model' => \App\Models\AnnexKBatch::class, 'relation' => 'committees'],
+            'L' => ['model' => \App\Models\AnnexLBatch::class, 'relation' => 'housing'],
+            'M' => ['model' => \App\Models\AnnexMBatch::class, 'relation' => 'statistics'],
+            'N' => ['model' => \App\Models\AnnexNBatch::class, 'relation' => 'activities'],
+            'O' => ['model' => \App\Models\AnnexOBatch::class, 'relation' => 'programs'],
         ];
     }
 

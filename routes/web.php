@@ -6,6 +6,7 @@ use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\SuperAdmin\AdminManagementController;
 use App\Http\Controllers\Admin\HEIManagementController;
 use App\Http\Controllers\HEI\SummaryController;
+use App\Http\Controllers\HEI\DashboardController;
 use App\Http\Controllers\HEI\AnnexAController;
 use App\Http\Controllers\HEI\AnnexBController;
 use App\Http\Controllers\HEI\AnnexCController;
@@ -110,9 +111,7 @@ Route::middleware('auth')->group(function () {
 
     // HEI routes
     Route::middleware('role:hei')->prefix('hei')->group(function () {
-        Route::get('/dashboard', function () {
-            return inertia('HEI/Dashboard');
-        })->name('hei.dashboard');
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('hei.dashboard');
 
         // Unified submission routes
         Route::get('/submissions/history', [App\Http\Controllers\HEI\SubmissionController::class, 'history'])->name('hei.submissions.history');

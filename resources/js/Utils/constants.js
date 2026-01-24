@@ -2,7 +2,10 @@ export const SUBMISSION_STATUS = {
   DRAFT: 'draft',
   SUBMITTED: 'submitted',
   APPROVED: 'approved',
-  REJECTED: 'rejected'
+  REJECTED: 'rejected',
+  PUBLISHED: 'published',
+  REQUEST: 'request',
+  OVERWRITTEN: 'overwritten'
 };
 
 export const OVERWRITE_STATUS = {
@@ -26,6 +29,9 @@ export const STATUS_COLORS = {
   [SUBMISSION_STATUS.SUBMITTED]: 'blue',
   [SUBMISSION_STATUS.APPROVED]: 'green',
   [SUBMISSION_STATUS.REJECTED]: 'red',
+  [SUBMISSION_STATUS.PUBLISHED]: 'green',
+  [SUBMISSION_STATUS.REQUEST]: 'yellow',
+  [SUBMISSION_STATUS.OVERWRITTEN]: 'gray',
   [OVERWRITE_STATUS.PENDING]: 'yellow',
   [OVERWRITE_STATUS.APPROVED]: 'green',
   [OVERWRITE_STATUS.REJECTED]: 'red'

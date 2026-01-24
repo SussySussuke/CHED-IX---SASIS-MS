@@ -3,42 +3,18 @@
 namespace App\Http\Controllers\HEI;
 
 use App\Models\AnnexLBatch;
-use App\Models\AnnexLHousing;
-use App\Models\Setting;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class AnnexLController extends BaseAnnexController
 {
     public function create()
     {
-        $currentYear = date('Y');
-        $heiId = Auth::user()->hei_id;
-
-        // Generate all available academic years (1994 to current year)
-        $availableYears = [];
-        for ($year = 1994; $year <= $currentYear; $year++) {
-            $availableYears[] = $year . '-' . ($year + 1);
-        }
-
-        // Get all submissions for this HEI
-        $existingBatches = AnnexLBatch::where('hei_id', $heiId)
-            ->whereIn('status', ['submitted', 'published', 'request'])
-            ->with('housing')
-            ->get()
-            ->keyBy('academic_year');
-
-        // Determine default year based on deadline
-        $deadline = Setting::getDeadline();
-        $isPastDeadline = $deadline && (new \DateTime()) > $deadline;
-        $defaultYear = $isPastDeadline
-            ? $currentYear . '-' . ($currentYear + 1)
-            : ($currentYear - 1) . '-' . $currentYear;
+        $heiId = $this->getHeiId();
 
         return inertia('HEI/Forms/AnnexLCreate', [
-            'availableYears' => $availableYears,
-            'existingBatches' => $existingBatches,
-            'defaultYear' => $defaultYear
+            'availableYears' => $this->getAvailableYears(),
+            'existingBatches' => $this->getExistingBatches(AnnexLBatch::class, $heiId, ['housing']),
+            'defaultYear' => $this->getDefaultYear()
         ]);
     }
 
@@ -62,7 +38,6 @@ class AnnexLController extends BaseAnnexController
 
         $academicYear = $validated['academic_year'];
 
-        // Validate year is not in the future
         $yearError = $this->validateAcademicYear($academicYear);
         if ($yearError) {
             return redirect()->back()->withErrors($yearError)->withInput();
@@ -117,43 +92,17 @@ class AnnexLController extends BaseAnnexController
     public function edit($batchId)
     {
         $batch = AnnexLBatch::where('batch_id', $batchId)->first();
+        $heiId = $this->getHeiId();
 
-        if (!$batch) {
-            return redirect()->route('hei.submissions.history')->withErrors([
-                'error' => 'Batch not found.'
-            ]);
+        $error = $this->validateEditRequest($batch, $heiId);
+        if ($error) {
+            return redirect()->route('hei.submissions.history')->withErrors($error);
         }
-
-        // Check ownership
-        if ($batch->hei_id !== Auth::user()->hei_id) {
-            return redirect()->route('hei.submissions.history')->withErrors([
-                'error' => 'Unauthorized access.'
-            ]);
-        }
-
-        $currentYear = date('Y');
-        $heiId = Auth::user()->hei_id;
-
-        // Generate all available academic years (1994 to current year)
-        $availableYears = [];
-        for ($year = 1994; $year <= $currentYear; $year++) {
-            $availableYears[] = $year . '-' . ($year + 1);
-        }
-
-        // Get all submissions for this HEI
-        $existingBatches = AnnexLBatch::where('hei_id', $heiId)
-            ->whereIn('status', ['submitted', 'published', 'request'])
-            ->with('housing')
-            ->get()
-            ->keyBy('academic_year');
-
-        // Default to the batch's academic year
-        $defaultYear = $batch->academic_year;
 
         return inertia('HEI/Forms/AnnexLCreate', [
-            'availableYears' => $availableYears,
-            'existingBatches' => $existingBatches,
-            'defaultYear' => $defaultYear,
+            'availableYears' => $this->getAvailableYears(),
+            'existingBatches' => $this->getExistingBatches(AnnexLBatch::class, $heiId, ['housing']),
+            'defaultYear' => $batch->academic_year,
             'isEditing' => true
         ]);
     }
@@ -161,17 +110,11 @@ class AnnexLController extends BaseAnnexController
     public function cancel(Request $request, $batchId)
     {
         $batch = AnnexLBatch::where('batch_id', $batchId)->first();
+        $heiId = $this->getHeiId();
 
-        if (!$batch || !$this->checkOwnership($batch, $this->getHeiId())) {
-            return redirect()->back()->withErrors([
-                'error' => $batch ? 'Unauthorized access.' : 'Batch not found.'
-            ]);
-        }
-
-        if ($batch->status !== 'request') {
-            return redirect()->back()->withErrors([
-                'error' => 'Only batches with status "request" can be cancelled.'
-            ]);
+        $error = $this->validateCancelRequest($batch, $heiId);
+        if ($error) {
+            return redirect()->back()->withErrors($error);
         }
 
         $validated = $request->validate([
