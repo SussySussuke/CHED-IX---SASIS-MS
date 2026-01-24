@@ -75,9 +75,16 @@ class SubmissionController extends Controller
         $academicYears = $this->getAvailableAcademicYears();
 
         return inertia('HEI/Submissions/Index', [
+            'hei' => [
+                'id' => $hei->id,
+                'uii' => $hei->uii,
+                'type' => $hei->type,
+                'name' => $hei->name,
+            ],
+            'academicYears' => $academicYears,
+            'selectedYear' => $this->getCurrentAcademicYear(),
             'submissions' => $submissions,
             'selectedAnnex' => $selectedAnnex,
-            'academicYears' => $academicYears,
         ]);
     }
 
@@ -264,10 +271,32 @@ class SubmissionController extends Controller
             $years = $years->merge($tableYears);
         }
 
+        // Always include current academic year
+        $currentYear = $this->getCurrentAcademicYear();
+        $years->push($currentYear);
+
         return $years->unique()
             ->filter()
             ->sort()
             ->values()
             ->toArray();
+    }
+
+    /**
+     * Get current academic year (format: YYYY-YYYY)
+     */
+    private function getCurrentAcademicYear()
+    {
+        $currentYear = date('Y');
+        $currentMonth = date('n');
+
+        // Academic year typically starts in August/September
+        if ($currentMonth >= 8) {
+            // August onwards is current year to next year
+            return $currentYear . '-' . ($currentYear + 1);
+        } else {
+            // Before August is previous year to current year
+            return ($currentYear - 1) . '-' . $currentYear;
+        }
     }
 }

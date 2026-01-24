@@ -110,9 +110,7 @@ Route::middleware('auth')->group(function () {
 
     // HEI routes
     Route::middleware('role:hei')->prefix('hei')->group(function () {
-        Route::get('/dashboard', function () {
-            return inertia('HEI/Dashboard');
-        })->name('hei.dashboard');
+        Route::get('/dashboard', [App\Http\Controllers\HEI\DashboardController::class, 'index'])->name('hei.dashboard');
 
         // Unified submission routes
         Route::get('/submissions/history', [App\Http\Controllers\HEI\SubmissionController::class, 'history'])->name('hei.submissions.history');
