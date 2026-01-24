@@ -16,6 +16,7 @@ class SubmissionController extends Controller
     {
         $hei = Auth::user()->hei;
         $selectedAnnex = $request->get('annex', 'A');
+        $selectedYear = $request->get('year', $this->getCurrentAcademicYear());
 
         $annexTypes = $this->getAnnexTypes();
         $submissions = [];
@@ -47,8 +48,15 @@ class SubmissionController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(function ($batch) use ($code) {
+                    // Determine which ID to use based on annex type
+                    // Annex D and G use submission_id, others use batch_id
+                    $routeId = ($code === 'D' || $code === 'G') 
+                        ? ($batch->submission_id ?? $batch->id)
+                        : ($batch->batch_id ?? $batch->id);
+
                     return [
                         'id' => $batch->id,
+                        'route_id' => $routeId,  // The ID used in edit routes
                         'batch_id' => $batch->batch_id ?? $batch->id,
                         'annex' => $code,
                         'academic_year' => $batch->academic_year,
@@ -73,9 +81,16 @@ class SubmissionController extends Controller
         $academicYears = $this->getAvailableAcademicYears();
 
         return inertia('HEI/Submissions/Index', [
+            'hei' => [
+                'id' => $hei->id,
+                'uii' => $hei->uii,
+                'type' => $hei->type,
+                'name' => $hei->name,
+            ],
+            'academicYears' => $academicYears,
+            'selectedYear' => $selectedYear,
             'submissions' => $submissions,
             'selectedAnnex' => $selectedAnnex,
-            'academicYears' => $academicYears,
         ]);
     }
 
@@ -263,10 +278,32 @@ class SubmissionController extends Controller
             $years = $years->merge($tableYears);
         }
 
+        // Always include current academic year
+        $currentYear = $this->getCurrentAcademicYear();
+        $years->push($currentYear);
+
         return $years->unique()
             ->filter()
             ->sort()
             ->values()
             ->toArray();
+    }
+
+    /**
+     * Get current academic year (format: YYYY-YYYY)
+     */
+    private function getCurrentAcademicYear()
+    {
+        $currentYear = date('Y');
+        $currentMonth = date('n');
+
+        // Academic year typically starts in August/September
+        if ($currentMonth >= 8) {
+            // August onwards is current year to next year
+            return $currentYear . '-' . ($currentYear + 1);
+        } else {
+            // Before August is previous year to current year
+            return ($currentYear - 1) . '-' . $currentYear;
+        }
     }
 }

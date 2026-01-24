@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\HEI;
 use App\Models\CHEDRemark;
+use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -79,8 +80,15 @@ class SubmissionController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(function ($batch) use ($code) {
+                    // Determine which ID to use based on annex type
+                    // Annex D and G use submission_id, others use batch_id
+                    $routeId = ($code === 'D' || $code === 'G') 
+                        ? ($batch->submission_id ?? $batch->id)
+                        : ($batch->batch_id ?? $batch->id);
+
                     return [
                         'id' => $batch->id,
+                        'route_id' => $routeId,  // The ID used in edit routes
                         'batch_id' => $batch->batch_id ?? $batch->id,
                         'annex' => $code,
                         'academic_year' => $batch->academic_year,
@@ -145,6 +153,17 @@ class SubmissionController extends Controller
                 // Publish the new submission
                 $newSubmission->update(['status' => 'published']);
 
+                // Create audit log
+                AuditLog::log(
+                    action: 'approved',
+                    entityType: 'Submission',
+                    entityId: $newSubmission->id,
+                    entityName: 'SUMMARY - ' . $newSubmission->academic_year,
+                    description: 'Approved SUMMARY submission request for ' . $newSubmission->hei->name,
+                    oldValues: ['status' => 'request'],
+                    newValues: ['status' => 'published']
+                );
+
                 DB::commit();
 
                 return back()->with('success', 'Request approved successfully. Previous submission has been overwritten.');
@@ -180,6 +199,17 @@ class SubmissionController extends Controller
             // Publish the new batch
             $newBatch->update(['status' => 'published']);
 
+            // Create audit log
+            AuditLog::log(
+                action: 'approved',
+                entityType: 'Submission',
+                entityId: $newBatch->id,
+                entityName: 'Annex ' . $annexType . ' - ' . $newBatch->academic_year,
+                description: 'Approved Annex ' . $annexType . ' submission request for ' . $newBatch->hei->name,
+                oldValues: ['status' => 'request'],
+                newValues: ['status' => 'published']
+            );
+
             DB::commit();
 
             return back()->with('success', 'Request approved successfully. Previous batch has been overwritten.');
@@ -214,6 +244,20 @@ class SubmissionController extends Controller
                 'cancelled_notes' => $validated['rejection_reason'] ?? 'Rejected by admin',
             ]);
 
+            // Create audit log
+            AuditLog::log(
+                action: 'rejected',
+                entityType: 'Submission',
+                entityId: $submission->id,
+                entityName: 'SUMMARY - ' . $submission->academic_year,
+                description: 'Rejected SUMMARY submission request for ' . $submission->hei->name . '. Reason: ' . ($validated['rejection_reason'] ?? 'No reason provided'),
+                oldValues: ['status' => 'request'],
+                newValues: [
+                    'status' => 'rejected',
+                    'cancelled_notes' => $validated['rejection_reason'] ?? 'Rejected by admin',
+                ]
+            );
+
             return back()->with('success', 'Request rejected successfully.');
         }
 
@@ -229,6 +273,20 @@ class SubmissionController extends Controller
             'status' => 'rejected',
             'cancelled_notes' => $validated['rejection_reason'] ?? 'Rejected by admin',
         ]);
+
+        // Create audit log
+        AuditLog::log(
+            action: 'rejected',
+            entityType: 'Submission',
+            entityId: $batch->id,
+            entityName: 'Annex ' . $annexType . ' - ' . $batch->academic_year,
+            description: 'Rejected Annex ' . $annexType . ' submission request for ' . $batch->hei->name . '. Reason: ' . ($validated['rejection_reason'] ?? 'No reason provided'),
+            oldValues: ['status' => 'request'],
+            newValues: [
+                'status' => 'rejected',
+                'cancelled_notes' => $validated['rejection_reason'] ?? 'Rejected by admin',
+            ]
+        );
 
         return back()->with('success', 'Request rejected successfully.');
     }

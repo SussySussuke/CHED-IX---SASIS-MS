@@ -24,7 +24,7 @@ export default function Show({ hei, submissions, academicYears }) {
 
     return (
         <AdminLayout title={`Submissions - ${hei.name}`} pendingCount={pendingCount}>
-            <div className="max-w-7xl mx-auto">
+            <div>
                 <div className="mb-6">
                     <Link
                         href="/admin/submissions"

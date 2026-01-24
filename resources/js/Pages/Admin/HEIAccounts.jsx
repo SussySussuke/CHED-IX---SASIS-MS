@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import AdminLayout from '../../Layouts/AdminLayout';
+import ConfirmationModal from '../../Components/Common/ConfirmationModal';
 import { useForm } from '@inertiajs/react';
-import { IoEye, IoEyeOff, IoPencil, IoTrash } from 'react-icons/io5';
+import { IoEye, IoEyeOff, IoPencilOutline, IoTrashOutline } from 'react-icons/io5';
+import DataTable from '../../Components/Common/DataTable';
+import IconButton from '../../Components/Common/IconButton';
+import StatusBadge from '../../Components/Widgets/StatusBadge';
 
 const HEIAccounts = ({ heis = [] }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,6 +19,7 @@ const HEIAccounts = ({ heis = [] }) => {
   const [searchTimeout, setSearchTimeout] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [search, setSearch] = useState('');
 
   const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
     uii: '',
@@ -23,10 +28,18 @@ const HEIAccounts = ({ heis = [] }) => {
     code: '',
     email: '',
     address: '',
+    established_at: '2000-01-01',
     password: '',
     password_confirmation: '',
     is_active: true,
   });
+
+  const filteredHeis = heis.filter(hei =>
+    hei.name.toLowerCase().includes(search.toLowerCase()) ||
+    hei.code.toLowerCase().includes(search.toLowerCase()) ||
+    hei.email.toLowerCase().includes(search.toLowerCase()) ||
+    hei.uii.toLowerCase().includes(search.toLowerCase())
+  );
 
   const searchAddress = async (query) => {
     if (query.length < 3) {
@@ -85,7 +98,7 @@ const HEIAccounts = ({ heis = [] }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isEditMode && editingHEI) {
-      put(`/admin/heis/${editingHEI.uii}`, {
+      put(`/admin/heis/${editingHEI.id}`, {
         onSuccess: () => {
           setIsModalOpen(false);
           setIsEditMode(false);
@@ -113,6 +126,7 @@ const HEIAccounts = ({ heis = [] }) => {
       code: hei.code,
       email: hei.email,
       address: hei.address || '',
+      established_at: hei.established_at || '2000-01-01',
       password: '',
       password_confirmation: '',
       is_active: hei.is_active,
@@ -120,8 +134,8 @@ const HEIAccounts = ({ heis = [] }) => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (heiId) => {
-    destroy(`/admin/heis/${heiId}`, {
+  const handleDelete = () => {
+    destroy(`/admin/heis/${deleteConfirm.id}`, {
       onSuccess: () => {
         setDeleteConfirm(null);
       },
@@ -135,100 +149,106 @@ const HEIAccounts = ({ heis = [] }) => {
     setIsModalOpen(true);
   };
 
+  const columns = [
+    {
+      key: 'uii',
+      label: 'UII',
+      render: (row) => (
+        <span className="font-medium text-gray-900 dark:text-white">{row.uii}</span>
+      )
+    },
+    {
+      key: 'name',
+      label: 'Institution Name',
+      render: (row) => (
+        <span className="text-gray-900 dark:text-white">{row.name}</span>
+      )
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      render: (row) => (
+        <span className="text-gray-600 dark:text-gray-400">{row.type}</span>
+      )
+    },
+    {
+      key: 'code',
+      label: 'HEI Code',
+      render: (row) => (
+        <span className="text-gray-600 dark:text-gray-400">{row.code}</span>
+      )
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      render: (row) => (
+        <span className="text-gray-600 dark:text-gray-400">{row.email}</span>
+      )
+    },
+    {
+      key: 'is_active',
+      label: 'Status',
+      align: 'center',
+      render: (row) => (
+        <StatusBadge
+          color={row.is_active ? 'green' : 'red'}
+          label={row.is_active ? 'Active' : 'Inactive'}
+        />
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      align: 'center',
+      render: (row) => (
+        <div className="flex items-center justify-center gap-2">
+          <IconButton
+            variant="blue"
+            onClick={() => handleEdit(row)}
+            title="Edit HEI"
+          >
+            <IoPencilOutline size={18} />
+          </IconButton>
+          <IconButton
+            variant="red"
+            onClick={() => setDeleteConfirm(row)}
+            title="Delete HEI"
+          >
+            <IoTrashOutline size={18} />
+          </IconButton>
+        </div>
+      )
+    }
+  ];
+
   return (
     <AdminLayout title="HEI Accounts">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            HEI Account Management
-          </h1>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              HEI Account Management
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Manage all Higher Education Institution accounts
+            </p>
+          </div>
           <button
             onClick={openAddModal}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Add New HEI
           </button>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-          <div className="p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-semibold">
-                      UII
-                    </th>
-                    <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-semibold">
-                      Name of HEI
-                    </th>
-                    <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-semibold">
-                      Type
-                    </th>
-                    <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-semibold">
-                      Code
-                    </th>
-                    <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-semibold">
-                      Email
-                    </th>
-                    <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-semibold">
-                      Status
-                    </th>
-                    <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-semibold">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {heis.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className="text-center py-8 text-gray-500 dark:text-gray-400">
-                        No HEI accounts found
-                      </td>
-                    </tr>
-                  ) : (
-                    heis.map((hei) => (
-                      <tr key={hei.uii} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{hei.uii}</td>
-                        <td className="py-3 px-4 text-gray-900 dark:text-white">{hei.name}</td>
-                        <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{hei.type}</td>
-                        <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{hei.code}</td>
-                        <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{hei.email}</td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            hei.is_active
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                          }`}>
-                            {hei.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleEdit(hei)}
-                              className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                              title="Edit HEI"
-                            >
-                              <IoPencil size={18} />
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirm(hei.uii)}
-                              className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                              title="Delete HEI"
-                            >
-                              <IoTrash size={18} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <DataTable
+          columns={columns}
+          data={filteredHeis}
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by UII, name, code, or email..."
+          emptyMessage="No HEI accounts found."
+        />
 
         {/* Add/Edit HEI Modal */}
         {isModalOpen && (
@@ -334,6 +354,21 @@ const HEIAccounts = ({ heis = [] }) => {
                           />
                           {errors.email && (
                             <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Established Date
+                          </label>
+                          <input
+                            type="date"
+                            value={data.established_at}
+                            onChange={(e) => setData('established_at', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                          />
+                          {errors.established_at && (
+                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.established_at}</p>
                           )}
                         </div>
 
@@ -488,53 +523,16 @@ const HEIAccounts = ({ heis = [] }) => {
         )}
 
         {/* Delete Confirmation Modal */}
-        {deleteConfirm && (
-          <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-              <div
-                className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75"
-                onClick={() => setDeleteConfirm(null)}
-              ></div>
-
-              <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="sm:flex sm:items-start">
-                    <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 sm:mx-0 sm:h-10 sm:w-10">
-                      <IoTrash className="h-6 w-6 text-red-600 dark:text-red-400" />
-                    </div>
-                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                      <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                        Delete HEI Account
-                      </h3>
-                      <div className="mt-2">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Are you sure you want to delete this HEI account? This will also delete all associated user accounts. This action cannot be undone.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(deleteConfirm)}
-                    disabled={processing}
-                    className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-                  >
-                    {processing ? 'Deleting...' : 'Delete'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirm(null)}
-                    className="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmationModal
+          isOpen={!!deleteConfirm}
+          onClose={() => setDeleteConfirm(null)}
+          onConfirm={handleDelete}
+          title="Delete HEI Account"
+          message={`Are you sure you want to delete "${deleteConfirm?.name}"? This will also delete all associated user accounts. This action cannot be undone.`}
+          confirmText="Delete"
+          variant="danger"
+          processing={processing}
+        />
       </div>
     </AdminLayout>
   );

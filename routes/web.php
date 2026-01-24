@@ -5,6 +5,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\SuperAdmin\AdminManagementController;
 use App\Http\Controllers\Admin\HEIManagementController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\CHEDContactController;
 use App\Http\Controllers\HEI\SummaryController;
 use App\Http\Controllers\HEI\DashboardController;
 use App\Http\Controllers\HEI\AnnexAController;
@@ -52,9 +54,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/admins/{admin}', [AdminManagementController::class, 'update'])->name('superadmin.admins.update');
         Route::delete('/admins/{admin}', [AdminManagementController::class, 'destroy'])->name('superadmin.admins.destroy');
 
-        Route::get('/system-audit-logs', function () {
-            return inertia('SuperAdmin/SystemAuditLogs');
-        })->name('superadmin.system-audit-logs');
+        Route::get('/system-audit-logs', [App\Http\Controllers\SuperAdmin\SystemAuditLogController::class, 'index'])->name('superadmin.system-audit-logs');
 
         Route::get('/settings', [App\Http\Controllers\SuperAdmin\SettingsController::class, 'index'])->name('superadmin.settings');
         Route::post('/settings', [App\Http\Controllers\SuperAdmin\SettingsController::class, 'store'])->name('superadmin.settings.store');
@@ -62,9 +62,7 @@ Route::middleware('auth')->group(function () {
 
     // Admin routes
     Route::middleware('role:admin')->prefix('admin')->group(function () {
-        Route::get('/dashboard', function () {
-            return inertia('Admin/Dashboard');
-        })->name('admin.dashboard');
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
 
         Route::get('/hei-accounts', [HEIManagementController::class, 'index'])->name('admin.hei-accounts');
         Route::post('/heis', [HEIManagementController::class, 'store'])->name('admin.heis.store');
@@ -78,13 +76,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/submissions/{id}/approve', [App\Http\Controllers\Admin\SubmissionController::class, 'approve'])->name('admin.submissions.approve');
         Route::post('/submissions/{id}/reject', [App\Http\Controllers\Admin\SubmissionController::class, 'reject'])->name('admin.submissions.reject');
 
-        Route::get('/audit-logs', function () {
-            return inertia('Admin/AuditLogs');
-        })->name('admin.audit-logs');
+        Route::get('/audit-logs', [App\Http\Controllers\Admin\AuditLogController::class, 'index'])->name('admin.audit-logs');
 
-        Route::get('/ched-contacts', function () {
-            return inertia('Admin/CHEDContacts');
-        })->name('admin.ched-contacts');
+        Route::get('/ched-contacts', [CHEDContactController::class, 'index'])->name('admin.ched-contacts');
+        Route::post('/ched-contacts', [CHEDContactController::class, 'store'])->name('admin.ched-contacts.store');
+        Route::put('/ched-contacts/{contact}', [CHEDContactController::class, 'update'])->name('admin.ched-contacts.update');
+        Route::delete('/ched-contacts/{contact}', [CHEDContactController::class, 'destroy'])->name('admin.ched-contacts.destroy');
+        Route::post('/ched-contacts/reorder', [CHEDContactController::class, 'reorder'])->name('admin.ched-contacts.reorder');
 
         // M&E Reports routes
         Route::prefix('mer')->group(function () {
@@ -111,7 +109,7 @@ Route::middleware('auth')->group(function () {
 
     // HEI routes
     Route::middleware('role:hei')->prefix('hei')->group(function () {
-        Route::get('/dashboard', [DashboardController::class, 'index'])->name('hei.dashboard');
+        Route::get('/dashboard', [App\Http\Controllers\HEI\DashboardController::class, 'index'])->name('hei.dashboard');
 
         // Unified submission routes
         Route::get('/submissions/history', [App\Http\Controllers\HEI\SubmissionController::class, 'history'])->name('hei.submissions.history');
@@ -249,6 +247,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/profile', [ProfileController::class, 'edit'])->name('hei.profile');
         Route::put('/profile', [ProfileController::class, 'update'])->name('hei.profile.update');
+
+        // Public API route for CHED contacts (accessible by HEI users)
+        Route::get('/api/ched-contacts', [CHEDContactController::class, 'getActiveContacts'])->name('hei.ched-contacts');
     });
 });
 

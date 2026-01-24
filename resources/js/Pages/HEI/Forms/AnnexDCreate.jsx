@@ -3,12 +3,14 @@ import HEILayout from '../../../Layouts/HEILayout';
 import { router } from '@inertiajs/react';
 import InfoBox from '../../../Components/Widgets/InfoBox';
 import { CURRENT_YEAR } from '../../../Utils/constants';
+import { getSubmissionStatusMessage } from '../../../Utils/submissionStatus';
+import { getAcademicYearFromUrl } from '../../../Utils/urlHelpers';
 import { IoSave } from 'react-icons/io5';
 import AcademicYearSelect from '../../../Components/Forms/AcademicYearSelect';
+import FormSelector from '../../../Components/Forms/FormSelector';
 
 const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEditing = false }) => {
-  const currentYear = new Date().getFullYear();
-  const currentAcademicYear = defaultYear || `${currentYear}-${currentYear + 1}`;
+  const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
   const [selectedYear, setSelectedYear] = useState(currentAcademicYear);
   const [processing, setProcessing] = useState(false);
   const [academicYear, setAcademicYear] = useState(currentAcademicYear);
@@ -160,16 +162,19 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
         </div>
 
         {!isEditing && (
-          <AcademicYearSelect
-            value={academicYear}
-            onChange={(e) => {
-              const year = e.target.value;
-              setAcademicYear(year);
-              setSelectedYear(year);
-            }}
-            availableYears={availableYears}
-            required
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AcademicYearSelect
+              value={academicYear}
+              onChange={(e) => {
+                const year = e.target.value;
+                setAcademicYear(year);
+                setSelectedYear(year);
+              }}
+              availableYears={availableYears}
+              required
+            />
+            <FormSelector currentForm="D" />
+          </div>
         )}
         {isEditing && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -178,6 +183,11 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
             </p>
           </div>
         )}
+
+        <InfoBox
+          type={getSubmissionStatusMessage(existingBatch).type}
+          message={getSubmissionStatusMessage(existingBatch).message}
+        />
 
         <form onSubmit={handleSubmit} className="relative space-y-6">
         <div className="space-y-6">

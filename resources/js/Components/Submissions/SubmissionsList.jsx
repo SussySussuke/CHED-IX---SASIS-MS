@@ -27,7 +27,8 @@ export default function SubmissionsList({
     onReject, // Admin only
     onCancel, // HEI only
     showCreateButton = false,
-    createButtonUrl
+    createButtonUrl,
+    selectedYear // Add selectedYear prop
 }) {
     const isDark = useDarkMode();
 
@@ -77,6 +78,7 @@ export default function SubmissionsList({
                 academicYears={academicYears}
                 showCreateButton={showCreateButton}
                 createButtonUrl={createButtonUrl}
+                selectedYear={selectedYear}
             />
 
             {/* Submissions List */}

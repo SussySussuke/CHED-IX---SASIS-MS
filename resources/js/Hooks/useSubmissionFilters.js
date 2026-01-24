@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { router } from '@inertiajs/react';
+import { useState, useMemo, useEffect } from 'react';
+import { router, usePage } from '@inertiajs/react';
 import { ANNEX_NAMES } from '../Config/formConfig';
 
 /**
@@ -7,18 +7,44 @@ import { ANNEX_NAMES } from '../Config/formConfig';
  * Handles filter state, annex options, and filtered submissions
  */
 export function useSubmissionFilters({ mode, submissions, selectedAnnex }) {
-    // Get persisted annex from sessionStorage or use selectedAnnex prop
+    const { url } = usePage();
+    
+    // Parse URL parameters
+    const getUrlParams = () => {
+        const params = new URLSearchParams(window.location.search);
+        return {
+            annex: params.get('annex'),
+            year: params.get('year'),
+            status: params.get('status')
+        };
+    };
+
+    // Get persisted annex from URL, sessionStorage, or use selectedAnnex prop
     const getPersistedAnnex = () => {
+        const urlParams = getUrlParams();
+        if (urlParams.annex) {
+            return urlParams.annex;
+        }
         if (mode === 'hei') {
             const stored = sessionStorage.getItem('selectedAnnex');
-            return stored || selectedAnnex || 'A';
+            // Default to 'all' for HEI instead of 'A'
+            return stored || selectedAnnex || 'all';
         }
         return selectedAnnex || 'all';
     };
 
-    const [filterStatus, setFilterStatus] = useState('all');
-    const [filterYear, setFilterYear] = useState('');
+    const urlParams = getUrlParams();
+    const [filterStatus, setFilterStatus] = useState(urlParams.status || 'all');
+    const [filterYear, setFilterYear] = useState(urlParams.year || '');
     const [filterAnnex, setFilterAnnex] = useState(getPersistedAnnex());
+
+    // Update filters when URL changes
+    useEffect(() => {
+        const params = getUrlParams();
+        if (params.status) setFilterStatus(params.status);
+        if (params.year) setFilterYear(params.year);
+        if (params.annex) setFilterAnnex(params.annex);
+    }, [url]);
 
     // Build annex options from available data
     const annexOptions = useMemo(() => {
@@ -52,7 +78,14 @@ export function useSubmissionFilters({ mode, submissions, selectedAnnex }) {
         if (mode === 'hei') {
             setFilterAnnex(newAnnex);
             sessionStorage.setItem('selectedAnnex', newAnnex);
-            router.get('/hei/submissions/history', { annex: newAnnex }, {
+            
+            // Build URL with existing filters
+            const params = new URLSearchParams();
+            params.append('annex', newAnnex);
+            if (filterYear) params.append('year', filterYear);
+            if (filterStatus !== 'all') params.append('status', filterStatus);
+            
+            router.get('/hei/submissions/history', Object.fromEntries(params), {
                 preserveState: true,
                 preserveScroll: true
             });

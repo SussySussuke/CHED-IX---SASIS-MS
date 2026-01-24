@@ -169,29 +169,43 @@ class AnnexGController extends BaseAnnexController
             return redirect()->route('hei.submissions.history')->withErrors($error);
         }
 
+        // Format the submission data to match the expected structure
+        $existingBatches = [
+            $submission->academic_year => [
+                'submission_id' => $submission->submission_id,
+                'academic_year' => $submission->academic_year,
+                'status' => $submission->status,
+                'editorialBoards' => $submission->editorialBoards,
+                'otherPublications' => $submission->otherPublications,
+                'programs' => $submission->programs,
+                'formData' => [
+                    'official_school_name' => $submission->official_school_name,
+                    'student_publication_name' => $submission->student_publication_name,
+                    'publication_fee_per_student' => $submission->publication_fee_per_student,
+                    'frequency_monthly' => $submission->frequency_monthly,
+                    'frequency_quarterly' => $submission->frequency_quarterly,
+                    'frequency_annual' => $submission->frequency_annual,
+                    'frequency_per_semester' => $submission->frequency_per_semester,
+                    'frequency_others' => $submission->frequency_others,
+                    'frequency_others_specify' => $submission->frequency_others_specify,
+                    'publication_type_newsletter' => $submission->publication_type_newsletter,
+                    'publication_type_gazette' => $submission->publication_type_gazette,
+                    'publication_type_magazine' => $submission->publication_type_magazine,
+                    'publication_type_others' => $submission->publication_type_others,
+                    'publication_type_others_specify' => $submission->publication_type_others_specify,
+                    'adviser_name' => $submission->adviser_name,
+                    'adviser_position_designation' => $submission->adviser_position_designation,
+                ],
+                'created_at' => $submission->created_at,
+                'updated_at' => $submission->updated_at,
+            ]
+        ];
+
         return inertia('HEI/Forms/AnnexGCreate', [
-            'existingSubmission' => false,
-            'editorialBoards' => $submission->editorialBoards,
-            'otherPublications' => $submission->otherPublications,
-            'programs' => $submission->programs,
-            'formData' => [
-                'official_school_name' => $submission->official_school_name,
-                'student_publication_name' => $submission->student_publication_name,
-                'publication_fee_per_student' => $submission->publication_fee_per_student,
-                'frequency_monthly' => $submission->frequency_monthly,
-                'frequency_quarterly' => $submission->frequency_quarterly,
-                'frequency_annual' => $submission->frequency_annual,
-                'frequency_per_semester' => $submission->frequency_per_semester,
-                'frequency_others' => $submission->frequency_others,
-                'frequency_others_specify' => $submission->frequency_others_specify,
-                'publication_type_newsletter' => $submission->publication_type_newsletter,
-                'publication_type_gazette' => $submission->publication_type_gazette,
-                'publication_type_magazine' => $submission->publication_type_magazine,
-                'publication_type_others' => $submission->publication_type_others,
-                'publication_type_others_specify' => $submission->publication_type_others_specify,
-                'adviser_name' => $submission->adviser_name,
-                'adviser_position_designation' => $submission->adviser_position_designation,
-            ],
+            'availableYears' => $this->getAvailableYears(),
+            'existingBatches' => $existingBatches,
+            'defaultYear' => $submission->academic_year,
+            'isEditing' => true
         ]);
     }
 

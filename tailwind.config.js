@@ -9,6 +9,14 @@ export default {
   ],
   theme: {
     extend: {
+      colors: {
+        gray: {
+          700: '#1a1d21',  // Darker but visible, neutral tone
+          800: '#12151a',  // Very dark but not extreme, desaturated
+          900: '#0a0c0f',  // Nearly black, neutral
+          950: '#000000',  // Pure black
+        },
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },

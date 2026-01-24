@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from '@inertiajs/react';
-import { IoChevronDown, IoChevronUp, IoEye } from 'react-icons/io5';
+import { IoChevronDown, IoChevronUp, IoEyeOutline, IoCreateOutline, IoCheckmarkCircleOutline, IoCloseCircleOutline } from 'react-icons/io5';
+import IconButton from '../Common/IconButton';
 import { formatDateTime } from '../../Utils/formatters';
 import StatusBadge from '../Widgets/StatusBadge';
 import { ANNEX_NAMES } from '../../Config/formConfig';
@@ -69,37 +70,41 @@ export default function SubmissionExpand({
                             <Link
                                 href={submission.annex === 'SUMMARY' 
                                     ? `/hei/summary/${submission.id}/edit`
-                                    : `/hei/annex-${submission.annex.toLowerCase()}/${submission.submission_id || submission.batch_id}/edit`
+                                    : `/hei/annex-${submission.annex.toLowerCase()}/${submission.route_id}/edit`
                                 }
-                                className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                Edit
+                                <IconButton variant="blue" title="Edit">
+                                    <IoCreateOutline size={20} />
+                                </IconButton>
                             </Link>
                         )}
 
                         {/* Admin Mode: Action Buttons */}
                         {mode === 'admin' && submission.status === 'request' && (
                             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                                <button
+                                <IconButton
+                                    variant="blue"
                                     onClick={() => onCompare(submission)}
-                                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
+                                    title="Compare"
                                 >
-                                    <IoEye size={14} /> Compare
-                                </button>
-                                <button
+                                    <IoEyeOutline size={20} />
+                                </IconButton>
+                                <IconButton
+                                    variant="green"
                                     onClick={() => onApprove(submission.id, submission.annex)}
-                                    className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                    title="Approve"
                                 >
-                                    Approve
-                                </button>
-                                <button
+                                    <IoCheckmarkCircleOutline size={20} />
+                                </IconButton>
+                                <IconButton
+                                    variant="red"
                                     onClick={() => onReject(submission.id, submission.annex)}
-                                    className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                    title="Reject"
                                 >
-                                    Reject
-                                </button>
-                            </div>
+                                    <IoCloseCircleOutline size={20} />
+                                </IconButton>
+                            </div>  
                         )}
 
                         {/* Expand/Collapse Icon */}

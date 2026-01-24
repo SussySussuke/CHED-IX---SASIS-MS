@@ -9,7 +9,10 @@ import { IoAddCircle, IoSave } from 'react-icons/io5';
 import { useDarkMode } from '../../Hooks/useDarkMode';
 import AdditionalNotesSection from './AdditionalNotesSection';
 import { HOT_TABLE_DARK_MODE_STYLES } from '../../Utils/hotTableStyles';
+import { getSubmissionStatusMessage } from '../../Utils/submissionStatus';
+import { getAcademicYearFromUrl } from '../../Utils/urlHelpers';
 import AcademicYearSelect from '../Forms/AcademicYearSelect';
+import FormSelector from '../Forms/FormSelector';
 import { getAnnexConfig } from '../../Config/formConfig';
 
 registerAllModules();
@@ -30,8 +33,7 @@ const SharedAnnexCreate = ({
   isEditing = false
 }) => {
   const config = getAnnexConfig(annexLetter);
-  const currentYear = new Date().getFullYear();
-  const currentAcademicYear = defaultYear || `${currentYear}-${currentYear + 1}`;
+  const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
 
   const hotTableRef = useRef(null);
   const isDark = useDarkMode();
@@ -230,15 +232,18 @@ const SharedAnnexCreate = ({
         </div>
 
         {!isEditing && (
-          <AcademicYearSelect
-            value={academicYear}
-            onChange={(e) => {
-              const year = e.target.value;
-              setAcademicYear(year);
-            }}
-            availableYears={availableYears}
-            required
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AcademicYearSelect
+              value={academicYear}
+              onChange={(e) => {
+                const year = e.target.value;
+                setAcademicYear(year);
+              }}
+              availableYears={availableYears}
+              required
+            />
+            <FormSelector currentForm={annexLetter} />
+          </div>
         )}
         {isEditing && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -249,8 +254,8 @@ const SharedAnnexCreate = ({
         )}
 
         <InfoBox
-          type="info"
-          message={`Add multiple ${config.entityLabel.toLowerCase()} in the table below. You can submit them all at once as a batch. Submitting will replace any previous submission for this year.`}
+          type={getSubmissionStatusMessage(existingBatch).type}
+          message={getSubmissionStatusMessage(existingBatch).message}
         />
 
         <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 space-y-6">

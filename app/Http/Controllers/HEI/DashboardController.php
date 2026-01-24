@@ -3,214 +3,363 @@
 namespace App\Http\Controllers\HEI;
 
 use App\Http\Controllers\Controller;
-use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
+    /**
+     * Display the HEI dashboard
+     */
     public function index(Request $request)
     {
-        $user = $request->user();
-        $heiId = $user->hei_id;
-        $currentYear = date('Y') . '-' . (date('Y') + 1);
+        $hei = Auth::user()->hei;
+        $selectedYear = $request->get('year', $this->getCurrentAcademicYear());
+
+        // Get all available academic years
+        $academicYears = $this->getAvailableAcademicYears();
+
+        // Get submission checklist for selected year
+        $checklist = $this->getSubmissionChecklist($hei->id, $selectedYear);
+
+        // Calculate stats based on checklist
+        $stats = $this->calculateStats($checklist);
 
         // Get deadline information
-        $deadline = Setting::getDeadline();
-        $deadlineData = null;
-        
-        if ($deadline) {
-            $now = new \DateTime();
-            $interval = $now->diff($deadline);
-            $daysRemaining = $interval->days;
-            $isPastDeadline = $now > $deadline;
+        $deadline = $this->getDeadlineInfo($selectedYear);
 
-            if ($isPastDeadline) {
-                $daysRemaining = -$daysRemaining;
-            }
+        // Get recent activities
+        $recentActivities = $this->getRecentActivities($hei->id, $selectedYear);
 
-            $deadlineData = [
-                'date' => $deadline->format('Y-m-d'),
-                'formatted' => $deadline->format('F d, Y'),
-                'days_remaining' => $daysRemaining,
-                'is_past_deadline' => $isPastDeadline,
-            ];
-        }
-
-        // Get summary status
-        $summary = DB::table('summary')
-            ->where('hei_id', $heiId)
-            ->where('academic_year', $currentYear)
-            ->first();
-
-        // Get all annex statuses
-        $annexes = [
-            'A' => $this->getAnnexStatus('annex_a_batches', $heiId, $currentYear),
-            'B' => $this->getAnnexStatus('annex_b_batches', $heiId, $currentYear),
-            'C' => $this->getAnnexStatus('annex_c_batches', $heiId, $currentYear),
-            'D' => $this->getAnnexStatus('annex_d_submissions', $heiId, $currentYear, 'submission_id'),
-            'E' => $this->getAnnexStatus('annex_e_batches', $heiId, $currentYear),
-            'F' => $this->getAnnexStatus('annex_f_batches', $heiId, $currentYear),
-            'G' => $this->getAnnexStatus('annex_g_submissions', $heiId, $currentYear, 'submission_id'),
-            'H' => $this->getAnnexStatus('annex_h_batches', $heiId, $currentYear),
-            'I' => $this->getAnnexStatus('annex_i_batches', $heiId, $currentYear),
-            'J' => $this->getAnnexStatus('annex_j_batches', $heiId, $currentYear),
-            'K' => $this->getAnnexStatus('annex_k_batches', $heiId, $currentYear),
-            'L' => $this->getAnnexStatus('annex_l_batches', $heiId, $currentYear),
-            'M' => $this->getAnnexStatus('annex_m_batches', $heiId, $currentYear),
-            'N' => $this->getAnnexStatus('annex_n_batches', $heiId, $currentYear),
-            'O' => $this->getAnnexStatus('annex_o_batches', $heiId, $currentYear),
-        ];
-
-        // Calculate statistics
-        $stats = $this->calculateStats($summary, $annexes);
-
-        // Get annex names
-        $annexData = $this->getAnnexData($annexes, $heiId, $currentYear);
-
-        return Inertia::render('HEI/Dashboard', [
+        return inertia('HEI/Dashboard', [
             'hei' => [
-                'name' => $user->hei->name,
-                'uii' => $user->hei->uii,
-                'type' => $user->hei->type,
+                'id' => $hei->id,
+                'uii' => $hei->uii,
+                'type' => $hei->type,
+                'name' => $hei->name,
             ],
-            'academic_year' => $currentYear,
-            'deadline' => $deadlineData,
-            'summary' => $summary ? [
-                'status' => $summary->status,
-                'last_updated' => $summary->updated_at,
-            ] : null,
-            'annexes' => $annexData,
+            'academicYears' => $academicYears,
+            'selectedYear' => $selectedYear,
             'stats' => $stats,
+            'checklist' => $checklist,
+            'deadline' => $deadline,
+            'recentActivities' => $recentActivities,
         ]);
     }
 
-    private function getAnnexStatus($table, $heiId, $academicYear, $idColumn = 'batch_id')
+    /**
+     * Get submission checklist for all forms
+     */
+    private function getSubmissionChecklist($heiId, $academicYear)
     {
-        return DB::table($table)
-            ->where('hei_id', $heiId)
+        $annexTypes = $this->getAnnexTypes();
+        $checklist = [];
+
+        // Add Summary to checklist
+        $summarySubmission = \App\Models\Summary::where('hei_id', $heiId)
             ->where('academic_year', $academicYear)
-            ->select('status', 'updated_at', $idColumn)
+            ->whereIn('status', ['published', 'submitted', 'request'])
+            ->orderBy('created_at', 'desc')
             ->first();
-    }
 
-    private function calculateStats($summary, $annexes)
-    {
-        $total = 16; // 1 summary + 15 annexes
-        $published = 0;
-        $submitted = 0;
-        $notSubmitted = 0;
+        $checklist[] = [
+            'annex' => 'SUMMARY',
+            'name' => 'School Details',
+            'status' => $this->determineStatus($summarySubmission),
+            'lastUpdated' => $summarySubmission?->updated_at?->format('Y-m-d H:i:s'),
+            'submissionId' => $summarySubmission?->id,
+        ];
 
-        // Check summary
-        if ($summary && $summary->status === 'published') {
-            $published++;
-        } elseif ($summary && $summary->status === 'submitted') {
-            $submitted++;
-        } else {
-            $notSubmitted++;
+        // Add all annexes to checklist
+        foreach ($annexTypes as $code => $config) {
+            $modelClass = $config['model'];
+
+            $submission = $modelClass::where('hei_id', $heiId)
+                ->where('academic_year', $academicYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            $checklist[] = [
+                'annex' => $code,
+                'name' => $config['name'],
+                'status' => $this->determineStatus($submission),
+                'lastUpdated' => $submission?->updated_at?->format('Y-m-d H:i:s'),
+                'submissionId' => $submission?->id ?? $submission?->batch_id ?? null,
+            ];
         }
 
-        // Check annexes
-        foreach ($annexes as $annex) {
-            if ($annex && $annex->status === 'published') {
-                $published++;
-            } elseif ($annex && $annex->status === 'submitted') {
-                $submitted++;
-            } else {
-                $notSubmitted++;
+        return $checklist;
+    }
+
+    /**
+     * Determine submission status for checklist
+     * Returns the actual status from database: 'submitted', 'published', 'request', 'draft', etc.
+     */
+    private function determineStatus($submission)
+    {
+        if (!$submission) {
+            return 'not_started';
+        }
+
+        // Return the actual status from the database
+        return $submission->status;
+    }
+
+    /**
+     * Calculate dashboard statistics
+     * 
+     * Logic:
+     * - Submitted: Counts submitted, published, AND request (all have been submitted at least once)
+     * - Under Review: Counts only request status
+     * - Not Started: Counts not_started and draft (nothing submitted yet)
+     */
+    private function calculateStats($checklist)
+    {
+        $submitted = 0;
+        $underReview = 0;
+        $notStarted = 0;
+
+        foreach ($checklist as $item) {
+            switch ($item['status']) {
+                case 'submitted':
+                case 'published':
+                case 'request':
+                    // All these mean something has been submitted
+                    $submitted++;
+                    break;
+                case 'not_started':
+                case 'draft':
+                default:
+                    // Nothing submitted yet
+                    $notStarted++;
+                    break;
+            }
+            
+            // Separately count under review for the second stat card
+            if ($item['status'] === 'request') {
+                $underReview++;
             }
         }
 
         return [
-            'total' => $total,
-            'published' => $published,
+            'totalForms' => count($checklist),
             'submitted' => $submitted,
-            'not_submitted' => $notSubmitted,
+            'underReview' => $underReview,
+            'notStarted' => $notStarted,
         ];
     }
 
-    private function getAnnexData($annexStatuses, $heiId, $academicYear)
+    /**
+     * Get deadline information for the academic year
+     */
+    private function getDeadlineInfo($academicYear)
     {
-        $annexNames = [
-            'A' => 'GAD Programs',
-            'B' => 'Student Development Programs',
-            'C' => 'Guidance & Counseling',
-            'D' => 'Student Handbook',
-            'E' => 'Student Organizations',
-            'F' => 'Student Support Services',
-            'G' => 'Student Publications',
-            'H' => 'Admission Services',
-            'I' => 'Scholarships & Grants',
-            'J' => 'Career & Employment',
-            'K' => 'Committees',
-            'L' => 'Student Housing',
-            'M' => 'Health Services',
-            'N' => 'Sports & Recreation',
-            'O' => 'Community Extension',
+        // Parse academic year (e.g., "2024-2025" -> end year is 2025)
+        $yearParts = explode('-', $academicYear);
+        $endYear = isset($yearParts[1]) ? (int)$yearParts[1] : (int)$yearParts[0] + 1;
+        
+        // Deadline is typically September 1st of the end year
+        $deadlineDate = "$endYear-09-01";
+        $deadline = new \DateTime($deadlineDate);
+        $now = new \DateTime();
+        
+        $daysRemaining = (int)$now->diff($deadline)->format('%r%a');
+        $isPastDeadline = $daysRemaining < 0;
+        
+        return [
+            'date' => $deadlineDate,
+            'daysRemaining' => abs($daysRemaining),
+            'isPastDeadline' => $isPastDeadline,
         ];
+    }
 
-        $data = [];
-
-        foreach ($annexNames as $id => $name) {
-            $status = $annexStatuses[$id];
-            $recordCount = 0;
-
-            if ($status) {
-                // Get record count based on annex type
-                $recordCount = $this->getRecordCount($id, $status, $heiId, $academicYear);
+    /**
+     * Get recent activities for the HEI
+     */
+    private function getRecentActivities($heiId, $academicYear, $limit = 5)
+    {
+        $activities = [];
+        
+        // Collect recent submissions from Summary
+        $summaryActivities = DB::table('summary')
+            ->where('hei_id', $heiId)
+            ->where('academic_year', $academicYear)
+            ->select('updated_at', 'status', DB::raw("'Summary' as form_name"))
+            ->get();
+        
+        // Collect from all annex batches
+        $tables = [
+            'annex_a_batches' => 'Annex A',
+            'annex_b_batches' => 'Annex B',
+            'annex_c_batches' => 'Annex C',
+            'annex_d_submissions' => 'Annex D',
+            'annex_e_batches' => 'Annex E',
+            'annex_f_batches' => 'Annex F',
+            'annex_g_submissions' => 'Annex G',
+            'annex_h_batches' => 'Annex H',
+            'annex_i_batches' => 'Annex I',
+            'annex_j_batches' => 'Annex J',
+            'annex_k_batches' => 'Annex K',
+            'annex_l_batches' => 'Annex L',
+            'annex_m_batches' => 'Annex M',
+            'annex_n_batches' => 'Annex N',
+            'annex_o_batches' => 'Annex O',
+        ];
+        
+        foreach ($tables as $table => $formName) {
+            try {
+                $tableActivities = DB::table($table)
+                    ->where('hei_id', $heiId)
+                    ->where('academic_year', $academicYear)
+                    ->select('updated_at', 'status', DB::raw("'$formName' as form_name"))
+                    ->get();
+                    
+                $summaryActivities = $summaryActivities->merge($tableActivities);
+            } catch (\Exception $e) {
+                // Table might not exist, skip
+                continue;
             }
-
-            $data[] = [
-                'id' => $id,
-                'name' => $name,
-                'status' => $status ? $status->status : 'not_submitted',
-                'record_count' => $recordCount,
-                'last_updated' => $status ? $status->updated_at : null,
+        }
+        
+        // Sort by updated_at and take latest
+        $recentSubmissions = $summaryActivities
+            ->sortByDesc('updated_at')
+            ->take($limit);
+        
+        foreach ($recentSubmissions as $submission) {
+            // Map status to activity text
+            $statusText = match($submission->status) {
+                'published' => 'Published',
+                'submitted' => 'Submitted',
+                'request' => 'Change Requested',
+                'draft' => 'Draft Saved',
+                default => ucfirst($submission->status),
+            };
+            
+            $updatedAt = new \DateTime($submission->updated_at);
+            $now = new \DateTime();
+            $diff = $now->diff($updatedAt);
+            
+            // Format relative time
+            if ($diff->days == 0) {
+                $timeAgo = 'Today';
+            } elseif ($diff->days == 1) {
+                $timeAgo = 'Yesterday';
+            } else {
+                $timeAgo = $diff->days . ' days ago';
+            }
+            
+            $activities[] = [
+                'id' => uniqid(),
+                'title' => "{$submission->form_name} {$statusText}",
+                'date' => $timeAgo,
+                'status' => $submission->status,
             ];
         }
-
-        return $data;
+        
+        return $activities;
     }
 
-    private function getRecordCount($annexId, $status, $heiId, $academicYear)
+    /**
+     * Get current academic year (format: YYYY-YYYY)
+     */
+    private function getCurrentAcademicYear()
     {
-        $idField = in_array($annexId, ['D', 'G']) ? 'submission_id' : 'batch_id';
-        $idValue = $status->{$idField};
+        $currentYear = date('Y');
+        $currentMonth = date('n');
 
-        $tableMap = [
-            'A' => 'annex_a_programs',
-            'B' => 'annex_b_programs',
-            'C' => 'annex_c_programs',
-            'D' => null, // D is a single submission, no child records
-            'E' => 'annex_e_organizations',
-            'F' => 'annex_f_activities',
-            'G' => ['annex_g_editorial_boards', 'annex_g_other_publications', 'annex_g_programs'],
-            'H' => ['annex_h_admission_services', 'annex_h_admission_statistics'],
-            'I' => 'annex_i_scholarships',
-            'J' => 'annex_j_programs',
-            'K' => 'annex_k_committees',
-            'L' => 'annex_l_housings',
-            'M' => ['annex_m_statistics', 'annex_m_services'],
-            'N' => 'annex_n_activities',
-            'O' => 'annex_o_programs',
+        // Academic year typically starts in August/September
+        if ($currentMonth >= 8) {
+            // August onwards is current year to next year
+            return $currentYear . '-' . ($currentYear + 1);
+        } else {
+            // Before August is previous year to current year
+            return ($currentYear - 1) . '-' . $currentYear;
+        }
+    }
+
+    /**
+     * Get available academic years from existing submissions
+     */
+    private function getAvailableAcademicYears()
+    {
+        $years = collect();
+
+        // Get years from Summary
+        $summaryYears = DB::table('summary')
+            ->select('academic_year')
+            ->distinct()
+            ->pluck('academic_year');
+
+        $years = $years->merge($summaryYears);
+
+        // Get years from annex batches
+        $tables = [
+            'annex_a_batches',
+            'annex_b_batches',
+            'annex_c_batches',
+            'annex_d_submissions',
+            'annex_e_batches',
+            'annex_f_batches',
+            'annex_g_submissions',
+            'annex_h_batches',
+            'annex_i_batches',
+            'annex_j_batches',
+            'annex_k_batches',
+            'annex_l_batches',
+            'annex_m_batches',
+            'annex_n_batches',
+            'annex_o_batches',
         ];
 
-        $table = $tableMap[$annexId] ?? null;
+        foreach ($tables as $table) {
+            try {
+                $tableYears = DB::table($table)
+                    ->select('academic_year')
+                    ->distinct()
+                    ->pluck('academic_year');
 
-        if (!$table) {
-            return $annexId === 'D' ? 1 : 0; // D has 1 submission record
-        }
-
-        if (is_array($table)) {
-            // Multiple tables, sum them up
-            $count = 0;
-            foreach ($table as $t) {
-                $count += DB::table($t)->where($idField, $idValue)->count();
+                $years = $years->merge($tableYears);
+            } catch (\Exception $e) {
+                // Table might not exist yet, skip
+                continue;
             }
-            return $count;
         }
 
-        return DB::table($table)->where($idField, $idValue)->count();
+        // Always include current academic year
+        $currentYear = $this->getCurrentAcademicYear();
+        $years->push($currentYear);
+
+        return $years->unique()
+            ->filter()
+            ->sort()
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Get annex types configuration
+     */
+    private function getAnnexTypes()
+    {
+        return [
+            'A' => ['model' => \App\Models\AnnexABatch::class, 'name' => 'List of Programs Offered'],
+            'B' => ['model' => \App\Models\AnnexBBatch::class, 'name' => 'Curricular Programs'],
+            'C' => ['model' => \App\Models\AnnexCBatch::class, 'name' => 'Enrolment'],
+            'D' => ['model' => \App\Models\AnnexDSubmission::class, 'name' => 'Graduates'],
+            'E' => ['model' => \App\Models\AnnexEBatch::class, 'name' => 'Student Services'],
+            'F' => ['model' => \App\Models\AnnexFBatch::class, 'name' => 'Institutional Linkages'],
+            'G' => ['model' => \App\Models\AnnexGSubmission::class, 'name' => 'Research'],
+            'H' => ['model' => \App\Models\AnnexHBatch::class, 'name' => 'Admission Statistics'],
+            'I' => ['model' => \App\Models\AnnexIBatch::class, 'name' => 'Scholarship Grants'],
+            'J' => ['model' => \App\Models\AnnexJBatch::class, 'name' => 'Faculty Development'],
+            'K' => ['model' => \App\Models\AnnexKBatch::class, 'name' => 'Governance'],
+            'L' => ['model' => \App\Models\AnnexLBatch::class, 'name' => 'Physical Facilities'],
+            'M' => ['model' => \App\Models\AnnexMBatch::class, 'name' => 'Library Services'],
+            'N' => ['model' => \App\Models\AnnexNBatch::class, 'name' => 'Extension Services'],
+            'O' => ['model' => \App\Models\AnnexOBatch::class, 'name' => 'Institutional Sustainability'],
+        ];
     }
 }

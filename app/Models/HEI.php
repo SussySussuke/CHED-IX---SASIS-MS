@@ -28,11 +28,13 @@ class HEI extends Model
         'email',
         'phone',
         'address',
+        'established_at',
         'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'established_at' => 'date',
     ];
 
     // Relationships

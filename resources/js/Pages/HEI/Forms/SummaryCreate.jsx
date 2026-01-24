@@ -6,12 +6,14 @@ import SelectInput from '../../../Components/Forms/SelectInput';
 import MultiTextInput from '../../../Components/Forms/MultiTextInput';
 import InfoBox from '../../../Components/Widgets/InfoBox';
 import AcademicYearSelect from '../../../Components/Forms/AcademicYearSelect';
+import FormSelector from '../../../Components/Forms/FormSelector';
 import { CURRENT_YEAR } from '../../../Utils/constants';
+import { getSubmissionStatusMessage } from '../../../Utils/submissionStatus';
+import { getAcademicYearFromUrl } from '../../../Utils/urlHelpers';
 import { IoPeople, IoMale, IoFemale, IoMaleFemale, IoCalculator, IoDocumentText, IoGlobe, IoBook } from 'react-icons/io5';
 
 const Create = ({ availableYears = [], existingSubmissions = {}, defaultYear, isEditing = false }) => {
-  const currentYear = new Date().getFullYear();
-  const currentAcademicYear = defaultYear || `${currentYear}-${currentYear + 1}`;
+  const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
   const [selectedYear, setSelectedYear] = useState(currentAcademicYear);
 
   const existingSubmission = existingSubmissions[selectedYear];
@@ -81,42 +83,53 @@ const Create = ({ availableYears = [], existingSubmissions = {}, defaultYear, is
     post('/hei/summary');
   };
 
+  const statusMessage = getSubmissionStatusMessage(existingSubmission);
+
   return (
     <HEILayout title={isEditing ? "Edit Summary" : "Submit Summary"}>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          {isEditing ? 'Edit Summary' : 'Submit Summary'}
-        </h1>
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              {isEditing ? 'Edit Summary' : 'Submit Summary'}
+            </h1>
+            <span className="text-xl font-semibold text-gray-500 dark:text-gray-400">
+              SUMMARY
+            </span>
+          </div>
+        </div>
 
-        <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-          <InfoBox
-            type="info"
-            message={isEditing
-              ? "You are editing a previous submission. Changes will be submitted for admin approval before becoming the official record."
-              : "Select an academic year to submit data. You can submit for past years if no published submission exists."}
-          />
+        {!isEditing && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AcademicYearSelect
+              value={data.academic_year}
+              onChange={(e) => {
+                const year = e.target.value;
+                setData('academic_year', year);
+                setSelectedYear(year);
+              }}
+              availableYears={availableYears}
+              error={errors.academic_year}
+              required
+            />
+            <FormSelector currentForm="SUMMARY" />
+          </div>
+        )}
+        {isEditing && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>Academic Year:</strong> {data.academic_year}
+            </p>
+          </div>
+        )}
 
-          <form onSubmit={handleSubmit} className="space-y-8 mt-6">
-            {!isEditing && (
-              <AcademicYearSelect
-                value={data.academic_year}
-                onChange={(e) => {
-                  const year = e.target.value;
-                  setData('academic_year', year);
-                  setSelectedYear(year);
-                }}
-                availableYears={availableYears}
-                error={errors.academic_year}
-                required
-              />
-            )}
-            {isEditing && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  <strong>Academic Year:</strong> {data.academic_year}
-                </p>
-              </div>
-            )}
+        <InfoBox
+          type={statusMessage.type}
+          message={statusMessage.message}
+        />
+
+        <form onSubmit={handleSubmit} className="relative space-y-6">
+          <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 space-y-8">
 
             <div className="space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b-2 border-blue-500 dark:border-blue-400">
@@ -285,12 +298,12 @@ const Create = ({ availableYears = [], existingSubmissions = {}, defaultYear, is
               />
             </div>
 
-            {(isEditing || isPublished) && (
+            {isEditing && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b-2 border-blue-500 dark:border-blue-400">
                   <IoDocumentText className="text-2xl text-blue-600 dark:text-blue-400" />
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Request Notes {!isPublished && "(Optional)"}
+                    Request Notes (Optional)
                   </h2>
                 </div>
                 <div>
@@ -332,8 +345,8 @@ const Create = ({ availableYears = [], existingSubmissions = {}, defaultYear, is
                 {processing ? 'Submitting...' : (isEditing ? 'Request Update' : 'Submit Information')}
               </button>
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </HEILayout>
   );

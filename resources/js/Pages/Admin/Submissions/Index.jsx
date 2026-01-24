@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import AdminLayout from '../../../Layouts/AdminLayout';
 import { Link } from '@inertiajs/react';
 import DataTable from '../../../Components/Common/DataTable';
+import InfoBox from '../../../Components/Widgets/InfoBox';
 
 export default function Index({ heis, totalPending }) {
     const [search, setSearch] = useState('');
@@ -45,7 +46,7 @@ export default function Index({ heis, totalPending }) {
             render: (row) => (
                 <Link
                     href={`/admin/submissions/${row.id}`}
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm"
                 >
                     View Submissions
                 </Link>
@@ -55,22 +56,18 @@ export default function Index({ heis, totalPending }) {
 
     return (
         <AdminLayout title="HEI Submissions" pendingCount={totalPending}>
-            <div className="max-w-7xl mx-auto">
+            <div>
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white">HEI Submissions</h1>
                     <p className="text-gray-600 dark:text-gray-400 mt-2">View and manage all HEI submissions and requests</p>
                 </div>
 
                 {totalPending > 0 && (
-                    <div className="bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 p-4 mb-6">
-                        <div className="flex">
-                            <div className="ml-3">
-                                <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                                    You have <strong>{totalPending}</strong> pending request{totalPending > 1 ? 's' : ''} to review.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <InfoBox type="warning" className="mb-6">
+                        <p>
+                            You have <strong>{totalPending}</strong> pending request{totalPending > 1 ? 's' : ''} to review.
+                        </p>
+                    </InfoBox>
                 )}
 
                 <DataTable

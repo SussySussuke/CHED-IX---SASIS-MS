@@ -7,7 +7,10 @@ const Sidebar = ({ links }) => {
   const [expandedParents, setExpandedParents] = useState({});
 
   const isActive = (href) => {
-    return url === href || url.startsWith(href + '/');
+    // Remove query parameters for comparison
+    const cleanUrl = url.split('?')[0];
+    const cleanHref = href.split('?')[0];
+    return cleanUrl === cleanHref || cleanUrl.startsWith(cleanHref + '/');
   };
 
   const isParentActive = (children) => {
@@ -26,8 +29,8 @@ const Sidebar = ({ links }) => {
   };
 
   return (
-    <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen">
-      <nav className="p-4 space-y-2">
+    <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-screen sticky top-0">
+      <nav className="p-4 space-y-2 overflow-y-auto h-full">
         {links.map((link) => {
           if (link.divider) {
             return (

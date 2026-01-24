@@ -34,7 +34,22 @@ export const STATUS_COLORS = {
   [SUBMISSION_STATUS.OVERWRITTEN]: 'gray',
   [OVERWRITE_STATUS.PENDING]: 'yellow',
   [OVERWRITE_STATUS.APPROVED]: 'green',
-  [OVERWRITE_STATUS.REJECTED]: 'red'
+  [OVERWRITE_STATUS.REJECTED]: 'red',
+  'not_started': 'gray'
+};
+
+export const STATUS_LABELS = {
+  [SUBMISSION_STATUS.DRAFT]: 'Draft',
+  [SUBMISSION_STATUS.SUBMITTED]: 'Submitted',
+  [SUBMISSION_STATUS.APPROVED]: 'Approved',
+  [SUBMISSION_STATUS.REJECTED]: 'Rejected',
+  [SUBMISSION_STATUS.PUBLISHED]: 'Published',
+  [SUBMISSION_STATUS.REQUEST]: 'Under Review',
+  [SUBMISSION_STATUS.OVERWRITTEN]: 'Overwritten',
+  [OVERWRITE_STATUS.PENDING]: 'Pending',
+  [OVERWRITE_STATUS.APPROVED]: 'Approved',
+  [OVERWRITE_STATUS.REJECTED]: 'Rejected',
+  'not_started': 'Not Started'
 };
 
 // Note: This should ideally be fetched from settings, not hardcoded
