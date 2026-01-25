@@ -60,18 +60,18 @@ const Login = () => {
       flatShading: true,
       shininess: 30,
       transparent: true,
-      opacity: 0.3  // Much more transparent - glass-like effect
+      opacity: 0.3
     });
     
     const icosphere = new THREE.Mesh(geometry, material);
     scene.add(icosphere);
 
-    // Create wireframe cage
+    // Create wireframe cage - RED
     const wireframeGeometry = new THREE.IcosahedronGeometry(2.5, 0);
     const wireframeMaterial = new THREE.LineBasicMaterial({ 
-      color: 0xffffff,  // Changed to white
+      color: 0xff0000,  // Red wireframe
       transparent: true,
-      opacity: 0.6,  // More visible
+      opacity: 0.6,
       linewidth: 1
     });
     const wireframe = new THREE.LineSegments(
@@ -85,10 +85,10 @@ const Login = () => {
     const vertices = wireframeGeometry.attributes.position.array;
     verticesGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     const verticesMaterial = new THREE.PointsMaterial({ 
-      color: 0xffffff,  // Changed to white
-      size: 0.15,  // Slightly larger
+      color: 0xffffff,
+      size: 0.15,
       transparent: true,
-      opacity: 0.8  // More visible
+      opacity: 0.8
     });
     const points = new THREE.Points(verticesGeometry, verticesMaterial);
     scene.add(points);
@@ -165,7 +165,7 @@ const Login = () => {
       <div className="min-h-screen flex overflow-hidden">
         {/* Left Side - Interactive Background (Hidden on mobile, visible on desktop) */}
         <div className="hidden lg:block lg:w-2/3 relative overflow-hidden">
-          {/* Parallax Background Image with More Blur */}
+          {/* LAYER 1: Parallax Background Image */}
           <div
             className="absolute inset-0 transition-transform duration-300 ease-out"
             style={{
@@ -177,14 +177,40 @@ const Login = () => {
             }}
           />
           
-          {/* Combined Blue Space Overlay */}
-          <div className="absolute inset-0 bg-blue-900/60 dark:bg-blue-950/80" />
-          <div className="absolute inset-0 bg-gray-950/40" />
+          {/* LAYER 2: 2D Spheres - White, Low Opacity, Big and Blurry */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div
+              className="absolute top-1/4 right-1/4 w-64 h-64 rounded-full bg-white/50 blur-[10px] animate-float"
+              style={{ animationDelay: '0s', animationDuration: '12s' }}
+            />
+            
+            <div
+              className="absolute top-20 left-1/4 w-56 h-56 rounded-full bg-white/50 blur-[9px] animate-float"
+              style={{ animationDelay: '2s', animationDuration: '15s' }}
+            />
+            
+            <div
+              className="absolute bottom-1/3 right-1/3 w-48 h-48 rounded-full bg-white/50 blur-[8px] animate-float"
+              style={{ animationDelay: '4s', animationDuration: '10s' }}
+            />
+            
+            <div
+              className="absolute top-1/3 right-1/6 w-52 h-52 rounded-full bg-white/50 blur-[9px] animate-float"
+              style={{ animationDelay: '1s', animationDuration: '13s' }}
+            />
+            
+            <div
+              className="absolute bottom-1/4 left-1/3 w-60 h-60 rounded-full bg-white/50 blur-[10px] animate-float"
+              style={{ animationDelay: '3s', animationDuration: '14s' }}
+            />
+            
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-white/8 blur-2xl animate-float"
+              style={{ animationDelay: '5s', animationDuration: '18s' }}
+            />
+          </div>
           
-          {/* Gradient Overlay - Depth and Drama */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-900/30 to-gray-950/70 dark:from-transparent dark:via-black/30 dark:to-black/80" />
-          
-          {/* Interactive 3D Low-Poly Icosphere with Parallax */}
+          {/* LAYER 3: Interactive 3D Low-Poly Icosphere with Parallax */}
           <div 
             id="icosphere-container" 
             className="absolute inset-0 transition-transform duration-300 ease-out"
@@ -194,104 +220,54 @@ const Login = () => {
             }}
           />
           
-          {/* 2D Floating Spheres - Companions for the icosphere */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {/* Large sphere - behind icosphere */}
-            <div
-              className="absolute top-1/4 right-1/4 w-40 h-40 rounded-full bg-white/12 shadow-xl shadow-white/15 blur-xl animate-float"
-              style={{ animationDelay: '0s', animationDuration: '12s' }}
-            />
-            
-            {/* Medium sphere - upper left */}
-            <div
-              className="absolute top-20 left-1/4 w-32 h-32 rounded-full bg-white/18 shadow-lg shadow-white/25 blur-lg animate-float"
-              style={{ animationDelay: '2s', animationDuration: '15s' }}
-            />
-            
-            {/* Small sphere - bottom right */}
-            <div
-              className="absolute bottom-1/3 right-1/3 w-24 h-24 rounded-full bg-white/25 shadow-md shadow-white/35 blur-md animate-float"
-              style={{ animationDelay: '4s', animationDuration: '10s' }}
-            />
-            
-            {/* Tiny sphere - top right */}
-            <div
-              className="absolute top-1/3 right-1/6 w-16 h-16 rounded-full bg-white/30 shadow-sm shadow-white/40 blur-sm animate-float"
-              style={{ animationDelay: '1s', animationDuration: '13s' }}
-            />
-            
-            {/* Medium sphere - bottom left */}
-            <div
-              className="absolute bottom-1/4 left-1/3 w-28 h-28 rounded-full bg-white/15 shadow-lg shadow-white/20 blur-lg animate-float"
-              style={{ animationDelay: '3s', animationDuration: '14s' }}
-            />
-            
-            {/* Large ambient sphere - center background */}
-            <div
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-white/8 shadow-xl shadow-white/10 blur-2xl animate-float"
-              style={{ animationDelay: '5s', animationDuration: '18s' }}
-            />
-            
-            {/* Extra small accent spheres for more life */}
-            <div
-              className="absolute top-1/2 left-1/4 w-14 h-14 rounded-full bg-white/28 shadow-sm shadow-white/35 animate-float"
-              style={{ animationDelay: '6s', animationDuration: '11s' }}
-            />
-            
-            <div
-              className="absolute bottom-1/2 right-1/5 w-20 h-20 rounded-full bg-white/20 shadow-md shadow-white/25 blur-sm animate-float"
-              style={{ animationDelay: '7s', animationDuration: '16s' }}
-            />
-          </div>
-          
-          {/* Darkening overlay for text visibility */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-black/50" />
+          {/* LAYER 4: Gradient Overlay (Saturated Dark Blue) */}
+          <div className="absolute inset-0 bg-gradient-to-b from-blue-800/40 via-blue-900/60 to-blue-950/80 dark:from-blue-900/60 dark:via-blue-950/80 dark:to-blue-950/95" />
 
-          {/* Content Overlay - RESTORED OLD FORMAT */}
+          {/* LAYER 5: Content Overlay - Always White */}
           <div className="relative z-10 h-full flex flex-col items-center justify-center text-white p-12">
             <div className="max-w-lg text-center space-y-6">
               <h2 className="text-5xl font-bold leading-tight drop-shadow-2xl">
                 Empowering Education
               </h2>
-              <p className="text-xl text-blue-100 dark:text-blue-200 drop-shadow-lg">
+              <p className="text-xl text-white drop-shadow-lg">
                 Your gateway to comprehensive student affairs and services management
               </p>
               
-              {/* Feature highlights - RESTORED */}
+              {/* Feature highlights */}
               <div className="mt-12 space-y-4 text-left">
-                <div className="flex items-center gap-4 backdrop-blur-sm bg-white/10 dark:bg-white/5 p-4 rounded-xl">
+                <div className="flex items-center gap-4 backdrop-blur-sm bg-white/20 p-4 rounded-xl">
                   <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                   <div>
                     <h3 className="font-semibold">Secure Access</h3>
-                    <p className="text-sm text-blue-100 dark:text-blue-200">Enterprise-grade security for your data</p>
+                    <p className="text-sm text-white">Enterprise-grade security for your data</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4 backdrop-blur-sm bg-white/10 dark:bg-white/5 p-4 rounded-xl">
+                <div className="flex items-center gap-4 backdrop-blur-sm bg-white/20 p-4 rounded-xl">
                   <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   </div>
                   <div>
                     <h3 className="font-semibold">Real-time Updates</h3>
-                    <p className="text-sm text-blue-100 dark:text-blue-200">Stay connected with instant notifications</p>
+                    <p className="text-sm text-white">Stay connected with instant notifications</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4 backdrop-blur-sm bg-white/10 dark:bg-white/5 p-4 rounded-xl">
+                <div className="flex items-center gap-4 backdrop-blur-sm bg-white/20 p-4 rounded-xl">
                   <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
                   <div>
                     <h3 className="font-semibold">Comprehensive Analytics</h3>
-                    <p className="text-sm text-blue-100 dark:text-blue-200">Make data-driven decisions</p>
+                    <p className="text-sm text-white">Make data-driven decisions</p>
                   </div>
                 </div>
               </div>
@@ -419,27 +395,8 @@ const Login = () => {
           66% { transform: translateY(10px) translateX(-10px); }
         }
         
-        @keyframes float-3d {
-          0%, 100% { transform: translateY(0px) translateZ(0px); }
-          50% { transform: translateY(-30px) translateZ(50px); }
-        }
-        
-        @keyframes rotate-3d-full {
-          from { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-          to { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
-        }
-        
-        @keyframes rotate-3d-full-reverse {
-          from { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-          to { transform: rotateX(-360deg) rotateY(-360deg) rotateZ(-360deg); }
-        }
-        
         .animate-float {
           animation: float 8s ease-in-out infinite;
-        }
-        
-        .animate-float-3d {
-          animation: float-3d 10s ease-in-out infinite;
         }
       `}</style>
     </>
