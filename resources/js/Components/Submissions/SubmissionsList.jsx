@@ -1,17 +1,13 @@
-import React from 'react';
-import { registerAllModules } from 'handsontable/registry';
-import 'handsontable/dist/handsontable.full.min.css';
+import React, { useState, useMemo } from 'react';
 import { useDarkMode } from '../../Hooks/useDarkMode';
 import { useSubmissionFilters } from '../../Hooks/useSubmissionFilters';
 import { useSubmissionData } from '../../Hooks/useSubmissionData';
 import { useCompareModal } from '../../Hooks/useCompareModal';
-import { HOT_TABLE_DARK_MODE_STYLES } from '../../Utils/hotTableStyles';
 import EmptyState from '../Common/EmptyState';
 import SubmissionFilters from './SubmissionFilters';
 import SubmissionExpand from './SubmissionExpand';
 import CompareModal from './CompareModal';
-
-registerAllModules();
+import Pagination from '../Common/Pagination';
 
 /**
  * Main component for displaying and managing submissions list
@@ -57,14 +53,32 @@ export default function SubmissionsList({
         closeCompareModal
     } = useCompareModal({ submissions, fetchDataUrl });
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 20;
+
+    // Calculate pagination
+    const totalItems = filteredSubmissions.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+    // Get current page items
+    const paginatedSubmissions = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        return filteredSubmissions.slice(startIndex, endIndex);
+    }, [filteredSubmissions, currentPage, itemsPerPage]);
+
+    // Reset to page 1 when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [filterStatus, filterYear, filterAnnex]);
+
     // Check if we have any data
     const hasAnyData = submissions.length > 0;
     const hasFilteredData = filteredSubmissions.length > 0;
 
     return (
         <>
-            <style>{HOT_TABLE_DARK_MODE_STYLES}</style>
-
             {/* Filters Section */}
             <SubmissionFilters
                 mode={mode}
@@ -96,7 +110,7 @@ export default function SubmissionsList({
                         message="No submissions match your current filters. Try adjusting the filters above."
                     />
                 ) : (
-                    filteredSubmissions.map((submission) => {
+                    paginatedSubmissions.map((submission) => {
                         const key = `${submission.annex}-${submission.batch_id}`;
                         const isExpanded = expandedBatches[key];
                         const isLoading = loadingBatch === key;
@@ -119,6 +133,17 @@ export default function SubmissionsList({
                     })
                 )}
             </div>
+
+            {/* Pagination */}
+            {hasFilteredData && totalPages > 1 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={itemsPerPage}
+                    totalItems={totalItems}
+                />
+            )}
 
             {/* Compare Modal (Admin only) */}
             {mode === 'admin' && (

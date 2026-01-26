@@ -11,10 +11,10 @@ export default {
     extend: {
       colors: {
         gray: {
-          700: '#1a1d21',  // Darker but visible, neutral tone
-          800: '#12151a',  // Very dark but not extreme, desaturated
-          900: '#0a0c0f',  // Nearly black, neutral
-          950: '#000000',  // Pure black
+          700: '#1f2937',  // Made darker (was #374151)
+          800: '#111827',  // Made much darker (was #1f2937)
+          900: '#030712',  // Made extremely dark (was #111827)
+          950: '#000000',  // Added pure black option
         },
       },
       fontFamily: {

@@ -1,8 +1,12 @@
+@import './theme.css';
+
+/* Handsontable Base CSS and Theme */
+@import 'handsontable/styles/handsontable.css';
+@import 'handsontable/styles/ht-theme-horizon.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import './theme.css';
 
 @layer base {
   html {

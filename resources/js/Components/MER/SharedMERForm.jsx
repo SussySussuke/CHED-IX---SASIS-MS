@@ -105,7 +105,7 @@ const SharedMERForm = ({ formNumber, heis, academicYears, initialHeiId, initialA
 
   return (
     <AdminLayout title={`M&E ${config.title}`}>
-      <div className="w-full">
+      <div className="space-y-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             {config.title}

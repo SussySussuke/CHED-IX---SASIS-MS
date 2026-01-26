@@ -4,6 +4,7 @@ namespace App\Http\Controllers\HEI;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Services\CacheService;
 use Illuminate\Support\Facades\Auth;
 
 abstract class BaseAnnexController extends Controller
@@ -158,6 +159,9 @@ abstract class BaseAnnexController extends Controller
                 ->where('status', $status)
                 ->update(['status' => 'overwritten']);
         }
+        
+        // Clear caches when data is modified
+        CacheService::clearHeiCaches($heiId, $academicYear);
     }
 
     /**
@@ -166,6 +170,14 @@ abstract class BaseAnnexController extends Controller
     protected function checkOwnership($record, int $heiId): bool
     {
         return $record && $record->hei_id === $heiId;
+    }
+
+    /**
+     * Clear submission caches after create/update/delete
+     */
+    protected function clearSubmissionCaches(int $heiId, string $academicYear): void
+    {
+        CacheService::clearHeiCaches($heiId, $academicYear);
     }
 
     /**

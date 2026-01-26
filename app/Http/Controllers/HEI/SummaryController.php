@@ -5,6 +5,7 @@ namespace App\Http\Controllers\HEI;
 use App\Http\Controllers\Controller;
 use App\Models\Summary;
 use App\Models\Setting;
+use App\Services\CacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -119,6 +120,10 @@ class SummaryController extends Controller
             ...$validated
         ]);
 
+        // Clear caches
+        CacheService::clearSubmissionCaches(Auth::user()->hei_id);
+        CacheService::clearHeiCaches(Auth::user()->hei_id, $academicYear);
+
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
@@ -209,6 +214,10 @@ class SummaryController extends Controller
             ...$validated
         ]);
 
+        // Clear caches
+        CacheService::clearSubmissionCaches(Auth::user()->hei_id);
+        CacheService::clearHeiCaches(Auth::user()->hei_id, $submissionToEdit->academic_year);
+
         return redirect()->route('hei.submissions.history')->with('success', 'Update request submitted successfully! Waiting for admin approval.');
     }
 
@@ -233,6 +242,10 @@ class SummaryController extends Controller
             'status' => 'cancelled',
             'cancelled_notes' => $validated['cancelled_notes'] ?? null
         ]);
+
+        // Clear caches
+        CacheService::clearSubmissionCaches(Auth::user()->hei_id);
+        CacheService::clearHeiCaches(Auth::user()->hei_id, $submission->academic_year);
 
         return redirect()->route('hei.submissions.history')->with('success', 'Request cancelled successfully.');
     }

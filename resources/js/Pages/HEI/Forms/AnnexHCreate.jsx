@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import HEILayout from '../../../Layouts/HEILayout';
 import { router } from '@inertiajs/react';
-import { HotTable } from '@handsontable/react';
-import { registerAllModules } from 'handsontable/registry';
-import 'handsontable/dist/handsontable.full.min.css';
+import AGGridEditor from '../../../Components/Common/AGGridEditor';
 import InfoBox from '../../../Components/Widgets/InfoBox';
 import { CURRENT_YEAR } from '../../../Utils/constants';
 import { getSubmissionStatusMessage } from '../../../Utils/submissionStatus';
@@ -11,11 +9,8 @@ import { getAcademicYearFromUrl } from '../../../Utils/urlHelpers';
 import { IoAddCircle, IoSave } from 'react-icons/io5';
 import { useDarkMode } from '../../../Hooks/useDarkMode';
 import AdditionalNotesSection from '../../../Components/Annex/AdditionalNotesSection';
-import { HOT_TABLE_DARK_MODE_STYLES } from '../../../Utils/hotTableStyles';
 import AcademicYearSelect from '../../../Components/Forms/AcademicYearSelect';
 import FormSelector from '../../../Components/Forms/FormSelector';
-
-registerAllModules();
 
 const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEditing = false }) => {
   const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
@@ -101,65 +96,78 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
 
   const servicesColumns = [
     {
-      data: 'service_type',
-      title: 'Service Type',
-      type: 'text',
-      readOnly: true,
-      width: 350,
-      className: 'htLeft'
+      field: 'service_type',
+      headerName: 'Service Type',
+      editable: false,
+      minWidth: 350,
     },
     {
-      data: 'with',
-      title: 'With',
-      type: 'checkbox',
-      width: 80,
-      className: 'htCenter'
+      field: 'with',
+      headerName: 'With',
+      editable: true,
+      width: 100,
+      cellEditor: 'agCheckboxCellEditor',
+      cellRenderer: params => params.value ? '✓' : ''
     },
     {
-      data: 'supporting_documents',
-      title: 'Supporting Documents',
-      type: 'text',
-      width: 250,
-      placeholder: 'Document details'
+      field: 'supporting_documents',
+      headerName: 'Supporting Documents',
+      editable: true,
+      minWidth: 250
     },
     {
-      data: 'remarks',
-      title: 'Remarks',
-      type: 'text',
-      width: 250,
-      placeholder: 'Additional notes'
+      field: 'remarks',
+      headerName: 'Remarks',
+      editable: true,
+      minWidth: 250
     }
   ];
 
   const statisticsColumns = [
-    { data: 'program', title: 'Program', type: 'text', width: 300, placeholder: 'Program name' },
-    { data: 'applicants', title: 'Applicants', type: 'numeric', width: 120, placeholder: '0' },
-    { data: 'admitted', title: 'Admitted', type: 'numeric', width: 120, placeholder: '0' },
-    { data: 'enrolled', title: 'Enrolled', type: 'numeric', width: 120, placeholder: '0' },
+    { field: 'program', headerName: 'Program', editable: true, minWidth: 300 },
+    { 
+      field: 'applicants', 
+      headerName: 'Applicants', 
+      editable: true, 
+      width: 120,
+      cellEditor: 'agNumberCellEditor'
+    },
+    { 
+      field: 'admitted', 
+      headerName: 'Admitted', 
+      editable: true, 
+      width: 120,
+      cellEditor: 'agNumberCellEditor'
+    },
+    { 
+      field: 'enrolled', 
+      headerName: 'Enrolled', 
+      editable: true, 
+      width: 120,
+      cellEditor: 'agNumberCellEditor'
+    },
     {
-      data: 'actions',
-      title: 'Actions',
-      type: 'text',
-      readOnly: true,
-      width: 60,
-      renderer: function(instance, td, row) {
-        td.innerHTML = '<button class="delete-row-btn text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" data-row="' + row + '" data-table="statistics" title="Delete this row" style="padding:0;margin:0;border:none;background:none;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>';
-        td.className = 'htCenter htMiddle';
-        td.style.cssText = 'padding:0;vertical-align:middle;overflow:hidden;';
-        return td;
+      field: 'actions',
+      headerName: 'Actions',
+      editable: false,
+      width: 80,
+      cellRenderer: params => {
+        return `<button class="delete-row-btn" data-table="statistics" data-row="${params.node.rowIndex}" title="Delete this row" style="padding:4px;border:none;background:none;cursor:pointer;color:#dc2626;"><svg style="width:16px;height:16px;display:inline-block;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
       }
     }
   ];
 
   const handleAddRow = (tableType) => {
-    const hot = tableType === 'services' ? servicesRef.current?.hotInstance : statisticsRef.current?.hotInstance;
-    if (hot) hot.alter('insert_row_below', hot.countRows());
+    if (tableType === 'statistics') {
+      setStatisticsData([...statisticsData, { program: '', applicants: 0, admitted: 0, enrolled: 0 }]);
+    }
   };
 
   const handleRemoveRow = (tableType, rowIndex) => {
     if (confirm('Are you sure you want to delete this row?')) {
-      const hot = tableType === 'services' ? servicesRef.current?.hotInstance : statisticsRef.current?.hotInstance;
-      if (hot) hot.alter('remove_row', rowIndex);
+      if (tableType === 'statistics') {
+        setStatisticsData(statisticsData.filter((_, idx) => idx !== rowIndex));
+      }
     }
   };
 
@@ -173,64 +181,43 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
       }
     };
 
-    const servicesElement = servicesRef.current?.hotInstance?.rootElement;
-    const statisticsElement = statisticsRef.current?.hotInstance?.rootElement;
-
-    if (servicesElement) servicesElement.addEventListener('click', handleClick);
-    if (statisticsElement) statisticsElement.addEventListener('click', handleClick);
-
-    return () => {
-      if (servicesElement) servicesElement.removeEventListener('click', handleClick);
-      if (statisticsElement) statisticsElement.removeEventListener('click', handleClick);
-    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
   }, [servicesData, statisticsData]);
 
   const handleSubmit = () => {
-    const servicesHot = servicesRef.current?.hotInstance;
-    const statisticsHot = statisticsRef.current?.hotInstance;
-
     const servicesArray = [];
     const statisticsArray = [];
 
-    if (servicesHot) {
-      const tableData = servicesHot.getData();
-
-      // Must have exactly 8 rows
-      if (tableData.length !== 8) {
-        alert('Error: Must have exactly 8 predefined service types.');
-        return;
-      }
-
-      for (let i = 0; i < tableData.length; i++) {
-        const row = tableData[i];
-        const [serviceType, withChecked, supportingDocs, remarks] = row;
-
-        servicesArray.push({
-          service_type: serviceType,
-          with: withChecked === true,
-          supporting_documents: supportingDocs || null,
-          remarks: remarks || null
-        });
-      }
+    // Must have exactly 8 rows for services
+    if (servicesData.length !== 8) {
+      alert('Error: Must have exactly 8 predefined service types.');
+      return;
     }
 
-    if (statisticsHot) {
-      const tableData = statisticsHot.getData();
-      for (let i = 0; i < tableData.length; i++) {
-        const row = tableData[i];
-        const [program, applicants, admitted, enrolled] = row;
-        if (program || applicants || admitted || enrolled) {
-          if (!program || applicants === null || admitted === null || enrolled === null) {
-            alert(`Statistics Row ${i + 1}: All fields are required`);
-            return;
-          }
-          statisticsArray.push({
-            program,
-            applicants: parseInt(applicants) || 0,
-            admitted: parseInt(admitted) || 0,
-            enrolled: parseInt(enrolled) || 0
-          });
+    for (let i = 0; i < servicesData.length; i++) {
+      const row = servicesData[i];
+      servicesArray.push({
+        service_type: row.service_type,
+        with: row.with === true,
+        supporting_documents: row.supporting_documents || null,
+        remarks: row.remarks || null
+      });
+    }
+
+    for (let i = 0; i < statisticsData.length; i++) {
+      const row = statisticsData[i];
+      if (row.program || row.applicants || row.admitted || row.enrolled) {
+        if (!row.program || row.applicants === null || row.admitted === null || row.enrolled === null) {
+          alert(`Statistics Row ${i + 1}: All fields are required`);
+          return;
         }
+        statisticsArray.push({
+          program: row.program,
+          applicants: parseInt(row.applicants) || 0,
+          admitted: parseInt(row.admitted) || 0,
+          enrolled: parseInt(row.enrolled) || 0
+        });
       }
     }
 
@@ -248,8 +235,6 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
 
   return (
     <HEILayout title="Submit Annex H">
-      <style>{HOT_TABLE_DARK_MODE_STYLES}</style>
-
       <div className="space-y-6">
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -301,23 +286,17 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
               </p>
             </div>
 
-            <div className="overflow-x-auto mb-4">
-              <HotTable
+            <div className="mb-4">
+              <AGGridEditor
                 ref={servicesRef}
-                data={servicesData}
-                colHeaders={true}
-                rowHeaders={true}
-                columns={servicesColumns}
-                height="auto"
-                minRows={8}
-                maxRows={8}
-                licenseKey="non-commercial-and-evaluation"
-                stretchH="all"
-                autoWrapRow={true}
-                autoWrapCol={true}
-                manualColumnResize={true}
-                contextMenu={false}
-                className={isDark ? 'dark-table' : ''}
+                rowData={servicesData}
+                columnDefs={servicesColumns}
+                onCellValueChanged={(params) => {
+                  const updatedData = [...servicesData];
+                  updatedData[params.node.rowIndex] = params.data;
+                  setServicesData(updatedData);
+                }}
+                height="400px"
               />
             </div>
           </div>
@@ -332,22 +311,17 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
               </p>
             </div>
 
-            <div className="overflow-x-auto mb-4">
-              <HotTable
+            <div className="mb-4">
+              <AGGridEditor
                 ref={statisticsRef}
-                data={statisticsData}
-                colHeaders={true}
-                rowHeaders={true}
-                columns={statisticsColumns}
-                height="auto"
-                minRows={1}
-                licenseKey="non-commercial-and-evaluation"
-                stretchH="all"
-                autoWrapRow={true}
-                autoWrapCol={true}
-                manualColumnResize={true}
-                contextMenu={['row_above', 'row_below', 'undo', 'redo', 'copy', 'cut']}
-                className={isDark ? 'dark-table' : ''}
+                rowData={statisticsData}
+                columnDefs={statisticsColumns}
+                onCellValueChanged={(params) => {
+                  const updatedData = [...statisticsData];
+                  updatedData[params.node.rowIndex] = params.data;
+                  setStatisticsData(updatedData);
+                }}
+                height="400px"
               />
             </div>
 

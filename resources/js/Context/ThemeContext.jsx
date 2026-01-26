@@ -3,68 +3,30 @@ import { THEME_MODES } from '../Utils/constants';
 
 const ThemeContext = createContext();
 
-const DEFAULT_THEME = {
-  mode: THEME_MODES.LIGHT,
-  colors: {
-    primary: '#1e40af',
-    secondary: '#64748b',
-    success: '#16a34a',
-    warning: '#f59e0b',
-    danger: '#dc2626',
-    info: '#0891b2'
-  }
-};
-
 export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState(() => {
-    const stored = localStorage.getItem('ched_theme');
-    return stored ? JSON.parse(stored) : DEFAULT_THEME;
+  const [mode, setMode] = useState(() => {
+    const stored = localStorage.getItem('ched_theme_mode');
+    return stored || THEME_MODES.LIGHT;
   });
 
   useEffect(() => {
-    localStorage.setItem('ched_theme', JSON.stringify(theme));
-    applyTheme(theme);
-  }, [theme]);
-
-  const applyTheme = (currentTheme) => {
-    const root = document.documentElement;
-
-    // Apply mode
-    root.classList.remove('light', 'dark');
-    root.classList.add(currentTheme.mode);
-
-    // Apply color variables
-    Object.entries(currentTheme.colors).forEach(([key, value]) => {
-      root.style.setProperty(`--color-${key}`, value);
-    });
-  };
+    localStorage.setItem('ched_theme_mode', mode);
+    
+    // Apply mode to document
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(mode);
+  }, [mode]);
 
   const toggleMode = () => {
-    setTheme((prev) => ({
-      ...prev,
-      mode: prev.mode === THEME_MODES.LIGHT ? THEME_MODES.DARK : THEME_MODES.LIGHT
-    }));
-  };
-
-  const updateColors = (colors) => {
-    setTheme((prev) => ({
-      ...prev,
-      colors: { ...prev.colors, ...colors }
-    }));
-  };
-
-  const resetTheme = () => {
-    setTheme(DEFAULT_THEME);
+    setMode((prev) => prev === THEME_MODES.LIGHT ? THEME_MODES.DARK : THEME_MODES.LIGHT);
   };
 
   return (
     <ThemeContext.Provider
       value={{
-        theme,
+        mode,
         toggleMode,
-        updateColors,
-        resetTheme,
-        isDark: theme.mode === THEME_MODES.DARK
+        isDark: mode === THEME_MODES.DARK
       }}
     >
       {children}

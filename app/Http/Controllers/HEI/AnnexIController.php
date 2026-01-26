@@ -58,6 +58,8 @@ class AnnexIController extends BaseAnnexController
             $batch->scholarships()->create($scholarship);
         }
 
+        $this->clearSubmissionCaches($heiId, $academicYear);
+
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
@@ -122,6 +124,8 @@ class AnnexIController extends BaseAnnexController
             'status' => 'cancelled',
             'cancelled_notes' => $validated['cancelled_notes'] ?? null,
         ]);
+
+        $this->clearSubmissionCaches($heiId, $batch->academic_year);
 
         return redirect()->route('hei.submissions.history')->with('success', 'Request cancelled successfully.');
     }

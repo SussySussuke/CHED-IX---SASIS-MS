@@ -61,6 +61,9 @@ class AnnexBController extends BaseAnnexController
             $batch->programs()->create($program);
         }
 
+        // Clear caches
+        $this->clearSubmissionCaches($heiId, $academicYear);
+
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
@@ -124,6 +127,9 @@ class AnnexBController extends BaseAnnexController
             'status' => 'cancelled',
             'cancelled_notes' => $validated['cancelled_notes'] ?? null,
         ]);
+
+        // Clear caches
+        $this->clearSubmissionCaches($heiId, $batch->academic_year);
 
         return redirect()->route('hei.submissions.history')->with('success', 'Request cancelled successfully.');
     }

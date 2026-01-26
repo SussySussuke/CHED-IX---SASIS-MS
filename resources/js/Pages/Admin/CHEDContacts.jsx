@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../Layouts/AdminLayout';
 import { useForm, router } from '@inertiajs/react';
 import { IoCall, IoMail, IoLocation, IoPencilOutline, IoTrashOutline, IoAdd, IoArrowUp, IoArrowDown, IoCheckmarkCircle } from 'react-icons/io5';
-import DataTable from '../../Components/Common/DataTable';
+import AGGridViewer from '../../Components/Common/AGGridViewer';
 import IconButton from '../../Components/Common/IconButton';
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 import ConfirmationModal from '../../Components/Common/ConfirmationModal';
+import AddressSearchInput from '../../Components/Forms/AddressSearchInput';
 import axios from 'axios';
 
 const CHEDContacts = ({ contacts = [] }) => {
@@ -13,7 +14,6 @@ const CHEDContacts = ({ contacts = [] }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [search, setSearch] = useState('');
   const [localContacts, setLocalContacts] = useState([...contacts].sort((a, b) => a.order - b.order));
   const [hasOrderChanges, setHasOrderChanges] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
@@ -33,14 +33,7 @@ const CHEDContacts = ({ contacts = [] }) => {
     is_active: true,
   });
 
-  // Always show all contacts for reordering - search doesn't affect order operations
   const sortedContacts = [...localContacts].sort((a, b) => a.order - b.order);
-  
-  const filteredContacts = sortedContacts.filter(contact =>
-    contact.name.toLowerCase().includes(search.toLowerCase()) ||
-    (contact.email && contact.email.toLowerCase().includes(search.toLowerCase())) ||
-    (contact.phone && contact.phone.toLowerCase().includes(search.toLowerCase()))
-  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -142,12 +135,16 @@ const CHEDContacts = ({ contacts = [] }) => {
     setHasOrderChanges(false);
   };
 
-  const columns = [
+  const columnDefs = [
     {
-      key: 'reorder',
-      label: 'Reorder',
-      align: 'center',
-      render: (row) => {
+      field: 'reorder',
+      headerName: 'Reorder',
+      width: 120,
+      sortable: false,
+      filter: false,
+      cellClass: 'text-center',
+      cellRenderer: (params) => {
+        const row = params.data;
         const sortedContacts = [...localContacts].sort((a, b) => a.order - b.order);
         const currentIndex = sortedContacts.findIndex(c => c.id === row.id);
         const isFirst = currentIndex === 0;
@@ -176,74 +173,92 @@ const CHEDContacts = ({ contacts = [] }) => {
       }
     },
     {
-      key: 'order',
-      label: 'Load Order',
-      align: 'center',
-      render: (row) => (
-        <span className="font-medium text-gray-900 dark:text-white">{row.order}</span>
-      )
-    },
-    {
-      key: 'name',
-      label: 'Office Name',
-      render: (row) => (
-        <span className="font-medium text-gray-900 dark:text-white">{row.name}</span>
-      )
-    },
-    {
-      key: 'address',
-      label: 'Address',
-      render: (row) => (
-        <span className="text-gray-600 dark:text-gray-400">{row.address || 'N/A'}</span>
-      )
-    },
-    {
-      key: 'phone',
-      label: 'Phone',
-      render: (row) => (
-        <span className="text-gray-600 dark:text-gray-400">{row.phone || 'N/A'}</span>
-      )
-    },
-    {
-      key: 'email',
-      label: 'Email',
-      render: (row) => (
-        <span className="text-gray-600 dark:text-gray-400">{row.email || 'N/A'}</span>
-      )
-    },
-    {
-      key: 'is_active',
-      label: 'Status',
-      align: 'center',
-      render: (row) => (
-        <StatusBadge
-          color={row.is_active ? 'green' : 'red'}
-          label={row.is_active ? 'Active' : 'Inactive'}
-        />
-      )
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      align: 'center',
-      render: (row) => (
-        <div className="flex items-center justify-center gap-2">
-          <IconButton
-            variant="blue"
-            onClick={() => handleEdit(row)}
-            title="Edit Contact"
-          >
-            <IoPencilOutline size={18} />
-          </IconButton>
-          <IconButton
-            variant="red"
-            onClick={() => setDeleteConfirm(row)}
-            title="Delete Contact"
-          >
-            <IoTrashOutline size={18} />
-          </IconButton>
+      field: 'order',
+      headerName: 'Order',
+      width: 100,
+      cellClass: 'text-center',
+      cellRenderer: (params) => (
+        <div className="flex justify-center">
+          <span className="font-medium text-gray-900 dark:text-white">{params.value}</span>
         </div>
       )
+    },
+    {
+      field: 'name',
+      headerName: 'Office Name',
+      flex: 1,
+      minWidth: 200,
+      cellRenderer: (params) => (
+        <span className="font-medium text-gray-900 dark:text-white">{params.value}</span>
+      )
+    },
+    {
+      field: 'address',
+      headerName: 'Address',
+      flex: 1,
+      minWidth: 250,
+      cellRenderer: (params) => (
+        <span className="text-gray-600 dark:text-gray-400">{params.value || 'N/A'}</span>
+      )
+    },
+    {
+      field: 'phone',
+      headerName: 'Phone',
+      width: 150,
+      cellRenderer: (params) => (
+        <span className="text-gray-600 dark:text-gray-400">{params.value || 'N/A'}</span>
+      )
+    },
+    {
+      field: 'email',
+      headerName: 'Email',
+      width: 200,
+      cellRenderer: (params) => (
+        <span className="text-gray-600 dark:text-gray-400">{params.value || 'N/A'}</span>
+      )
+    },
+    {
+      field: 'is_active',
+      headerName: 'Status',
+      width: 120,
+      cellClass: 'text-center',
+      cellRenderer: (params) => (
+        <div className="flex justify-center">
+          <StatusBadge
+            color={params.value ? 'green' : 'red'}
+            label={params.value ? 'Active' : 'Inactive'}
+          />
+        </div>
+      )
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 120,
+      sortable: false,
+      filter: false,
+      cellClass: 'text-center',
+      cellRenderer: (params) => {
+        const row = params.data;
+        return (
+          <div className="flex items-center justify-center gap-2">
+            <IconButton
+              variant="blue"
+              onClick={() => handleEdit(row)}
+              title="Edit Contact"
+            >
+              <IoPencilOutline size={18} />
+            </IconButton>
+            <IconButton
+              variant="red"
+              onClick={() => setDeleteConfirm(row)}
+              title="Delete Contact"
+            >
+              <IoTrashOutline size={18} />
+            </IconButton>
+          </div>
+        );
+      }
     }
   ];
 
@@ -297,13 +312,13 @@ const CHEDContacts = ({ contacts = [] }) => {
           </div>
         )}
 
-        <DataTable
-          columns={columns}
-          data={filteredContacts}
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search by name, email, or phone..."
-          emptyMessage="No CHED contacts found."
+        <AGGridViewer
+          rowData={sortedContacts}
+          columnDefs={columnDefs}
+          height="700px"
+          quickFilterPlaceholder="Search by name, email, or phone..."
+          paginationPageSize={25}
+          paginationPageSizeSelector={[25, 50, 100]}
         />
 
         {/* Add/Edit Contact Modal */}
@@ -347,16 +362,12 @@ const CHEDContacts = ({ contacts = [] }) => {
                             <IoLocation className="text-gray-400" />
                             Address
                           </label>
-                          <textarea
+                          <AddressSearchInput
                             value={data.address}
-                            onChange={(e) => setData('address', e.target.value)}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                            placeholder="Enter complete office address"
+                            onChange={(value) => setData('address', value)}
+                            error={errors.address}
+                            placeholder="Start typing to search for an address..."
                           />
-                          {errors.address && (
-                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.address}</p>
-                          )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

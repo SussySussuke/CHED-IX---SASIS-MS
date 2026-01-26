@@ -111,6 +111,8 @@ class AnnexGController extends BaseAnnexController
             }
         }
 
+        $this->clearSubmissionCaches($heiId, $academicYear);
+
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
@@ -169,7 +171,6 @@ class AnnexGController extends BaseAnnexController
             return redirect()->route('hei.submissions.history')->withErrors($error);
         }
 
-        // Format the submission data to match the expected structure
         $existingBatches = [
             $submission->academic_year => [
                 'submission_id' => $submission->submission_id,
@@ -227,6 +228,8 @@ class AnnexGController extends BaseAnnexController
             'status' => 'cancelled',
             'cancelled_notes' => $validated['cancelled_notes'] ?? null,
         ]);
+
+        $this->clearSubmissionCaches($heiId, $submission->academic_year);
 
         return redirect()->route('hei.submissions.history')->with('success', 'Request cancelled successfully.');
     }

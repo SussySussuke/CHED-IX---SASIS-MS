@@ -50,8 +50,8 @@ const Dashboard = ({ hei, academicYears, selectedYear, stats, checklist, deadlin
           {/* Sidebar - Takes 1 column on large screens */}
           <div className="space-y-6">
             <QuickActions checklist={checklist} selectedYear={selectedYear} />
-            <NeedHelp />
             <RecentActivity activities={recentActivities} />
+            <NeedHelp />
           </div>
         </div>
       </div>

@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\HEI;
 use App\Models\CHEDRemark;
 use App\Models\AuditLog;
+use App\Services\CacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class SubmissionController extends Controller
 {
@@ -153,6 +155,13 @@ class SubmissionController extends Controller
                 // Publish the new submission
                 $newSubmission->update(['status' => 'published']);
 
+                // Clear caches for this HEI
+                CacheService::clearSubmissionCaches($newSubmission->hei_id);
+                CacheService::clearHeiCaches($newSubmission->hei_id, $newSubmission->academic_year);
+                
+                // Clear admin dashboard cache
+                Cache::forget('admin_dashboard_stats_' . $newSubmission->academic_year);
+
                 // Create audit log
                 AuditLog::log(
                     action: 'approved',
@@ -199,6 +208,13 @@ class SubmissionController extends Controller
             // Publish the new batch
             $newBatch->update(['status' => 'published']);
 
+            // Clear caches for this HEI
+            CacheService::clearSubmissionCaches($newBatch->hei_id);
+            CacheService::clearHeiCaches($newBatch->hei_id, $newBatch->academic_year);
+            
+            // Clear admin dashboard cache
+            Cache::forget('admin_dashboard_stats_' . $newBatch->academic_year);
+
             // Create audit log
             AuditLog::log(
                 action: 'approved',
@@ -244,6 +260,13 @@ class SubmissionController extends Controller
                 'cancelled_notes' => $validated['rejection_reason'] ?? 'Rejected by admin',
             ]);
 
+            // Clear caches for this HEI
+            CacheService::clearSubmissionCaches($submission->hei_id);
+            CacheService::clearHeiCaches($submission->hei_id, $submission->academic_year);
+            
+            // Clear admin dashboard cache
+            Cache::forget('admin_dashboard_stats_' . $submission->academic_year);
+
             // Create audit log
             AuditLog::log(
                 action: 'rejected',
@@ -273,6 +296,13 @@ class SubmissionController extends Controller
             'status' => 'rejected',
             'cancelled_notes' => $validated['rejection_reason'] ?? 'Rejected by admin',
         ]);
+
+        // Clear caches for this HEI
+        CacheService::clearSubmissionCaches($batch->hei_id);
+        CacheService::clearHeiCaches($batch->hei_id, $batch->academic_year);
+        
+        // Clear admin dashboard cache
+        Cache::forget('admin_dashboard_stats_' . $batch->academic_year);
 
         // Create audit log
         AuditLog::log(

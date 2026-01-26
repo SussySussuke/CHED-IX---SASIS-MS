@@ -1,21 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import HEILayout from '../../Layouts/HEILayout';
 import { router } from '@inertiajs/react';
-import { HotTable } from '@handsontable/react';
-import { registerAllModules } from 'handsontable/registry';
-import 'handsontable/dist/handsontable.full.min.css';
+import AGGridEditor from '../Common/AGGridEditor';
+import IconButton from '../Common/IconButton';
 import InfoBox from '../Widgets/InfoBox';
-import { IoAddCircle, IoSave } from 'react-icons/io5';
+import { IoAddCircle, IoSave, IoTrash } from 'react-icons/io5';
 import { useDarkMode } from '../../Hooks/useDarkMode';
 import AdditionalNotesSection from './AdditionalNotesSection';
-import { HOT_TABLE_DARK_MODE_STYLES } from '../../Utils/hotTableStyles';
 import { getSubmissionStatusMessage } from '../../Utils/submissionStatus';
 import { getAcademicYearFromUrl } from '../../Utils/urlHelpers';
 import AcademicYearSelect from '../Forms/AcademicYearSelect';
 import FormSelector from '../Forms/FormSelector';
 import { getAnnexConfig } from '../../Config/formConfig';
-
-registerAllModules();
 
 /**
  * Shared component for Annex A-F, I-L, N-O Create pages
@@ -35,7 +31,7 @@ const SharedAnnexCreate = ({
   const config = getAnnexConfig(annexLetter);
   const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
 
-  const hotTableRef = useRef(null);
+  const gridRef = useRef(null);
   const isDark = useDarkMode();
   const [requestNotes, setRequestNotes] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -90,73 +86,143 @@ const SharedAnnexCreate = ({
     }
   }, [academicYear, existingBatches]);
 
-  // Add actions column to columns config
-  const columns = [
-    ...config.columns,
-    {
-      data: 'actions',
-      title: 'Actions',
-      type: 'text',
-      readOnly: true,
-      width: 60,
-      renderer: function(instance, td, row) {
-        td.innerHTML = '<button class="delete-row-btn text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" data-row="' + row + '" title="Delete this row" style="padding:0;margin:0;border:none;background:none;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>';
-        td.className = 'htCenter htMiddle';
-        td.style.cssText = 'padding:0;vertical-align:middle;overflow:hidden;';
-        return td;
-      }
+  // Convert config columns to AG Grid column definitions
+  const columnDefs = config.columns.map(col => {
+    const baseCol = {
+      field: col.data,
+      headerName: col.title,
+      editable: true,
+      minWidth: col.width || 150,
+    };
+
+    // Handle different column types
+    if (col.type === 'numeric') {
+      baseCol.valueParser = params => {
+        const val = params.newValue;
+        return val === '' || val === null ? null : Number(val);
+      };
+      baseCol.cellEditor = 'agNumberCellEditor';
+    } else if (col.type === 'date') {
+      baseCol.cellEditor = 'agDateStringCellEditor';
+      baseCol.valueFormatter = params => {
+        if (!params.value) return '';
+        return params.value;
+      };
+    } else if (col.type === 'checkbox') {
+      baseCol.cellEditor = 'agCheckboxCellEditor';
+      baseCol.cellRenderer = params => {
+        return params.value ? '✓' : '';
+      };
+    } else if (col.type === 'dropdown') {
+      baseCol.cellEditor = 'agSelectCellEditor';
+      baseCol.cellEditorParams = {
+        values: col.source || []
+      };
     }
-  ];
+
+    return baseCol;
+  });
+
+  // Delete button cell renderer component
+  const DeleteButtonRenderer = (props) => {
+    const handleDelete = () => {
+      handleRemoveRow(props.node.rowIndex);
+    };
+
+    return (
+      <IconButton
+        onClick={handleDelete}
+        variant="red"
+        title="Delete this row"
+      >
+        <IoTrash className="w-4 h-4" />
+      </IconButton>
+    );
+  };
+
+  // Add delete action column
+  columnDefs.push({
+    field: 'actions',
+    headerName: 'Actions',
+    editable: false,
+    width: 80,
+    cellRenderer: DeleteButtonRenderer,
+  });
 
   const handleAddRow = () => {
-    const hot = hotTableRef.current?.hotInstance;
-    if (hot) {
-      hot.alter('insert_row_below', hot.countRows());
-    }
+    const newRow = {};
+    config.columns.forEach(col => {
+      newRow[col.data] = col.type === 'checkbox' ? false : '';
+    });
+    setData([...data, newRow]);
   };
 
   const handleRemoveRow = (rowIndex) => {
     if (confirm('Are you sure you want to delete this row?')) {
-      const hot = hotTableRef.current?.hotInstance;
-      if (hot) {
-        hot.alter('remove_row', rowIndex);
-      }
+      const newData = data.filter((_, idx) => idx !== rowIndex);
+      setData(newData);
     }
   };
 
-  // Add click handler for delete buttons
-  useEffect(() => {
-    const handleClick = (e) => {
-      const deleteBtn = e.target.closest('.delete-row-btn');
-      if (deleteBtn) {
-        const row = parseInt(deleteBtn.dataset.row);
-        handleRemoveRow(row);
-      }
-    };
 
-    const tableElement = hotTableRef.current?.hotInstance?.rootElement;
-    if (tableElement) {
-      tableElement.addEventListener('click', handleClick);
-      return () => tableElement.removeEventListener('click', handleClick);
+
+  // Handle cell value changes for Annex L special logic
+  const handleCellValueChanged = (params) => {
+    if (annexLetter === 'L') {
+      const { data: rowData, colDef } = params;
+      const field = colDef.field;
+
+      // Special logic for Annex L: checkbox mutual exclusivity
+      if ((field === 'male' || field === 'female' || field === 'coed') && params.newValue === true) {
+        const updatedData = data.map((row, idx) => {
+          if (idx === params.node.rowIndex) {
+            return {
+              ...row,
+              male: field === 'male' ? true : false,
+              female: field === 'female' ? true : false,
+              coed: field === 'coed' ? true : false,
+              others: ''
+            };
+          }
+          return row;
+        });
+        setData(updatedData);
+      }
+
+      // If "Others" is filled, uncheck all checkboxes
+      if (field === 'others' && params.newValue) {
+        const updatedData = data.map((row, idx) => {
+          if (idx === params.node.rowIndex) {
+            return {
+              ...row,
+              male: false,
+              female: false,
+              coed: false
+            };
+          }
+          return row;
+        });
+        setData(updatedData);
+      }
     }
-  }, [data]);
+
+    // Update the data state
+    const updatedData = [...data];
+    updatedData[params.node.rowIndex] = params.data;
+    setData(updatedData);
+  };
 
   const handleSubmit = () => {
-    const hot = hotTableRef.current?.hotInstance;
-    if (!hot) return;
-
-    const tableData = hot.getData();
     const entities = [];
 
     // Filter out empty rows and validate
-    for (let i = 0; i < tableData.length; i++) {
-      const row = tableData[i];
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
 
       // Check if row is completely empty
-      const isEmptyRow = row.every((cell, index) => {
-        // Skip the actions column (last column)
-        if (index === row.length - 1) return true;
-        return !cell || cell === '';
+      const isEmptyRow = config.columns.every(col => {
+        const value = row[col.data];
+        return !value || value === '';
       });
 
       if (isEmptyRow) {
@@ -164,9 +230,9 @@ const SharedAnnexCreate = ({
       }
 
       // Validate required fields
-      const missingFields = config.requiredFields.filter((fieldKey, fieldIndex) => {
-        const columnIndex = config.columns.findIndex(col => col.data === fieldKey);
-        return !row[columnIndex] || row[columnIndex] === '';
+      const missingFields = config.requiredFields.filter(fieldKey => {
+        const value = row[fieldKey];
+        return !value || value === '';
       });
 
       if (missingFields.length > 0) {
@@ -180,14 +246,16 @@ const SharedAnnexCreate = ({
 
       // Custom validation (for Annex L special logic)
       if (config.customValidation) {
-        const validationError = config.customValidation(row, i);
+        const rowArray = config.columns.map(col => row[col.data]);
+        const validationError = config.customValidation(rowArray, i);
         if (validationError) {
           alert(validationError);
           return;
         }
       }
 
-      entities.push(config.submitMapper(row));
+      const rowArray = config.columns.map(col => row[col.data]);
+      entities.push(config.submitMapper(rowArray));
     }
 
     if (entities.length === 0) {
@@ -217,8 +285,6 @@ const SharedAnnexCreate = ({
 
   return (
     <HEILayout title={`Submit Annex ${annexLetter}`}>
-      <style>{HOT_TABLE_DARK_MODE_STYLES}</style>
-
       <div className="space-y-6">
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -293,48 +359,13 @@ const SharedAnnexCreate = ({
               </p>
             </div>
 
-            <div className="overflow-x-auto mb-4">
-              <HotTable
-                ref={hotTableRef}
-                data={data}
-                colHeaders={true}
-                rowHeaders={true}
-                columns={columns}
-                height="auto"
-                minRows={1}
-                licenseKey="non-commercial-and-evaluation"
-                stretchH="all"
-                autoWrapRow={true}
-                autoWrapCol={true}
-                manualColumnResize={true}
-                contextMenu={['row_above', 'row_below', 'undo', 'redo', 'copy', 'cut']}
-                className={isDark ? 'dark-table' : ''}
-                afterChange={annexLetter === 'L' ? (changes, source) => {
-                  // Special logic for Annex L: checkbox mutual exclusivity
-                  if (!changes || source === 'loadData') return;
-
-                  const hot = hotTableRef.current?.hotInstance;
-                  if (!hot) return;
-
-                  changes.forEach(([row, prop, oldValue, newValue]) => {
-                    // If a checkbox is checked, uncheck the other checkboxes and clear "Others"
-                    if ((prop === 'male' || prop === 'female' || prop === 'coed') && newValue === true) {
-                      if (prop !== 'male') hot.setDataAtRowProp(row, 'male', false, 'internal');
-                      if (prop !== 'female') hot.setDataAtRowProp(row, 'female', false, 'internal');
-                      if (prop !== 'coed') hot.setDataAtRowProp(row, 'coed', false, 'internal');
-                      hot.setDataAtRowProp(row, 'others', '', 'internal');
-                    }
-
-                    // If "Others" is filled, uncheck all checkboxes
-                    if (prop === 'others' && newValue) {
-                      hot.setDataAtRowProp(row, 'male', false, 'internal');
-                      hot.setDataAtRowProp(row, 'female', false, 'internal');
-                      hot.setDataAtRowProp(row, 'coed', false, 'internal');
-                    }
-                  });
-
-                  hot.render();
-                } : undefined}
+            <div className="mb-4">
+              <AGGridEditor
+                ref={gridRef}
+                rowData={data}
+                columnDefs={columnDefs}
+                onCellValueChanged={handleCellValueChanged}
+                height="500px"
               />
             </div>
 

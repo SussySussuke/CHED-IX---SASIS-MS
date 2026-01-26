@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import AdminLayout from '../../Layouts/AdminLayout';
 import ConfirmationModal from '../../Components/Common/ConfirmationModal';
+import { AGGridViewer } from '@/Components/Common';
 import { useForm } from '@inertiajs/react';
-import { IoEye, IoEyeOff, IoPencilOutline, IoTrashOutline } from 'react-icons/io5';
-import DataTable from '../../Components/Common/DataTable';
+import { IoEye, IoEyeOff, IoPencil, IoTrash } from 'react-icons/io5';
+import AddressSearchInput from '../../Components/Forms/AddressSearchInput';
 import IconButton from '../../Components/Common/IconButton';
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 
@@ -14,12 +15,6 @@ const HEIAccounts = ({ heis = [] }) => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [addressSuggestions, setAddressSuggestions] = useState([]);
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-  const [searchTimeout, setSearchTimeout] = useState(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [search, setSearch] = useState('');
 
   const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
     uii: '',
@@ -33,67 +28,6 @@ const HEIAccounts = ({ heis = [] }) => {
     password_confirmation: '',
     is_active: true,
   });
-
-  const filteredHeis = heis.filter(hei =>
-    hei.name.toLowerCase().includes(search.toLowerCase()) ||
-    hei.code.toLowerCase().includes(search.toLowerCase()) ||
-    hei.email.toLowerCase().includes(search.toLowerCase()) ||
-    hei.uii.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const searchAddress = async (query) => {
-    if (query.length < 3) {
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-      setHasSearched(false);
-      return;
-    }
-
-    setIsLoadingSuggestions(true);
-    setShowSuggestions(true);
-    setHasSearched(false);
-
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ph`,
-        {
-          headers: {
-            'Accept': 'application/json',
-          },
-        }
-      );
-      const results = await response.json();
-      setAddressSuggestions(results);
-      setHasSearched(true);
-    } catch (error) {
-      console.error('Error searching address:', error);
-      setAddressSuggestions([]);
-      setHasSearched(true);
-    } finally {
-      setIsLoadingSuggestions(false);
-    }
-  };
-
-  const handleAddressChange = (e) => {
-    const value = e.target.value;
-    setData('address', value);
-
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-
-    const timeout = setTimeout(() => {
-      searchAddress(value);
-    }, 500);
-
-    setSearchTimeout(timeout);
-  };
-
-  const selectAddress = (suggestion) => {
-    setData('address', suggestion.display_name);
-    setAddressSuggestions([]);
-    setShowSuggestions(false);
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -149,77 +83,117 @@ const HEIAccounts = ({ heis = [] }) => {
     setIsModalOpen(true);
   };
 
-  const columns = [
+  // AG Grid column definitions
+  const columnDefs = useMemo(() => [
     {
-      key: 'uii',
-      label: 'UII',
-      render: (row) => (
-        <span className="font-medium text-gray-900 dark:text-white">{row.uii}</span>
-      )
+      headerName: 'UII',
+      field: 'uii',
+      width: 120,
+      pinned: 'left',
+      filter: 'agTextColumnFilter',
+      cellStyle: { fontWeight: '500' },
     },
     {
-      key: 'name',
-      label: 'Institution Name',
-      render: (row) => (
-        <span className="text-gray-900 dark:text-white">{row.name}</span>
-      )
+      headerName: 'Institution Name',
+      field: 'name',
+      width: 350,
+      filter: 'agTextColumnFilter',
+      flex: 1,
     },
     {
-      key: 'type',
-      label: 'Type',
-      render: (row) => (
-        <span className="text-gray-600 dark:text-gray-400">{row.type}</span>
-      )
+      headerName: 'Type',
+      field: 'type',
+      width: 120,
+      filter: 'agTextColumnFilter',
+      cellStyle: { textAlign: 'center' },
     },
     {
-      key: 'code',
-      label: 'HEI Code',
-      render: (row) => (
-        <span className="text-gray-600 dark:text-gray-400">{row.code}</span>
-      )
+      headerName: 'HEI Code',
+      field: 'code',
+      width: 130,
+      filter: 'agTextColumnFilter',
+      cellStyle: { textAlign: 'center' },
     },
     {
-      key: 'email',
-      label: 'Email',
-      render: (row) => (
-        <span className="text-gray-600 dark:text-gray-400">{row.email}</span>
-      )
+      headerName: 'Email',
+      field: 'email',
+      width: 280,
+      filter: 'agTextColumnFilter',
     },
     {
-      key: 'is_active',
-      label: 'Status',
-      align: 'center',
-      render: (row) => (
-        <StatusBadge
-          color={row.is_active ? 'green' : 'red'}
-          label={row.is_active ? 'Active' : 'Inactive'}
-        />
-      )
+      headerName: 'Status',
+      field: 'is_active',
+      width: 120,
+      filter: 'agTextColumnFilter',
+      cellRenderer: (params) => {
+        const isActive = params.value;
+        return (
+          <StatusBadge 
+            color={isActive ? 'green' : 'red'}
+            label={isActive ? 'Active' : 'Inactive'}
+          />
+        );
+      },
+      cellStyle: { 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+      },
     },
     {
-      key: 'actions',
-      label: 'Actions',
-      align: 'center',
-      render: (row) => (
-        <div className="flex items-center justify-center gap-2">
-          <IconButton
-            variant="blue"
-            onClick={() => handleEdit(row)}
-            title="Edit HEI"
-          >
-            <IoPencilOutline size={18} />
-          </IconButton>
-          <IconButton
-            variant="red"
-            onClick={() => setDeleteConfirm(row)}
-            title="Delete HEI"
-          >
-            <IoTrashOutline size={18} />
-          </IconButton>
-        </div>
-      )
+      headerName: 'Actions',
+      field: 'actions',
+      width: 140,
+      pinned: 'right',
+      sortable: false,
+      filter: false,
+      cellRenderer: (params) => {
+        const hei = params.data;
+        
+        return (
+          <div className="flex items-center justify-center gap-1.5 h-full">
+            <IconButton
+              data-action="edit"
+              data-hei-id={hei.id}
+              variant="blue"
+              title="Edit HEI"
+            >
+              <IoPencil size={16} />
+            </IconButton>
+            <IconButton
+              data-action="delete"
+              data-hei-id={hei.id}
+              variant="red"
+              title="Delete HEI"
+            >
+              <IoTrash size={16} />
+            </IconButton>
+          </div>
+        );
+      },
+    },
+  ], []);
+
+  // Handle button clicks in AG Grid
+  const onCellClicked = (params) => {
+    const target = params.event.target;
+    const button = target.closest('button');
+    
+    if (!button) return;
+    
+    const action = button.getAttribute('data-action');
+    const heiId = button.getAttribute('data-hei-id');
+    
+    if (!action || !heiId) return;
+    
+    const hei = heis.find(h => h.id === parseInt(heiId));
+    
+    if (action === 'edit') {
+      handleEdit(hei);
+    } else if (action === 'delete') {
+      setDeleteConfirm(hei);
     }
-  ];
+  };
 
   return (
     <AdminLayout title="HEI Accounts">
@@ -235,20 +209,27 @@ const HEIAccounts = ({ heis = [] }) => {
           </div>
           <button
             onClick={openAddModal}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
           >
             Add New HEI
           </button>
         </div>
 
-        <DataTable
-          columns={columns}
-          data={filteredHeis}
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search by UII, name, code, or email..."
-          emptyMessage="No HEI accounts found."
-        />
+        {/* AG Grid Viewer */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <AGGridViewer
+            rowData={heis}
+            columnDefs={columnDefs}
+            height="calc(100vh - 280px)"
+            paginationPageSize={50}
+            paginationPageSizeSelector={[25, 50, 100, 200]}
+            enableQuickFilter={true}
+            quickFilterPlaceholder="Search HEIs by name, code, email, type..."
+            gridOptions={{
+              onCellClicked: onCellClicked,
+            }}
+          />
+        </div>
 
         {/* Add/Edit HEI Modal */}
         {isModalOpen && (
@@ -372,58 +353,15 @@ const HEIAccounts = ({ heis = [] }) => {
                           )}
                         </div>
 
-                        <div className="md:col-span-2 relative">
+                        <div className="md:col-span-2">
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Address
                           </label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={data.address}
-                              onChange={handleAddressChange}
-                              onFocus={() => data.address.length >= 3 && setShowSuggestions(true)}
-                              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                              placeholder="Start typing to search for an address..."
-                            />
-                            {isLoadingSuggestions && (
-                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                              </div>
-                            )}
-                          </div>
-                          {errors.address && (
-                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.address}</p>
-                          )}
-
-                          {/* Address Suggestions Dropdown */}
-                          {showSuggestions && (
-                            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                              {isLoadingSuggestions ? (
-                                <div className="px-4 py-3 text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                                  Searching...
-                                </div>
-                              ) : hasSearched && addressSuggestions.length === 0 ? (
-                                <div className="px-4 py-3 text-gray-500 dark:text-gray-400 text-center">
-                                  <p className="text-sm">No addresses found</p>
-                                  <p className="text-xs mt-1">Try a different search term</p>
-                                </div>
-                              ) : (
-                                addressSuggestions.map((suggestion, index) => (
-                                  <button
-                                    key={index}
-                                    type="button"
-                                    onMouseDown={(e) => e.preventDefault()}
-                                    onClick={() => selectAddress(suggestion)}
-                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 last:border-0 transition-colors"
-                                  >
-                                    <div className="text-sm">{suggestion.display_name}</div>
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          )}
+                          <AddressSearchInput
+                            value={data.address}
+                            onChange={(value) => setData('address', value)}
+                            error={errors.address}
+                          />
                         </div>
 
                         {isEditMode && (

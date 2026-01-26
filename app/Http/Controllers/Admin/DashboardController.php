@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use App\Services\CacheService;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -17,17 +19,21 @@ class DashboardController extends Controller
         $selectedYear = $request->get('year', $this->getCurrentAcademicYear());
         $academicYears = $this->getAvailableAcademicYears();
 
-        // Get real dashboard stats
-        $stats = [
-            'pendingReviews' => $this->getPendingReviewsCount(),
-            'completionRate' => $this->getTotalCompletionPercentage($selectedYear),
-            'enrollmentByType' => $this->getEnrollmentDistribution($selectedYear),
-            'heisByType' => $this->getHEITypeDistribution($selectedYear),
-            'recentSubmissions' => $this->getRecentSubmissions(),
-            'topHEIs' => $this->getTopPerformingHEIs($selectedYear, 5),
-            'allHEIs' => $this->getTopPerformingHEIs($selectedYear, 9999), // Get all HEIs for modal
-            'formCompletion' => $this->getFormCompletionRates($selectedYear),
-        ];
+        // Cache admin dashboard stats for 5 minutes
+        $cacheKey = "admin_dashboard_stats_{$selectedYear}";
+        
+        $stats = Cache::remember($cacheKey, CacheService::TTL_SHORT, function () use ($selectedYear) {
+            return [
+                'pendingReviews' => $this->getPendingReviewsCount(),
+                'completionRate' => $this->getTotalCompletionPercentage($selectedYear),
+                'enrollmentByType' => $this->getEnrollmentDistribution($selectedYear),
+                'heisByType' => $this->getHEITypeDistribution($selectedYear),
+                'recentSubmissions' => $this->getRecentSubmissions(),
+                'topHEIs' => $this->getTopPerformingHEIs($selectedYear, 5),
+                'allHEIs' => $this->getTopPerformingHEIs($selectedYear, 9999),
+                'formCompletion' => $this->getFormCompletionRates($selectedYear),
+            ];
+        });
 
         return inertia('Admin/Dashboard', [
             'academicYears' => $academicYears,

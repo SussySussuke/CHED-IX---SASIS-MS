@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import HEILayout from '../../../Layouts/HEILayout';
 import { router } from '@inertiajs/react';
-import { HotTable } from '@handsontable/react';
-import { registerAllModules } from 'handsontable/registry';
-import 'handsontable/dist/handsontable.full.min.css';
+import AGGridEditor from '../../../Components/Common/AGGridEditor';
 import InfoBox from '../../../Components/Widgets/InfoBox';
 import { CURRENT_YEAR } from '../../../Utils/constants';
 import { getSubmissionStatusMessage } from '../../../Utils/submissionStatus';
@@ -11,11 +9,8 @@ import { getAcademicYearFromUrl } from '../../../Utils/urlHelpers';
 import { IoAddCircle, IoSave } from 'react-icons/io5';
 import { useDarkMode } from '../../../Hooks/useDarkMode';
 import AdditionalNotesSection from '../../../Components/Annex/AdditionalNotesSection';
-import { HOT_TABLE_DARK_MODE_STYLES } from '../../../Utils/hotTableStyles';
 import AcademicYearSelect from '../../../Components/Forms/AcademicYearSelect';
 import FormSelector from '../../../Components/Forms/FormSelector';
-
-registerAllModules();
 
 const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEditing = false }) => {
   const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
@@ -131,146 +126,124 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
     })) : []);
   }, [selectedYear, existingBatches]);
 
+  // AG Grid column definitions for Editorial Board
   const editorialBoardColumns = [
     {
-      data: 'name',
-      title: 'Name',
-      type: 'text',
-      width: 200,
-      placeholder: 'Full name'
+      field: 'name',
+      headerName: 'Name',
+      editable: true,
+      minWidth: 200
     },
     {
-      data: 'position_in_editorial_board',
-      title: 'Position in Editorial Board',
-      type: 'text',
-      width: 200,
-      placeholder: 'Position'
+      field: 'position_in_editorial_board',
+      headerName: 'Position in Editorial Board',
+      editable: true,
+      minWidth: 200
     },
     {
-      data: 'degree_program_year_level',
-      title: 'Degree Program and Year Level',
-      type: 'text',
-      width: 250,
-      placeholder: 'e.g., BS Computer Science - 3rd Year'
+      field: 'degree_program_year_level',
+      headerName: 'Degree Program and Year Level',
+      editable: true,
+      minWidth: 250
     },
     {
-      data: 'actions',
-      title: 'Actions',
-      type: 'text',
-      readOnly: true,
-      width: 60,
-      renderer: function(instance, td, row) {
-        td.innerHTML = '<button class="delete-row-btn text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" data-row="' + row + '" data-table="editorial" title="Delete this row" style="padding:0;margin:0;border:none;background:none;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>';
-        td.className = 'htCenter htMiddle';
-        td.style.cssText = 'padding:0;vertical-align:middle;overflow:hidden;';
-        return td;
+      field: 'actions',
+      headerName: 'Actions',
+      editable: false,
+      width: 80,
+      cellRenderer: params => {
+        return `<button class="delete-row-btn" data-table="editorial" data-row="${params.node.rowIndex}" title="Delete this row" style="padding:4px;border:none;background:none;cursor:pointer;color:#dc2626;"><svg style="width:16px;height:16px;display:inline-block;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
       }
     }
   ];
 
+  // AG Grid column definitions for Other Publications
   const otherPublicationsColumns = [
     {
-      data: 'name_of_publication',
-      title: 'Name of Publication',
-      type: 'text',
-      width: 200,
-      placeholder: 'Publication name'
+      field: 'name_of_publication',
+      headerName: 'Name of Publication',
+      editable: true,
+      minWidth: 200
     },
     {
-      data: 'department_unit_in_charge',
-      title: 'Department/Unit in Charge',
-      type: 'text',
-      width: 200,
-      placeholder: 'Department/Unit'
+      field: 'department_unit_in_charge',
+      headerName: 'Department/Unit in Charge',
+      editable: true,
+      minWidth: 200
     },
     {
-      data: 'type_of_publication',
-      title: 'Type of Publication',
-      type: 'text',
-      width: 150,
-      placeholder: 'Type'
+      field: 'type_of_publication',
+      headerName: 'Type of Publication',
+      editable: true,
+      minWidth: 150
     },
     {
-      data: 'actions',
-      title: 'Actions',
-      type: 'text',
-      readOnly: true,
-      width: 60,
-      renderer: function(instance, td, row) {
-        td.innerHTML = '<button class="delete-row-btn text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" data-row="' + row + '" data-table="publications" title="Delete this row" style="padding:0;margin:0;border:none;background:none;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>';
-        td.className = 'htCenter htMiddle';
-        td.style.cssText = 'padding:0;vertical-align:middle;overflow:hidden;';
-        return td;
+      field: 'actions',
+      headerName: 'Actions',
+      editable: false,
+      width: 80,
+      cellRenderer: params => {
+        return `<button class="delete-row-btn" data-table="publications" data-row="${params.node.rowIndex}" title="Delete this row" style="padding:4px;border:none;background:none;cursor:pointer;color:#dc2626;"><svg style="width:16px;height:16px;display:inline-block;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
       }
     }
   ];
 
+  // AG Grid column definitions for Programs
   const programsColumns = [
     {
-      data: 'title_of_program',
-      title: 'Title of Program',
-      type: 'text',
-      width: 250,
-      placeholder: 'Program title'
+      field: 'title_of_program',
+      headerName: 'Title of Program',
+      editable: true,
+      minWidth: 250
     },
     {
-      data: 'implementation_date',
-      title: 'Implementation Date',
-      type: 'date',
-      dateFormat: 'YYYY-MM-DD',
-      correctFormat: true,
-      width: 150,
-      placeholder: 'YYYY-MM-DD'
+      field: 'implementation_date',
+      headerName: 'Implementation Date',
+      editable: true,
+      minWidth: 150,
+      cellEditor: 'agDateStringCellEditor'
     },
     {
-      data: 'implementation_venue',
-      title: 'Implementation Venue',
-      type: 'text',
-      width: 200,
-      placeholder: 'Venue'
+      field: 'implementation_venue',
+      headerName: 'Implementation Venue',
+      editable: true,
+      minWidth: 200
     },
     {
-      data: 'target_group_of_participants',
-      title: 'Target Group of Participants',
-      type: 'text',
-      width: 200,
-      placeholder: 'Target group'
+      field: 'target_group_of_participants',
+      headerName: 'Target Group of Participants',
+      editable: true,
+      minWidth: 200
     },
     {
-      data: 'actions',
-      title: 'Actions',
-      type: 'text',
-      readOnly: true,
-      width: 60,
-      renderer: function(instance, td, row) {
-        td.innerHTML = '<button class="delete-row-btn text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" data-row="' + row + '" data-table="programs" title="Delete this row" style="padding:0;margin:0;border:none;background:none;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>';
-        td.className = 'htCenter htMiddle';
-        td.style.cssText = 'padding:0;vertical-align:middle;overflow:hidden;';
-        return td;
+      field: 'actions',
+      headerName: 'Actions',
+      editable: false,
+      width: 80,
+      cellRenderer: params => {
+        return `<button class="delete-row-btn" data-table="programs" data-row="${params.node.rowIndex}" title="Delete this row" style="padding:4px;border:none;background:none;cursor:pointer;color:#dc2626;"><svg style="width:16px;height:16px;display:inline-block;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
       }
     }
   ];
 
   const handleAddRow = (tableType) => {
-    let hot;
-    if (tableType === 'editorial') hot = editorialBoardRef.current?.hotInstance;
-    else if (tableType === 'publications') hot = otherPublicationsRef.current?.hotInstance;
-    else if (tableType === 'programs') hot = programsRef.current?.hotInstance;
-
-    if (hot) {
-      hot.alter('insert_row_below', hot.countRows());
+    if (tableType === 'editorial') {
+      setEditorialBoardData([...editorialBoardData, { name: '', position_in_editorial_board: '', degree_program_year_level: '' }]);
+    } else if (tableType === 'publications') {
+      setOtherPublicationsData([...otherPublicationsData, { name_of_publication: '', department_unit_in_charge: '', type_of_publication: '' }]);
+    } else if (tableType === 'programs') {
+      setProgramsData([...programsData, { title_of_program: '', implementation_date: '', implementation_venue: '', target_group_of_participants: '' }]);
     }
   };
 
   const handleRemoveRow = (tableType, rowIndex) => {
     if (confirm('Are you sure you want to delete this row?')) {
-      let hot;
-      if (tableType === 'editorial') hot = editorialBoardRef.current?.hotInstance;
-      else if (tableType === 'publications') hot = otherPublicationsRef.current?.hotInstance;
-      else if (tableType === 'programs') hot = programsRef.current?.hotInstance;
-
-      if (hot) {
-        hot.alter('remove_row', rowIndex);
+      if (tableType === 'editorial') {
+        setEditorialBoardData(editorialBoardData.filter((_, idx) => idx !== rowIndex));
+      } else if (tableType === 'publications') {
+        setOtherPublicationsData(otherPublicationsData.filter((_, idx) => idx !== rowIndex));
+      } else if (tableType === 'programs') {
+        setProgramsData(programsData.filter((_, idx) => idx !== rowIndex));
       }
     }
   };
@@ -285,88 +258,61 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
       }
     };
 
-    const editorialElement = editorialBoardRef.current?.hotInstance?.rootElement;
-    const publicationsElement = otherPublicationsRef.current?.hotInstance?.rootElement;
-    const programsElement = programsRef.current?.hotInstance?.rootElement;
-
-    if (editorialElement) editorialElement.addEventListener('click', handleClick);
-    if (publicationsElement) publicationsElement.addEventListener('click', handleClick);
-    if (programsElement) programsElement.addEventListener('click', handleClick);
-
-    return () => {
-      if (editorialElement) editorialElement.removeEventListener('click', handleClick);
-      if (publicationsElement) publicationsElement.removeEventListener('click', handleClick);
-      if (programsElement) programsElement.removeEventListener('click', handleClick);
-    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
   }, [editorialBoardData, otherPublicationsData, programsData]);
 
   const handleSubmit = () => {
-    const editorialHot = editorialBoardRef.current?.hotInstance;
-    const publicationsHot = otherPublicationsRef.current?.hotInstance;
-    const programsHot = programsRef.current?.hotInstance;
-
     const editorialBoardsArray = [];
     const otherPublicationsArray = [];
     const programsArray = [];
 
     // Process editorial boards
-    if (editorialHot) {
-      const tableData = editorialHot.getData();
-      for (let i = 0; i < tableData.length; i++) {
-        const row = tableData[i];
-        const [name, position, degreeProgram] = row;
-        if (name || position || degreeProgram) {
-          if (!name || !position || !degreeProgram) {
-            alert(`Editorial Board Row ${i + 1}: Please fill in all fields`);
-            return;
-          }
-          editorialBoardsArray.push({
-            name,
-            position_in_editorial_board: position,
-            degree_program_year_level: degreeProgram
-          });
+    for (let i = 0; i < editorialBoardData.length; i++) {
+      const row = editorialBoardData[i];
+      if (row.name || row.position_in_editorial_board || row.degree_program_year_level) {
+        if (!row.name || !row.position_in_editorial_board || !row.degree_program_year_level) {
+          alert(`Editorial Board Row ${i + 1}: Please fill in all fields`);
+          return;
         }
+        editorialBoardsArray.push({
+          name: row.name,
+          position_in_editorial_board: row.position_in_editorial_board,
+          degree_program_year_level: row.degree_program_year_level
+        });
       }
     }
 
     // Process other publications
-    if (publicationsHot) {
-      const tableData = publicationsHot.getData();
-      for (let i = 0; i < tableData.length; i++) {
-        const row = tableData[i];
-        const [name, department, type] = row;
-        if (name || department || type) {
-          if (!name || !department || !type) {
-            alert(`Other Publications Row ${i + 1}: Please fill in all fields`);
-            return;
-          }
-          otherPublicationsArray.push({
-            name_of_publication: name,
-            department_unit_in_charge: department,
-            type_of_publication: type
-          });
+    for (let i = 0; i < otherPublicationsData.length; i++) {
+      const row = otherPublicationsData[i];
+      if (row.name_of_publication || row.department_unit_in_charge || row.type_of_publication) {
+        if (!row.name_of_publication || !row.department_unit_in_charge || !row.type_of_publication) {
+          alert(`Other Publications Row ${i + 1}: Please fill in all fields`);
+          return;
         }
+        otherPublicationsArray.push({
+          name_of_publication: row.name_of_publication,
+          department_unit_in_charge: row.department_unit_in_charge,
+          type_of_publication: row.type_of_publication
+        });
       }
     }
 
     // Process programs
-    if (programsHot) {
-      const tableData = programsHot.getData();
-      for (let i = 0; i < tableData.length; i++) {
-        const row = tableData[i];
-        const [title, date, venue, targetGroup] = row;
-        if (title || date || venue || targetGroup) {
-          if (!title || !date || !venue || !targetGroup) {
-            alert(`Programs Row ${i + 1}: Please fill in all fields`);
-            return;
-          }
-          programsArray.push({
-            title_of_program: title,
-            implementation_date: date,
-            implementation_venue: venue,
-            target_group_of_participants: targetGroup
-          });
+    for (let i = 0; i < programsData.length; i++) {
+      const row = programsData[i];
+      if (row.title_of_program || row.implementation_date || row.implementation_venue || row.target_group_of_participants) {
+        if (!row.title_of_program || !row.implementation_date || !row.implementation_venue || !row.target_group_of_participants) {
+          alert(`Programs Row ${i + 1}: Please fill in all fields`);
+          return;
         }
+        programsArray.push({
+          title_of_program: row.title_of_program,
+          implementation_date: row.implementation_date,
+          implementation_venue: row.implementation_venue,
+          target_group_of_participants: row.target_group_of_participants
+        });
       }
     }
 
@@ -401,8 +347,6 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
 
   return (
     <HEILayout title="Submit Annex G">
-      <style>{HOT_TABLE_DARK_MODE_STYLES}</style>
-
       <div className="space-y-6">
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -650,22 +594,17 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
             </p>
           </div>
 
-          <div className="overflow-x-auto mb-4">
-            <HotTable
+          <div className="mb-4">
+            <AGGridEditor
               ref={editorialBoardRef}
-              data={editorialBoardData}
-              colHeaders={true}
-              rowHeaders={true}
-              columns={editorialBoardColumns}
-              height="auto"
-              minRows={1}
-              licenseKey="non-commercial-and-evaluation"
-              stretchH="all"
-              autoWrapRow={true}
-              autoWrapCol={true}
-              manualColumnResize={true}
-              contextMenu={['row_above', 'row_below', 'undo', 'redo', 'copy', 'cut']}
-              className={isDark ? 'dark-table' : ''}
+              rowData={editorialBoardData}
+              columnDefs={editorialBoardColumns}
+              onCellValueChanged={(params) => {
+                const updatedData = [...editorialBoardData];
+                updatedData[params.node.rowIndex] = params.data;
+                setEditorialBoardData(updatedData);
+              }}
+              height="300px"
             />
           </div>
 
@@ -689,22 +628,17 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
             </p>
           </div>
 
-          <div className="overflow-x-auto mb-4">
-            <HotTable
+          <div className="mb-4">
+            <AGGridEditor
               ref={otherPublicationsRef}
-              data={otherPublicationsData}
-              colHeaders={true}
-              rowHeaders={true}
-              columns={otherPublicationsColumns}
-              height="auto"
-              minRows={1}
-              licenseKey="non-commercial-and-evaluation"
-              stretchH="all"
-              autoWrapRow={true}
-              autoWrapCol={true}
-              manualColumnResize={true}
-              contextMenu={['row_above', 'row_below', 'undo', 'redo', 'copy', 'cut']}
-              className={isDark ? 'dark-table' : ''}
+              rowData={otherPublicationsData}
+              columnDefs={otherPublicationsColumns}
+              onCellValueChanged={(params) => {
+                const updatedData = [...otherPublicationsData];
+                updatedData[params.node.rowIndex] = params.data;
+                setOtherPublicationsData(updatedData);
+              }}
+              height="300px"
             />
           </div>
 
@@ -728,22 +662,17 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
             </p>
           </div>
 
-          <div className="overflow-x-auto mb-4">
-            <HotTable
+          <div className="mb-4">
+            <AGGridEditor
               ref={programsRef}
-              data={programsData}
-              colHeaders={true}
-              rowHeaders={true}
-              columns={programsColumns}
-              height="auto"
-              minRows={1}
-              licenseKey="non-commercial-and-evaluation"
-              stretchH="all"
-              autoWrapRow={true}
-              autoWrapCol={true}
-              manualColumnResize={true}
-              contextMenu={['row_above', 'row_below', 'undo', 'redo', 'copy', 'cut']}
-              className={isDark ? 'dark-table' : ''}
+              rowData={programsData}
+              columnDefs={programsColumns}
+              onCellValueChanged={(params) => {
+                const updatedData = [...programsData];
+                updatedData[params.node.rowIndex] = params.data;
+                setProgramsData(updatedData);
+              }}
+              height="300px"
             />
           </div>
 

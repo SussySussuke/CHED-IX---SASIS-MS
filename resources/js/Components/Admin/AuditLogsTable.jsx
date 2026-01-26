@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Head, router } from '@inertiajs/react';
-import DataTable from '@/Components/Common/DataTable';
+import React, { useState } from 'react';
+import { Head } from '@inertiajs/react';
+import AGGridViewer from '@/Components/Common/AGGridViewer';
 import IconButton from '@/Components/Common/IconButton';
 import StatusBadge from '@/Components/Widgets/StatusBadge';
 import { IoEyeOutline, IoClose } from 'react-icons/io5';
@@ -8,16 +8,6 @@ import { IoEyeOutline, IoClose } from 'react-icons/io5';
 /**
  * Shared Audit Logs Table Component
  * Used by both Admin and SuperAdmin audit log pages
- * 
- * @param {Object} Layout - Layout component to wrap the page
- * @param {string} pageTitle - Page title for Head component
- * @param {string} headerTitle - Main header title
- * @param {string} headerDescription - Header description text
- * @param {Object} logs - Paginated logs data with data array and links
- * @param {Object} filters - Available filter options
- * @param {Object} queryParams - Current query parameters
- * @param {string} routeName - Route name for applying filters
- * @param {boolean} showUserRoleFilter - Whether to show user role filter (SuperAdmin only)
  */
 export default function AuditLogsTable({
   Layout,
@@ -25,44 +15,8 @@ export default function AuditLogsTable({
   headerTitle,
   headerDescription,
   logs,
-  filters,
-  queryParams,
-  routeName,
-  showUserRoleFilter = false,
 }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUserRole, setSelectedUserRole] = useState(queryParams?.user_role || '');
-  const [selectedAction, setSelectedAction] = useState(queryParams?.action || '');
-  const [selectedEntityType, setSelectedEntityType] = useState(queryParams?.entity_type || '');
   const [modalLog, setModalLog] = useState(null);
-
-  // Auto-apply filters when they change
-  useEffect(() => {
-    const params = {};
-    if (showUserRoleFilter && selectedUserRole) params.user_role = selectedUserRole;
-    if (selectedAction) params.action = selectedAction;
-    if (selectedEntityType) params.entity_type = selectedEntityType;
-    
-    // Only navigate if filters have actually changed from query params
-    const hasChanges = 
-      (showUserRoleFilter && selectedUserRole !== (queryParams?.user_role || '')) ||
-      selectedAction !== (queryParams?.action || '') ||
-      selectedEntityType !== (queryParams?.entity_type || '');
-    
-    if (hasChanges) {
-      router.get(window.location.pathname, params, { preserveState: true, preserveScroll: true });
-    }
-  }, [selectedUserRole, selectedAction, selectedEntityType]);
-
-  // Filter logs based on search term
-  const filteredLogs = logs.data.filter((log) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      log.user_name.toLowerCase().includes(searchLower) ||
-      log.entity_name?.toLowerCase().includes(searchLower) ||
-      log.description.toLowerCase().includes(searchLower)
-    );
-  });
 
   // Map action colors to badge colors
   const getActionColor = (actionColor) => {
@@ -87,81 +41,112 @@ export default function AuditLogsTable({
     return colorMap[entityColor] || 'gray';
   };
 
-  const columns = [
+  // AG Grid column definitions
+  const columnDefs = [
     {
-      key: 'created_at',
-      label: 'Date & Time',
-      render: (log) => (
-        <div>
-          <div className="text-gray-900 dark:text-white font-medium">{log.created_at}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">{log.created_at_relative}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'user_name',
-      label: 'User',
-      render: (log) => (
-        <div>
-          <div className="text-gray-900 dark:text-white font-medium">{log.user_name}</div>
-          <div className="text-xs mt-1">
-            <StatusBadge
-              color={log.user_role === 'superadmin' ? 'purple' : 'blue'}
-              label={log.user_role.charAt(0).toUpperCase() + log.user_role.slice(1)}
-            />
+      field: 'created_at',
+      headerName: 'Date & Time',
+      width: 200,
+      cellRenderer: (params) => {
+        const log = params.data;
+        return (
+          <div>
+            <div className="text-gray-900 dark:text-white font-medium">{log.created_at}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">{log.created_at_relative}</div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
-      key: 'action',
-      label: 'Action',
-      render: (log) => (
-        <StatusBadge
-          color={getActionColor(log.action_color)}
-          label={log.action.charAt(0).toUpperCase() + log.action.slice(1)}
-        />
-      ),
+      field: 'user_name',
+      headerName: 'User',
+      width: 200,
+      cellRenderer: (params) => {
+        const log = params.data;
+        return (
+          <div>
+            <div className="text-gray-900 dark:text-white font-medium">{log.user_name}</div>
+            <div className="mt-1">
+              <StatusBadge
+                color={log.user_role === 'superadmin' ? 'purple' : 'blue'}
+                label={log.user_role.charAt(0).toUpperCase() + log.user_role.slice(1)}
+              />
+            </div>
+          </div>
+        );
+      },
     },
     {
-      key: 'entity_type',
-      label: 'Entity Type',
-      render: (log) => (
-        <StatusBadge
-          color={getEntityTypeColor(log.entity_type_color)}
-          label={log.entity_type}
-        />
-      ),
+      field: 'action',
+      headerName: 'Action',
+      width: 140,
+      cellRenderer: (params) => {
+        const log = params.data;
+        return (
+          <StatusBadge
+            color={getActionColor(log.action_color)}
+            label={log.action.charAt(0).toUpperCase() + log.action.slice(1)}
+          />
+        );
+      },
     },
     {
-      key: 'entity_name',
-      label: 'Entity',
-      render: (log) => (
-        <div className="text-gray-900 dark:text-white">{log.entity_name || 'N/A'}</div>
-      ),
+      field: 'entity_type',
+      headerName: 'Entity Type',
+      width: 160,
+      cellRenderer: (params) => {
+        const log = params.data;
+        return (
+          <StatusBadge
+            color={getEntityTypeColor(log.entity_type_color)}
+            label={log.entity_type}
+          />
+        );
+      },
     },
     {
-      key: 'description',
-      label: 'Description',
-      render: (log) => (
-        <div className="max-w-md">
+      field: 'entity_name',
+      headerName: 'Entity',
+      width: 200,
+      cellRenderer: (params) => {
+        const log = params.data;
+        return (
+          <div className="text-gray-900 dark:text-white">{log.entity_name || 'N/A'}</div>
+        );
+      },
+    },
+    {
+      field: 'description',
+      headerName: 'Description',
+      flex: 1,
+      minWidth: 300,
+      cellRenderer: (params) => {
+        const log = params.data;
+        return (
           <div className="text-gray-900 dark:text-white">{log.description}</div>
-        </div>
-      ),
+        );
+      },
     },
     {
-      key: 'actions',
-      label: 'Details',
-      align: 'center',
-      render: (log) => (
-        <IconButton
-          variant="blue"
-          onClick={() => setModalLog(log)}
-          title="View details"
-        >
-          <IoEyeOutline size={18} />
-        </IconButton>
-      ),
+      field: 'actions',
+      headerName: 'Details',
+      width: 100,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params) => {
+        const log = params.data;
+        return (
+          <div className="flex justify-center">
+            <IconButton
+              variant="blue"
+              onClick={() => setModalLog(log)}
+              title="View details"
+            >
+              <IoEyeOutline size={18} />
+            </IconButton>
+          </div>
+        );
+      },
     },
   ];
 
@@ -169,113 +154,26 @@ export default function AuditLogsTable({
     <Layout>
       <Head title={pageTitle} />
 
-      <div className="py-8">
-        <div className="mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {headerTitle}
-            </h1>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              {headerDescription}
-            </p>
-          </div>
-
-          {/* Filters */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6 border border-gray-200 dark:border-gray-700">
-            <div className={`grid grid-cols-1 ${showUserRoleFilter ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
-              {showUserRoleFilter && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    User Role
-                  </label>
-                  <select
-                    value={selectedUserRole}
-                    onChange={(e) => setSelectedUserRole(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                    <option value="">All Roles</option>
-                    {filters.user_roles?.map((role) => (
-                      <option key={role} value={role}>
-                        {role.charAt(0).toUpperCase() + role.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Action
-                </label>
-                <select
-                  value={selectedAction}
-                  onChange={(e) => setSelectedAction(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option value="">All Actions</option>
-                  {filters.actions.map((action) => (
-                    <option key={action} value={action}>
-                      {action.charAt(0).toUpperCase() + action.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Entity Type
-                </label>
-                <select
-                  value={selectedEntityType}
-                  onChange={(e) => setSelectedEntityType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option value="">All Types</option>
-                  {filters.entity_types.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Table */}
-          <DataTable
-            columns={columns}
-            data={filteredLogs}
-            searchValue={searchTerm}
-            onSearchChange={setSearchTerm}
-            searchPlaceholder="Search by user, entity, or description..."
-            emptyMessage="No audit logs found"
-          />
-
-          {/* Pagination */}
-          {logs.links && logs.links.length > 3 && (
-            <div className="mt-6 flex justify-center">
-              <nav className="inline-flex rounded-md shadow-sm -space-x-px">
-                {logs.links.map((link, index) => (
-                  <a
-                    key={index}
-                    href={link.url || '#'}
-                    className={`px-3 py-2 text-sm font-medium ${
-                      link.active
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    } ${
-                      index === 0 ? 'rounded-l-md' : ''
-                    } ${
-                      index === logs.links.length - 1 ? 'rounded-r-md' : ''
-                    } border border-gray-300 dark:border-gray-600`}
-                    dangerouslySetInnerHTML={{ __html: link.label }}
-                  />
-                ))}
-              </nav>
-            </div>
-          )}
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            {headerTitle}
+          </h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            {headerDescription}
+          </p>
         </div>
+
+        {/* AG Grid Table */}
+        <AGGridViewer
+            rowData={logs.data}
+            columnDefs={columnDefs}
+            height="700px"
+            quickFilterPlaceholder="Search by user, entity, or description..."
+            paginationPageSize={50}
+            paginationPageSizeSelector={[25, 50, 100, 200]}
+          />
       </div>
 
       {/* Audit Log Details Modal */}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { IoCheckmarkCircle } from 'react-icons/io5';
-import { HotTable } from '@handsontable/react';
+import AGGridViewer from '../Common/AGGridViewer';
 
 // Annex D Renderer
 export const renderAnnexD = (data, isDark) => {
@@ -105,9 +105,9 @@ export const renderAnnexG = (data, isDark) => {
     const editorialBoards = data.editorial_boards || [];
 
     const editorialBoardColumns = [
-        { data: 'name', title: 'Name', type: 'text', readOnly: true, width: 200 },
-        { data: 'position_in_editorial_board', title: 'Position', type: 'text', readOnly: true, width: 200 },
-        { data: 'degree_program_year_level', title: 'Degree Program & Year', type: 'text', readOnly: true, width: 250 }
+        { field: 'name', headerName: 'Name', flex: 1, minWidth: 200 },
+        { field: 'position_in_editorial_board', headerName: 'Position', flex: 1, minWidth: 200 },
+        { field: 'degree_program_year_level', headerName: 'Degree Program & Year', flex: 1, minWidth: 250 }
     ];
 
     return (
@@ -127,19 +127,13 @@ export const renderAnnexG = (data, isDark) => {
             )}
             {editorialBoards.length > 0 && (
                 <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Editorial Board Members</h3>
-                    <div className="overflow-auto">
-                        <HotTable
-                            data={editorialBoards}
-                            colHeaders={true}
-                            rowHeaders={true}
-                            columns={editorialBoardColumns}
-                            height="auto"
-                            licenseKey="non-commercial-and-evaluation"
-                            stretchH="all"
-                            className={isDark ? 'dark-table' : ''}
-                        />
-                    </div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Editorial Board Members ({editorialBoards.length} entries)</h3>
+                    <AGGridViewer
+                        rowData={editorialBoards}
+                        columnDefs={editorialBoardColumns}
+                        height="400px"
+                        paginationPageSize={10}
+                    />
                 </div>
             )}
         </div>
@@ -152,17 +146,23 @@ export const renderAnnexH = (data, isDark) => {
     const admissionStatistics = data.admission_statistics || [];
 
     const servicesColumns = [
-        { data: 'service_type', title: 'Service Type', type: 'text', readOnly: true, width: 250 },
-        { data: 'with', title: 'Available', type: 'checkbox', readOnly: true, width: 100, className: 'htCenter htMiddle' },
-        { data: 'supporting_documents', title: 'Supporting Documents', type: 'text', readOnly: true, width: 200 },
-        { data: 'remarks', title: 'Remarks', type: 'text', readOnly: true, width: 200 }
+        { field: 'service_type', headerName: 'Service Type', flex: 1, minWidth: 250 },
+        { 
+            field: 'with', 
+            headerName: 'Available', 
+            width: 120,
+            cellRenderer: params => params.value ? '✓' : '',
+            cellStyle: { textAlign: 'center' }
+        },
+        { field: 'supporting_documents', headerName: 'Supporting Documents', flex: 1, minWidth: 200 },
+        { field: 'remarks', headerName: 'Remarks', flex: 1, minWidth: 200 }
     ];
 
     const statisticsColumns = [
-        { data: 'program', title: 'Program', type: 'text', readOnly: true, width: 250 },
-        { data: 'applicants', title: 'Applicants', type: 'numeric', readOnly: true, width: 120 },
-        { data: 'admitted', title: 'Admitted', type: 'numeric', readOnly: true, width: 120 },
-        { data: 'enrolled', title: 'Enrolled', type: 'numeric', readOnly: true, width: 120 }
+        { field: 'program', headerName: 'Program', flex: 1, minWidth: 250 },
+        { field: 'applicants', headerName: 'Applicants', width: 120, type: 'numericColumn' },
+        { field: 'admitted', headerName: 'Admitted', width: 120, type: 'numericColumn' },
+        { field: 'enrolled', headerName: 'Enrolled', width: 120, type: 'numericColumn' }
     ];
 
     return (
@@ -170,35 +170,23 @@ export const renderAnnexH = (data, isDark) => {
             {admissionServices.length > 0 && (
                 <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Admission Services ({admissionServices.length} entries)</h3>
-                    <div className="overflow-auto">
-                        <HotTable
-                            data={admissionServices}
-                            colHeaders={true}
-                            rowHeaders={true}
-                            columns={servicesColumns}
-                            height="auto"
-                            licenseKey="non-commercial-and-evaluation"
-                            stretchH="all"
-                            className={isDark ? 'dark-table' : ''}
-                        />
-                    </div>
+                    <AGGridViewer
+                        rowData={admissionServices}
+                        columnDefs={servicesColumns}
+                        height="400px"
+                        paginationPageSize={10}
+                    />
                 </div>
             )}
             {admissionStatistics.length > 0 && (
                 <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Admission Statistics ({admissionStatistics.length} entries)</h3>
-                    <div className="overflow-auto">
-                        <HotTable
-                            data={admissionStatistics}
-                            colHeaders={true}
-                            rowHeaders={true}
-                            columns={statisticsColumns}
-                            height="auto"
-                            licenseKey="non-commercial-and-evaluation"
-                            stretchH="all"
-                            className={isDark ? 'dark-table' : ''}
-                        />
-                    </div>
+                    <AGGridViewer
+                        rowData={admissionStatistics}
+                        columnDefs={statisticsColumns}
+                        height="400px"
+                        paginationPageSize={10}
+                    />
                 </div>
             )}
         </div>
