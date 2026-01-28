@@ -131,6 +131,7 @@ export default function AuditLogsTable({
       field: 'actions',
       headerName: 'Details',
       width: 100,
+      pinned: 'right',
       sortable: false,
       filter: false,
       cellRenderer: (params) => {

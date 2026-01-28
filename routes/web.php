@@ -12,17 +12,21 @@ use App\Http\Controllers\HEI\DashboardController;
 use App\Http\Controllers\HEI\AnnexAController;
 use App\Http\Controllers\HEI\AnnexBController;
 use App\Http\Controllers\HEI\AnnexCController;
+use App\Http\Controllers\HEI\AnnexC1Controller;
 use App\Http\Controllers\HEI\AnnexDController;
 use App\Http\Controllers\HEI\AnnexEController;
 use App\Http\Controllers\HEI\AnnexFController;
 use App\Http\Controllers\HEI\AnnexGController;
 use App\Http\Controllers\HEI\AnnexHController;
 use App\Http\Controllers\HEI\AnnexIController;
+use App\Http\Controllers\HEI\AnnexI1Controller;
 use App\Http\Controllers\HEI\AnnexJController;
 use App\Http\Controllers\HEI\AnnexKController;
 use App\Http\Controllers\HEI\AnnexLController;
+use App\Http\Controllers\HEI\AnnexL1Controller;
 use App\Http\Controllers\HEI\AnnexMController;
 use App\Http\Controllers\HEI\AnnexNController;
+use App\Http\Controllers\HEI\AnnexN1Controller;
 use App\Http\Controllers\HEI\AnnexOController;
 use Illuminate\Support\Facades\Route;
 
@@ -146,6 +150,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/annex-c/{batch_id}/edit', [AnnexCController::class, 'edit'])->name('hei.annex-c.edit');
         Route::post('/annex-c/{batch_id}/cancel', [AnnexCController::class, 'cancel'])->name('hei.annex-c.cancel');
 
+        // Annex C-1 routes
+        Route::get('/annex-c-1/submit', [AnnexC1Controller::class, 'create'])->name('hei.annex-c-1.submit');
+        Route::post('/annex-c-1', [AnnexC1Controller::class, 'store'])->name('hei.annex-c-1.store');
+        Route::get('/annex-c-1/history', [AnnexC1Controller::class, 'history'])->name('hei.annex-c-1.history');
+        Route::get('/annex-c-1/{batch_id}/programs', [AnnexC1Controller::class, 'getBatchPrograms'])->name('hei.annex-c-1.programs');
+        Route::get('/annex-c-1/{batch_id}/edit', [AnnexC1Controller::class, 'edit'])->name('hei.annex-c-1.edit');
+        Route::post('/annex-c-1/{batch_id}/cancel', [AnnexC1Controller::class, 'cancel'])->name('hei.annex-c-1.cancel');
+
         // Annex D routes
         Route::get('/annex-d/submit', [AnnexDController::class, 'create'])->name('hei.annex-d.submit');
         Route::post('/annex-d', [AnnexDController::class, 'store'])->name('hei.annex-d.store');
@@ -193,6 +205,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/annex-i/{batch_id}/edit', [AnnexIController::class, 'edit'])->name('hei.annex-i.edit');
         Route::post('/annex-i/{batch_id}/cancel', [AnnexIController::class, 'cancel'])->name('hei.annex-i.cancel');
 
+        // Annex I-1 routes
+        Route::get('/annex-i-1/submit', [AnnexI1Controller::class, 'create'])->name('hei.annex-i-1.submit');
+        Route::post('/annex-i-1', [AnnexI1Controller::class, 'store'])->name('hei.annex-i-1.store');
+        Route::get('/annex-i-1/history', [AnnexI1Controller::class, 'history'])->name('hei.annex-i-1.history');
+        Route::get('/annex-i-1/{batch_id}/food-services', [AnnexI1Controller::class, 'getBatchFoodServices'])->name('hei.annex-i-1.food-services');
+        Route::get('/annex-i-1/{batch_id}/edit', [AnnexI1Controller::class, 'edit'])->name('hei.annex-i-1.edit');
+        Route::post('/annex-i-1/{batch_id}/cancel', [AnnexI1Controller::class, 'cancel'])->name('hei.annex-i-1.cancel');
+
         // Annex J routes
         Route::get('/annex-j/submit', [AnnexJController::class, 'create'])->name('hei.annex-j.submit');
         Route::post('/annex-j', [AnnexJController::class, 'store'])->name('hei.annex-j.store');
@@ -217,6 +237,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/annex-l/{batch_id}/edit', [AnnexLController::class, 'edit'])->name('hei.annex-l.edit');
         Route::post('/annex-l/{batch_id}/cancel', [AnnexLController::class, 'cancel'])->name('hei.annex-l.cancel');
 
+        // Annex L-1 routes
+        Route::get('/annex-l-1/submit', [AnnexL1Controller::class, 'create'])->name('hei.annex-l-1.submit');
+        Route::post('/annex-l-1', [AnnexL1Controller::class, 'store'])->name('hei.annex-l-1.store');
+        Route::get('/annex-l-1/history', [AnnexL1Controller::class, 'history'])->name('hei.annex-l-1.history');
+        Route::get('/annex-l-1/{batch_id}/international-services', [AnnexL1Controller::class, 'getBatchInternationalServices'])->name('hei.annex-l-1.international-services');
+        Route::get('/annex-l-1/{batch_id}/edit', [AnnexL1Controller::class, 'edit'])->name('hei.annex-l-1.edit');
+        Route::post('/annex-l-1/{batch_id}/cancel', [AnnexL1Controller::class, 'cancel'])->name('hei.annex-l-1.cancel');
+
         // Annex M routes
         Route::get('/annex-m/submit', [AnnexMController::class, 'create'])->name('hei.annex-m.submit');
         Route::post('/annex-m', [AnnexMController::class, 'store'])->name('hei.annex-m.store');
@@ -232,6 +260,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/annex-n/{batch_id}/activities', [AnnexNController::class, 'getBatchActivities'])->name('hei.annex-n.activities');
         Route::get('/annex-n/{batch_id}/edit', [AnnexNController::class, 'edit'])->name('hei.annex-n.edit');
         Route::post('/annex-n/{batch_id}/cancel', [AnnexNController::class, 'cancel'])->name('hei.annex-n.cancel');
+
+        // Annex N-1 routes
+        Route::get('/annex-n-1/submit', [AnnexN1Controller::class, 'create'])->name('hei.annex-n-1.submit');
+        Route::post('/annex-n-1', [AnnexN1Controller::class, 'store'])->name('hei.annex-n-1.store');
+        Route::get('/annex-n-1/history', [AnnexN1Controller::class, 'history'])->name('hei.annex-n-1.history');
+        Route::get('/annex-n-1/{batch_id}/sports-programs', [AnnexN1Controller::class, 'getBatchSportsPrograms'])->name('hei.annex-n-1.sports-programs');
+        Route::get('/annex-n-1/{batch_id}/edit', [AnnexN1Controller::class, 'edit'])->name('hei.annex-n-1.edit');
+        Route::post('/annex-n-1/{batch_id}/cancel', [AnnexN1Controller::class, 'cancel'])->name('hei.annex-n-1.cancel');
 
         // Annex O routes
         Route::get('/annex-o/submit', [AnnexOController::class, 'create'])->name('hei.annex-o.submit');

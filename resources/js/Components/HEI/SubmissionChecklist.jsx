@@ -18,7 +18,6 @@ const SubmissionChecklist = ({ checklist, selectedYear }) => {
           <ChecklistCard
             key={item.annex}
             annex={item.annex}
-            name={item.name}
             status={item.status}
             recordCount={item.recordCount}
             lastUpdated={item.lastUpdated}

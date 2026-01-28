@@ -2,8 +2,9 @@ import React from 'react';
 import { Link } from '@inertiajs/react';
 import { IoDocument, IoBook, IoChevronForward } from 'react-icons/io5';
 import StatusBadge from '../Widgets/StatusBadge';
+import { getAnnexName } from '../../Config/formConfig';
 
-const ChecklistCard = ({ annex, name, status, lastUpdated, selectedYear }) => {
+const ChecklistCard = ({ annex, status, lastUpdated, selectedYear }) => {
   // Determine filter URL - no status filters, just annex and year
   const getFilterUrl = () => {
     const baseUrl = '/hei/submissions/history';
@@ -21,6 +22,9 @@ const ChecklistCard = ({ annex, name, status, lastUpdated, selectedYear }) => {
 
   const CardIcon = annex === 'SUMMARY' ? IoBook : IoDocument;
 
+  // Get the display name from formConfig (single source of truth)
+  const displayName = annex === 'SUMMARY' ? 'General Information Summary' : getAnnexName(annex);
+
   // Show badge for: submitted, published, under review, and not started
   const shouldShowBadge = ['submitted', 'published', 'request', 'not_started'].includes(status);
 
@@ -36,7 +40,7 @@ const ChecklistCard = ({ annex, name, status, lastUpdated, selectedYear }) => {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-gray-900 dark:text-white">
-              {annex === 'SUMMARY' ? 'General Information Summary' : `Annex ${annex}: ${name}`}
+              {annex === 'SUMMARY' ? displayName : `Annex ${annex}: ${displayName}`}
             </h3>
             {shouldShowBadge && <StatusBadge status={status} />}
           </div>

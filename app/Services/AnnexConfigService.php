@@ -16,78 +16,79 @@ class AnnexConfigService
         return [
             'A' => [
                 'model' => \App\Models\AnnexABatch::class,
-                'relation' => 'programs',
-                'name' => 'List of Programs Offered'
+                'relation' => 'programs'
             ],
             'B' => [
                 'model' => \App\Models\AnnexBBatch::class,
-                'relation' => 'programs',
-                'name' => 'Curricular Programs'
+                'relation' => 'programs'
             ],
             'C' => [
                 'model' => \App\Models\AnnexCBatch::class,
-                'relation' => 'programs',
-                'name' => 'Enrolment'
+                'relation' => 'programs'
+            ],
+            'C-1' => [
+                'model' => \App\Models\AnnexC1Batch::class,
+                'relation' => 'programs'
             ],
             'D' => [
                 'model' => \App\Models\AnnexDSubmission::class,
-                'relation' => null,
-                'name' => 'Graduates'
+                'relation' => null
             ],
             'E' => [
                 'model' => \App\Models\AnnexEBatch::class,
-                'relation' => 'organizations',
-                'name' => 'Student Services'
+                'relation' => 'organizations'
             ],
             'F' => [
                 'model' => \App\Models\AnnexFBatch::class,
-                'relation' => 'activities',
-                'name' => 'Institutional Linkages'
+                'relation' => 'activities'
             ],
             'G' => [
                 'model' => \App\Models\AnnexGSubmission::class,
-                'relation' => null,
-                'name' => 'Research'
+                'relation' => null
             ],
             'H' => [
                 'model' => \App\Models\AnnexHBatch::class,
-                'relation' => 'admissionStatistics',
-                'name' => 'Admission Statistics'
+                'relation' => 'admissionStatistics'
             ],
             'I' => [
                 'model' => \App\Models\AnnexIBatch::class,
-                'relation' => 'scholarships',
-                'name' => 'Scholarship Grants'
+                'relation' => 'scholarships'
+            ],
+            'I-1' => [
+                'model' => \App\Models\AnnexI1Batch::class,
+                'relation' => 'foodServices'
             ],
             'J' => [
                 'model' => \App\Models\AnnexJBatch::class,
-                'relation' => 'programs',
-                'name' => 'Faculty Development'
+                'relation' => 'programs'
             ],
             'K' => [
                 'model' => \App\Models\AnnexKBatch::class,
-                'relation' => 'committees',
-                'name' => 'Governance'
+                'relation' => 'committees'
             ],
             'L' => [
                 'model' => \App\Models\AnnexLBatch::class,
-                'relation' => 'housing',
-                'name' => 'Physical Facilities'
+                'relation' => 'housing'
+            ],
+            'L-1' => [
+                'model' => \App\Models\AnnexL1Batch::class,
+                'relation' => 'internationalServices'
             ],
             'M' => [
                 'model' => \App\Models\AnnexMBatch::class,
-                'relation' => 'statistics',
-                'name' => 'Library Services'
+                'relation' => 'statistics'
             ],
             'N' => [
                 'model' => \App\Models\AnnexNBatch::class,
-                'relation' => 'activities',
-                'name' => 'Extension Services'
+                'relation' => 'activities'
+            ],
+            'N-1' => [
+                'model' => \App\Models\AnnexN1Batch::class,
+                'relation' => 'sportsPrograms'
             ],
             'O' => [
                 'model' => \App\Models\AnnexOBatch::class,
-                'relation' => 'programs',
-                'name' => 'Institutional Sustainability'
+                'relation' => 'programs'
             ],
         ];
     }
@@ -129,10 +130,13 @@ class AnnexConfigService
 
     /**
      * Get annex display name
+     * NOTE: Display names are now managed in frontend (formConfig.js)
+     * This method is deprecated and should not be used
+     * @deprecated Use frontend ANNEX_NAMES instead
      */
     public static function getAnnexName(string $annexType): ?string
     {
-        $config = self::getAnnexConfig($annexType);
-        return $config['name'] ?? null;
+        // Names are now in frontend formConfig.js
+        return null;
     }
 }

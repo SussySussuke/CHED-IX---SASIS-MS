@@ -89,7 +89,6 @@ const HEIAccounts = ({ heis = [] }) => {
       headerName: 'UII',
       field: 'uii',
       width: 120,
-      pinned: 'left',
       filter: 'agTextColumnFilter',
       cellStyle: { fontWeight: '500' },
     },

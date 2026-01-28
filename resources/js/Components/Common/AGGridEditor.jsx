@@ -72,6 +72,9 @@ const AGGridEditor = ({
   const defaultGridOptions = useMemo(() => ({
     theme,
 
+    // Tooltips
+    tooltipShowDelay: 500, // Show tooltip after 0.5 seconds instead of 2 seconds
+
     // Selection
     cellSelection: true,
 
@@ -130,7 +133,7 @@ const AGGridEditor = ({
 
     ...gridOptions,
   }), [
-    theme,
+    theme, // theme is now stable and won't change on theme toggle
     enableUndo,
     singleClickEdit,
     onCellValueChanged,

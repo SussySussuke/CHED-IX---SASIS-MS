@@ -13,11 +13,14 @@ use App\Models\AnnexFBatch;
 use App\Models\AnnexGSubmission;
 use App\Models\AnnexHBatch;
 use App\Models\AnnexIBatch;
+use App\Models\AnnexI1Batch;
 use App\Models\AnnexJBatch;
 use App\Models\AnnexKBatch;
 use App\Models\AnnexLBatch;
+use App\Models\AnnexL1Batch;
 use App\Models\AnnexMBatch;
 use App\Models\AnnexNBatch;
+use App\Models\AnnexN1Batch;
 use App\Models\AnnexOBatch;
 
 class MERFormBuilder
@@ -154,6 +157,11 @@ class MERFormBuilder
                 'rows' => $this->getAnnexIRows($heiId, $academicYear),
             ],
             [
+                'service_name' => '3. Food Services',
+                'annex_type' => 'annex_i_1',
+                'rows' => $this->getAnnexI1Rows($heiId, $academicYear),
+            ],
+            [
                 'service_name' => '4. Health Services',
                 'annex_type' => 'annex_j',
                 'rows' => $this->getAnnexJRows($heiId, $academicYear),
@@ -169,6 +177,11 @@ class MERFormBuilder
                 'rows' => $this->getAnnexLRows($heiId, $academicYear),
             ],
             [
+                'service_name' => '7. Foreign/International Students Services',
+                'annex_type' => 'annex_l_1',
+                'rows' => $this->getAnnexL1Rows($heiId, $academicYear),
+            ],
+            [
                 'service_name' => '8. Services for Students with Special Needs and Persons with Disabilities',
                 'annex_type' => 'annex_m',
                 'rows' => $this->getAnnexMRows($heiId, $academicYear),
@@ -177,6 +190,11 @@ class MERFormBuilder
                 'service_name' => '9. Cultural and Arts Program',
                 'annex_type' => 'annex_n',
                 'rows' => $this->getAnnexNRows($heiId, $academicYear),
+            ],
+            [
+                'service_name' => '10. Sports Development Program',
+                'annex_type' => 'annex_n_1',
+                'rows' => $this->getAnnexN1Rows($heiId, $academicYear),
             ],
             [
                 'service_name' => '11. Social and Community Involvement Programs',
@@ -644,6 +662,38 @@ class MERFormBuilder
         })->toArray();
     }
 
+    private function getAnnexI1Rows($heiId, $academicYear)
+    {
+        $batch = AnnexI1Batch::where('hei_id', $heiId)
+            ->where('academic_year', $academicYear)
+            ->whereIn('status', ['submitted', 'published'])
+            ->latest()
+            ->first();
+
+        if (!$batch || !$batch->foodServices) {
+            return [];
+        }
+
+        return $batch->foodServices->map(function ($service) use ($batch) {
+            $remark = CHEDRemark::getRemarkForRow('annex_i_1', $service->id);
+
+            return [
+                'id' => $service->id,
+                'batch_id' => $batch->batch_id,
+                'service_name' => $service->service_name,
+                'service_type' => $service->service_type,
+                'operator_name' => $service->operator_name,
+                'location' => $service->location,
+                'students_served' => $service->number_of_students_served ?? 0,
+                'face_to_face' => true,
+                'online' => false,
+                'hei_remarks' => $service->remarks ?? null,
+                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark_id' => $remark?->id,
+            ];
+        })->toArray();
+    }
+
     private function getAnnexJRows($heiId, $academicYear)
     {
         $batch = AnnexJBatch::where('hei_id', $heiId)
@@ -732,6 +782,38 @@ class MERFormBuilder
         })->toArray();
     }
 
+    private function getAnnexL1Rows($heiId, $academicYear)
+    {
+        $batch = AnnexL1Batch::where('hei_id', $heiId)
+            ->where('academic_year', $academicYear)
+            ->whereIn('status', ['submitted', 'published'])
+            ->latest()
+            ->first();
+
+        if (!$batch || !$batch->internationalServices) {
+            return [];
+        }
+
+        return $batch->internationalServices->map(function ($service) use ($batch) {
+            $remark = CHEDRemark::getRemarkForRow('annex_l_1', $service->id);
+
+            return [
+                'id' => $service->id,
+                'batch_id' => $batch->batch_id,
+                'service_name' => $service->service_name,
+                'service_type' => $service->service_type,
+                'target_nationality' => $service->target_nationality,
+                'students_served' => $service->number_of_students_served ?? 0,
+                'officer_in_charge' => $service->officer_in_charge,
+                'face_to_face' => true,
+                'online' => false,
+                'hei_remarks' => $service->remarks ?? null,
+                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark_id' => $remark?->id,
+            ];
+        })->toArray();
+    }
+
     private function getAnnexMRows($heiId, $academicYear)
     {
         $batch = AnnexMBatch::where('hei_id', $heiId)
@@ -789,6 +871,39 @@ class MERFormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => $activity->remarks,
+                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark_id' => $remark?->id,
+            ];
+        })->toArray();
+    }
+
+    private function getAnnexN1Rows($heiId, $academicYear)
+    {
+        $batch = AnnexN1Batch::where('hei_id', $heiId)
+            ->where('academic_year', $academicYear)
+            ->whereIn('status', ['submitted', 'published'])
+            ->latest()
+            ->first();
+
+        if (!$batch || !$batch->sportsPrograms) {
+            return [];
+        }
+
+        return $batch->sportsPrograms->map(function ($program) use ($batch) {
+            $remark = CHEDRemark::getRemarkForRow('annex_n_1', $program->id);
+
+            return [
+                'id' => $program->id,
+                'batch_id' => $batch->batch_id,
+                'program_title' => $program->program_title,
+                'sport_type' => $program->sport_type,
+                'implementation_date' => $program->implementation_date,
+                'venue' => $program->venue,
+                'participants_count' => $program->participants_count ?? 0,
+                'organizer' => $program->organizer,
+                'face_to_face' => true,
+                'online' => false,
+                'hei_remarks' => $program->remarks ?? null,
                 'ched_remark' => $remark?->is_best_practice ?? null,
                 'ched_remark_id' => $remark?->id,
             ];

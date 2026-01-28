@@ -7,7 +7,7 @@ import { CURRENT_YEAR } from '../../../Utils/constants';
 import { getSubmissionStatusMessage } from '../../../Utils/submissionStatus';
 import { getAcademicYearFromUrl } from '../../../Utils/urlHelpers';
 import { IoAddCircle, IoSave } from 'react-icons/io5';
-import { useDarkMode } from '../../../Hooks/useDarkMode';
+import { useTheme } from '../../../Context/ThemeContext';
 import AdditionalNotesSection from '../../../Components/Annex/AdditionalNotesSection';
 import AcademicYearSelect from '../../../Components/Forms/AcademicYearSelect';
 import FormSelector from '../../../Components/Forms/FormSelector';
@@ -24,7 +24,7 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
   const editorialBoardRef = useRef(null);
   const otherPublicationsRef = useRef(null);
   const programsRef = useRef(null);
-  const isDark = useDarkMode();
+  const { isDark } = useTheme();
   const [processing, setProcessing] = useState(false);
   const [requestNotes, setRequestNotes] = useState('');
 
@@ -151,6 +151,7 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
       headerName: 'Actions',
       editable: false,
       width: 80,
+      pinned: 'right',
       cellRenderer: params => {
         return `<button class="delete-row-btn" data-table="editorial" data-row="${params.node.rowIndex}" title="Delete this row" style="padding:4px;border:none;background:none;cursor:pointer;color:#dc2626;"><svg style="width:16px;height:16px;display:inline-block;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
       }
@@ -182,6 +183,7 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
       headerName: 'Actions',
       editable: false,
       width: 80,
+      pinned: 'right',
       cellRenderer: params => {
         return `<button class="delete-row-btn" data-table="publications" data-row="${params.node.rowIndex}" title="Delete this row" style="padding:4px;border:none;background:none;cursor:pointer;color:#dc2626;"><svg style="width:16px;height:16px;display:inline-block;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
       }
@@ -220,6 +222,7 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
       headerName: 'Actions',
       editable: false,
       width: 80,
+      pinned: 'right',
       cellRenderer: params => {
         return `<button class="delete-row-btn" data-table="programs" data-row="${params.node.rowIndex}" title="Delete this row" style="padding:4px;border:none;background:none;cursor:pointer;color:#dc2626;"><svg style="width:16px;height:16px;display:inline-block;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
       }

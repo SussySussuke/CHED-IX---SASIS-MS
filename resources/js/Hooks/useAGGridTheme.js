@@ -1,44 +1,53 @@
 import { useMemo, useEffect } from 'react';
 import { themeQuartz } from 'ag-grid-community';
-import { useDarkMode } from '@/Hooks/useDarkMode';
 
 /**
- * Shared AG Grid theme hook
- * Creates a consistent theme for both AGGridViewer and AGGridEditor
+ * Shared AG Grid theme hook with smooth transitions
+ * 
+ * This hook creates a STABLE theme object that references CSS variables.
+ * When the theme changes (light/dark), only the CSS variable VALUES change,
+ * not the theme object itself. This allows your existing global CSS transitions
+ * to smoothly animate AG Grid's colors instead of causing a hard re-render.
+ * 
+ * The CSS variables are defined in resources/css/theme.css under .light and .dark classes.
  *
  * @param {Object} options - Theme options
  * @param {boolean} options.isEditor - Whether this is for an editor (adds cellHighlightColor)
- * @returns {Object} AG Grid theme object
+ * @returns {Object} AG Grid theme object (stable reference)
  */
 export const useAGGridTheme = ({ isEditor = false } = {}) => {
-  const isDark = useDarkMode();
-
+  // Create a STABLE theme object that uses CSS variables
+  // This object reference never changes, so AG Grid won't re-render
   const theme = useMemo(() => {
     const params = {
-      backgroundColor: isDark ? '#1f2836' : '#ffffff',
-      browserColorScheme: isDark ? 'dark' : 'light',
-      chromeBackgroundColor: isDark
-        ? { ref: 'foregroundColor', mix: 0.07, onto: 'backgroundColor' }
-        : '#f3f4f6',
-      foregroundColor: isDark ? '#ffffff' : '#000000',
+      // Use CSS variables that change with theme toggle
+      // The values update automatically via CSS, not React re-renders
+      backgroundColor: 'var(--ag-background-color)',
+      foregroundColor: 'var(--ag-foreground-color)',
+      chromeBackgroundColor: 'var(--ag-chrome-background-color)',
+      oddRowBackgroundColor: 'var(--ag-odd-row-background-color)',
+      borderColor: 'var(--ag-border-color)',
+      headerBackgroundColor: 'var(--ag-header-background-color)',
+      headerTextColor: 'var(--ag-header-text-color)',
+      
+      // Hover color with slight transparency for better UX
+      rowHoverColor: 'color-mix(in srgb, var(--ag-foreground-color) 8%, var(--ag-background-color))',
+      
+      // Static values that don't change with theme
       headerFontSize: 14,
       fontSize: 13,
-      oddRowBackgroundColor: isDark ? '#1a222e' : '#f9fafb',
-      rowHoverColor: isDark
-        ? { ref: 'foregroundColor', mix: 0.1, onto: 'backgroundColor' }
-        : { ref: 'foregroundColor', mix: 0.05, onto: 'backgroundColor' },
-      borderColor: isDark ? '#374151' : '#e5e7eb',
-      headerBackgroundColor: isDark ? '#111827' : '#f3f4f6',
-      headerTextColor: isDark ? '#e5e7eb' : '#374151',
+      
+      // Browser color scheme is handled by the .light/.dark class on <html>
+      // No need to set it here
     };
 
-    // Add editor-specific styling
+    // Add editor-specific styling (only if editor)
     if (isEditor) {
-      params.cellHighlightColor = isDark ? '#3b82f6' : '#60a5fa';
+      params.cellHighlightColor = 'var(--ag-cell-highlight-color)';
     }
 
     return themeQuartz.withParams(params);
-  }, [isDark, isEditor]);
+  }, [isEditor]); // Only recreate if isEditor changes, NOT when theme changes
 
   return theme;
 };
@@ -85,20 +94,5 @@ export const useAGGridMinHeightRemoval = (componentType = 'grid') => {
 export const getAGGridAutoHeightClass = (componentType = 'grid') => {
   return `ag-grid-${componentType}-auto-height`;
 };
-
-/**
- * CSS to remove AG Grid's default 150px minimum height
- * Apply this when using autoHeight or when you want the grid to shrink
- * @deprecated Use useAGGridMinHeightRemoval hook instead
- */
-export const AG_GRID_MIN_HEIGHT_RESET_CSS = `
-  .ag-grid-auto-height .ag-center-cols-viewport {
-    min-height: unset !important;
-  }
-
-  .ag-grid-auto-height .ag-center-cols-clipper {
-    min-height: unset !important;
-  }
-`;
 
 export default useAGGridTheme;

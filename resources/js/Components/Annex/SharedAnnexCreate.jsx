@@ -5,7 +5,7 @@ import AGGridEditor from '../Common/AGGridEditor';
 import IconButton from '../Common/IconButton';
 import InfoBox from '../Widgets/InfoBox';
 import { IoAddCircle, IoSave, IoTrash } from 'react-icons/io5';
-import { useDarkMode } from '../../Hooks/useDarkMode';
+import { useTheme } from '../../Context/ThemeContext';
 import AdditionalNotesSection from './AdditionalNotesSection';
 import { getSubmissionStatusMessage } from '../../Utils/submissionStatus';
 import { getAcademicYearFromUrl } from '../../Utils/urlHelpers';
@@ -32,7 +32,7 @@ const SharedAnnexCreate = ({
   const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
 
   const gridRef = useRef(null);
-  const isDark = useDarkMode();
+  const { isDark } = useTheme();
   const [requestNotes, setRequestNotes] = useState('');
   const [processing, setProcessing] = useState(false);
   const [academicYear, setAcademicYear] = useState(currentAcademicYear);
@@ -48,7 +48,16 @@ const SharedAnnexCreate = ({
     ? entities.map(config.dataMapper)
     : [];
 
-  const [data, setData] = useState(initialData);
+  // Helper function to create an empty row
+  const createEmptyRow = () => {
+    const newRow = {};
+    config.columns.forEach(col => {
+      newRow[col.data] = col.type === 'checkbox' ? false : '';
+    });
+    return newRow;
+  };
+
+  const [data, setData] = useState(initialData.length > 0 ? initialData : [createEmptyRow()]);
 
   // Initialize form fields (for Annex F)
   useEffect(() => {
@@ -77,12 +86,12 @@ const SharedAnnexCreate = ({
       setFormFieldsData(updatedFormData);
     }
 
-    // Update table data
+    // Update table data - always ensure at least one empty row
     if (batchEntities.length > 0) {
       const newData = batchEntities.map(config.dataMapper);
       setData(newData);
     } else {
-      setData([]);
+      setData([createEmptyRow()]);
     }
   }, [academicYear, existingBatches]);
 
@@ -91,6 +100,7 @@ const SharedAnnexCreate = ({
     const baseCol = {
       field: col.data,
       headerName: col.title,
+      headerTooltip: col.placeholder || col.title,
       editable: true,
       minWidth: col.width || 150,
     };
@@ -102,11 +112,17 @@ const SharedAnnexCreate = ({
         return val === '' || val === null ? null : Number(val);
       };
       baseCol.cellEditor = 'agNumberCellEditor';
+      baseCol.cellEditorParams = {
+        placeholder: col.placeholder || ''
+      };
     } else if (col.type === 'date') {
       baseCol.cellEditor = 'agDateStringCellEditor';
       baseCol.valueFormatter = params => {
         if (!params.value) return '';
         return params.value;
+      };
+      baseCol.cellEditorParams = {
+        placeholder: col.placeholder || 'YYYY-MM-DD'
       };
     } else if (col.type === 'checkbox') {
       baseCol.cellEditor = 'agCheckboxCellEditor';
@@ -117,6 +133,11 @@ const SharedAnnexCreate = ({
       baseCol.cellEditor = 'agSelectCellEditor';
       baseCol.cellEditorParams = {
         values: col.source || []
+      };
+    } else {
+      // Default text editor with placeholder
+      baseCol.cellEditorParams = {
+        placeholder: col.placeholder || ''
       };
     }
 
@@ -146,21 +167,19 @@ const SharedAnnexCreate = ({
     headerName: 'Actions',
     editable: false,
     width: 80,
+    pinned: 'right',
     cellRenderer: DeleteButtonRenderer,
   });
 
   const handleAddRow = () => {
-    const newRow = {};
-    config.columns.forEach(col => {
-      newRow[col.data] = col.type === 'checkbox' ? false : '';
-    });
-    setData([...data, newRow]);
+    setData([...data, createEmptyRow()]);
   };
 
   const handleRemoveRow = (rowIndex) => {
     if (confirm('Are you sure you want to delete this row?')) {
       const newData = data.filter((_, idx) => idx !== rowIndex);
-      setData(newData);
+      // Always ensure at least one empty row exists after deletion
+      setData(newData.length === 0 ? [createEmptyRow()] : newData);
     }
   };
 

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useDarkMode } from '../../Hooks/useDarkMode';
+import { useTheme } from '../../Context/ThemeContext';
 import { useSubmissionFilters } from '../../Hooks/useSubmissionFilters';
 import { useSubmissionData } from '../../Hooks/useSubmissionData';
 import { useCompareModal } from '../../Hooks/useCompareModal';
@@ -26,7 +26,7 @@ export default function SubmissionsList({
     createButtonUrl,
     selectedYear // Add selectedYear prop
 }) {
-    const isDark = useDarkMode();
+    const { isDark } = useTheme();
 
     // Use custom hooks for state management
     const {

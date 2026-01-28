@@ -6,13 +6,20 @@ const ThemeContext = createContext();
 export const ThemeProvider = ({ children }) => {
   const [mode, setMode] = useState(() => {
     const stored = localStorage.getItem('ched_theme_mode');
-    return stored || THEME_MODES.LIGHT;
+    const initialMode = stored || THEME_MODES.LIGHT;
+    
+    // Apply immediately on initialization to prevent flash
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(initialMode);
+    
+    return initialMode;
   });
 
   useEffect(() => {
     localStorage.setItem('ched_theme_mode', mode);
     
-    // Apply mode to document
+    // Apply mode to document for Tailwind and CSS variables
+    // The .light and .dark classes trigger CSS variable changes in theme.css
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(mode);
   }, [mode]);

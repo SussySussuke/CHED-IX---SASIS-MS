@@ -1,16 +1,15 @@
 import React, { useMemo } from 'react';
 import { Link } from '@inertiajs/react';
 import { IoSend, IoDocument, IoCheckmarkCircle } from 'react-icons/io5';
+import { ANNEX_PRIORITY_ORDER } from '../../Config/formConfig';
 
 const QuickActions = ({ checklist, selectedYear }) => {
-  // Find the first incomplete form (priority: SUMMARY, then A-O)
+  // Find the first incomplete form using priority order from formConfig (single source of truth)
   const nextIncompleteForm = useMemo(() => {
     if (!checklist || checklist.length === 0) return null;
 
-    // Priority order: SUMMARY first, then A-O
-    const priorityOrder = ['SUMMARY', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O'];
-    
-    for (const annex of priorityOrder) {
+    // Use ANNEX_PRIORITY_ORDER from formConfig - no hardcoded lists!
+    for (const annex of ANNEX_PRIORITY_ORDER) {
       const form = checklist.find(item => item.annex === annex);
       if (form && form.status === 'not_started') {
         return form;

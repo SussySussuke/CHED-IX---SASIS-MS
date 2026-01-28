@@ -91,11 +91,10 @@ class DashboardController extends Controller
                         ->first();
 
                     $checklist[] = [
-                        'annex' => $code,
-                        'name' => $config['name'],
-                        'status' => $this->determineStatus($submission),
-                        'lastUpdated' => $submission?->updated_at?->format('Y-m-d H:i:s'),
-                        'submissionId' => $submission?->id ?? $submission?->batch_id ?? null,
+                    'annex' => $code,
+                    'status' => $this->determineStatus($submission),
+                    'lastUpdated' => $submission?->updated_at?->format('Y-m-d H:i:s'),
+                    'submissionId' => $submission?->id ?? $submission?->batch_id ?? null,
                     ];
                 }
 
@@ -194,24 +193,19 @@ class DashboardController extends Controller
                     ->select('updated_at', 'status', DB::raw("'Summary' as form_name"))
                     ->get();
                 
-                // Collect from all annex batches
-                $tables = [
-                    'annex_a_batches' => 'Annex A',
-                    'annex_b_batches' => 'Annex B',
-                    'annex_c_batches' => 'Annex C',
-                    'annex_d_submissions' => 'Annex D',
-                    'annex_e_batches' => 'Annex E',
-                    'annex_f_batches' => 'Annex F',
-                    'annex_g_submissions' => 'Annex G',
-                    'annex_h_batches' => 'Annex H',
-                    'annex_i_batches' => 'Annex I',
-                    'annex_j_batches' => 'Annex J',
-                    'annex_k_batches' => 'Annex K',
-                    'annex_l_batches' => 'Annex L',
-                    'annex_m_batches' => 'Annex M',
-                    'annex_n_batches' => 'Annex N',
-                    'annex_o_batches' => 'Annex O',
-                ];
+                // Collect from all annex batches using AnnexConfigService
+                $annexTypes = AnnexConfigService::getAnnexTypes();
+                $tables = [];
+                
+                foreach ($annexTypes as $code => $config) {
+                    $modelClass = $config['model'];
+                    
+                    // Get table name from model
+                    $model = new $modelClass();
+                    $tableName = $model->getTable();
+                    
+                    $tables[$tableName] = "Annex {$code}";
+                }
                 
                 foreach ($tables as $table => $formName) {
                     try {

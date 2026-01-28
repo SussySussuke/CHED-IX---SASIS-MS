@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Services\CacheService;
+use App\Services\AnnexConfigService;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -408,6 +409,8 @@ class DashboardController extends Controller
     /**
      * Get form completion rates for selected academic year
      * Shows percentage of HEIs that completed each form
+     * Uses AnnexConfigService to dynamically get all annexes (including C-1)
+     * Returns codes (A, B, C, C-1, etc.) instead of names - frontend handles display
      */
     private function getFormCompletionRates($academicYear)
     {
@@ -422,28 +425,22 @@ class DashboardController extends Controller
             return [];
         }
 
-        $forms = [
-            'Summary' => 'summary',
-            'Annex A' => 'annex_a_batches',
-            'Annex B' => 'annex_b_batches',
-            'Annex C' => 'annex_c_batches',
-            'Annex D' => 'annex_d_submissions',
-            'Annex E' => 'annex_e_batches',
-            'Annex F' => 'annex_f_batches',
-            'Annex G' => 'annex_g_submissions',
-            'Annex H' => 'annex_h_batches',
-            'Annex I' => 'annex_i_batches',
-            'Annex J' => 'annex_j_batches',
-            'Annex K' => 'annex_k_batches',
-            'Annex L' => 'annex_l_batches',
-            'Annex M' => 'annex_m_batches',
-            'Annex N' => 'annex_n_batches',
-            'Annex O' => 'annex_o_batches',
-        ];
+        // Get all annex types dynamically from AnnexConfigService (includes C-1!)
+        $annexTypes = AnnexConfigService::getAnnexTypes();
+        
+        // Build forms array: code => table name
+        $forms = ['SUMMARY' => 'summary'];  // Start with Summary
+        
+        foreach ($annexTypes as $code => $config) {
+            // Get table name from model
+            $modelClass = $config['model'];
+            $forms[$code] = (new $modelClass)->getTable();
+        }
 
         $completionRates = [];
 
-        foreach ($forms as $formName => $table) {
+        // Calculate completion rate for each form, using CODE as key
+        foreach ($forms as $code => $table) {
             try {
                 $completedCount = DB::table($table)
                     ->where('academic_year', $academicYear)
@@ -451,13 +448,15 @@ class DashboardController extends Controller
                     ->distinct('hei_id')
                     ->count('hei_id');
 
-                $completionRates[$formName] = round(($completedCount / $totalHEIs) * 100);
+                // Store with CODE as key (e.g., 'A', 'B', 'C-1'), NOT name
+                $completionRates[$code] = round(($completedCount / $totalHEIs) * 100);
             } catch (\Exception $e) {
-                $completionRates[$formName] = 0;
+                $completionRates[$code] = 0;
             }
         }
 
         return $completionRates;
+        // Returns: ['SUMMARY' => 85, 'A' => 92, 'B' => 78, 'C' => 88, 'C-1' => 95, ...]
     }
 
     /**

@@ -7,7 +7,7 @@ export const MER_FORMS = {
   1: {
     formNumber: 1,
     title: 'Form 1: Student Welfare Services',
-    subtitle: 'Annexes A-D: Information & Orientation, Guidance & Counseling, Career & Job Placement, Student Handbook',
+    subtitle: 'Annexes A-D: Information & Orientation, Guidance & Counseling, Career & Job Placement, Economic Enterprise Development, Student Handbook',
     sectionTitle: 'B. STUDENT WELFARE SERVICES',
     endpoint: '/admin/mer/form1',
     services: [
@@ -25,6 +25,11 @@ export const MER_FORMS = {
         name: '3. Career and Job Placement Services',
         annexType: 'annex_c',
         annexLetter: 'C',
+      },
+      {
+        name: '4. Economic Enterprise Development',
+        annexType: 'annex_c_1',
+        annexLetter: 'C-1',
       },
       {
         name: '5. Student Handbook Development',

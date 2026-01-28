@@ -68,7 +68,7 @@ const AGGridViewer = ({
   // Default grid options for viewer
   const defaultGridOptions = useMemo(() => {
     const options = {
-      theme,
+      theme, // theme is now stable and won't change on theme toggle
       enableCellTextSelection: true,
       ensureDomOrder: true,
       columnHoverHighlight: true,

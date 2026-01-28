@@ -13,16 +13,47 @@
 /* Light Mode (default) */
 .light {
   color-scheme: light;
+  
+  /* AG Grid Theme Variables - Light Mode */
+  --ag-background-color: #ffffff;
+  --ag-foreground-color: #000000;
+  --ag-chrome-background-color: #f3f4f6;
+  --ag-odd-row-background-color: #f9fafb;
+  --ag-border-color: #e5e7eb;
+  --ag-header-background-color: #f3f4f6;
+  --ag-header-text-color: #374151;
+  --ag-cell-highlight-color: #60a5fa;
 }
 
 /* Dark Mode */
 .dark {
   color-scheme: dark;
+  
+  /* AG Grid Theme Variables - Dark Mode */
+  --ag-background-color: #1f2836;
+  --ag-foreground-color: #ffffff;
+  --ag-chrome-background-color: #212d3d;
+  --ag-odd-row-background-color: #1a222e;
+  --ag-border-color: #374151;
+  --ag-header-background-color: #111827;
+  --ag-header-text-color: #e5e7eb;
+  --ag-cell-highlight-color: #3b82f6;
 }
 
 /* Smooth transitions for theme changes */
 * {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* AG Grid specific transitions - force transitions on all AG Grid visual elements */
+.ag-theme-quartz .ag-row,
+.ag-theme-quartz .ag-cell,
+.ag-theme-quartz .ag-header,
+.ag-theme-quartz .ag-header-cell,
+.ag-theme-quartz .ag-root-wrapper,
+.ag-theme-quartz .ag-center-cols-container,
+.ag-theme-quartz .ag-body-viewport {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
 }
 
 /* Remove transitions for specific elements to avoid layout jank */

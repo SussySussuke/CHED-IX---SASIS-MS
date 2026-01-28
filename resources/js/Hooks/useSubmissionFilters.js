@@ -46,6 +46,33 @@ export function useSubmissionFilters({ mode, submissions, selectedAnnex }) {
         if (params.annex) setFilterAnnex(params.annex);
     }, [url]);
 
+    // Custom sort function for annex keys that handles insertion notation (e.g., C-1, D-1)
+    const sortAnnexKeys = (keys) => {
+        return keys.sort((a, b) => {
+            // Extract base letter and suffix (if any)
+            const parseAnnex = (key) => {
+                const match = key.match(/^([A-Z])(-\d+)?$/);
+                if (!match) return { base: key, suffix: 0 };
+                return {
+                    base: match[1],
+                    suffix: match[2] ? parseInt(match[2].substring(1)) : 0
+                };
+            };
+            
+            const aParsed = parseAnnex(a);
+            const bParsed = parseAnnex(b);
+            
+            // Compare base letters first
+            if (aParsed.base !== bParsed.base) {
+                return aParsed.base.localeCompare(bParsed.base);
+            }
+            
+            // If base letters are the same, compare suffixes
+            // Suffix 0 (no suffix) comes before any numbered suffix
+            return aParsed.suffix - bParsed.suffix;
+        });
+    };
+
     // Build annex options from available data
     const annexOptions = useMemo(() => {
         if (mode === 'admin') {
@@ -53,12 +80,12 @@ export function useSubmissionFilters({ mode, submissions, selectedAnnex }) {
             const uniqueAnnexes = [...new Set(submissions.map(s => s.annex))];
             // Separate SUMMARY from other annexes
             const hasSummary = uniqueAnnexes.includes('SUMMARY');
-            const otherAnnexes = uniqueAnnexes.filter(a => a !== 'SUMMARY').sort();
-            // Return SUMMARY first (if it exists), then others alphabetically
+            const otherAnnexes = sortAnnexKeys(uniqueAnnexes.filter(a => a !== 'SUMMARY'));
+            // Return SUMMARY first (if it exists), then others sorted properly
             return hasSummary ? ['SUMMARY', ...otherAnnexes] : otherAnnexes;
         } else {
-            // HEI: Build from ANNEX_NAMES (which has ALL annexes A-O)
-            const standardAnnexes = Object.keys(ANNEX_NAMES).sort();
+            // HEI: Build from ANNEX_NAMES (which has ALL annexes A-O plus insertions like C-1)
+            const standardAnnexes = sortAnnexKeys(Object.keys(ANNEX_NAMES));
             return ['SUMMARY', ...standardAnnexes];  // Always include SUMMARY first
         }
     }, [mode, submissions]);
