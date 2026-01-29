@@ -7,6 +7,7 @@ use App\Models\CHEDRemark;
 use App\Models\AnnexABatch;
 use App\Models\AnnexBBatch;
 use App\Models\AnnexCBatch;
+use App\Models\AnnexC1Batch;
 use App\Models\AnnexDSubmission;
 use App\Models\AnnexEBatch;
 use App\Models\AnnexFBatch;
@@ -26,36 +27,30 @@ use App\Models\AnnexOBatch;
 class MERFormBuilder
 {
     /**
-     * Build Form 1: Student Welfare Services (Annexes A-D)
+     * Build MER form dynamically from config
+     * This method is configuration-driven - it reads from config/mer_forms.php
+     * and config/annex_metadata.php to build the form structure
      */
-    public function buildForm1($heiId, $academicYear)
+    private function buildFormFromConfig($formNumber, $heiId, $academicYear)
     {
         $hei = HEI::findOrFail($heiId);
+        $annexLetters = config("mer_forms.{$formNumber}");
 
-        // Build the form data (load whatever annexes are available)
-        // Always show at least one row per service, even if data is missing
-        $services = [
-            [
-                'service_name' => '1. Information and Orientation Service',
-                'annex_type' => 'annex_a',
-                'rows' => $this->getAnnexARows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '2. Guidance and Counseling Services',
-                'annex_type' => 'annex_b',
-                'rows' => $this->getAnnexBRows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '3. Career and Job Placement Services',
-                'annex_type' => 'annex_c',
-                'rows' => $this->getAnnexCRows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '5. Student Handbook Development',
-                'annex_type' => 'annex_d',
-                'rows' => $this->getAnnexDRows($heiId, $academicYear),
-            ],
-        ];
+        $services = [];
+
+        foreach ($annexLetters as $letter) {
+            $metadata = config("annex_metadata.{$letter}");
+            
+            if (!$metadata) {
+                throw new \Exception("No metadata found for Annex {$letter} in config/annex_metadata.php");
+            }
+
+            $services[] = [
+                'service_name' => "{$metadata['serviceNumber']}. {$metadata['name']}",
+                'annex_type' => $metadata['annexType'],
+                'rows' => $this->getAnnexRows($metadata['annexType'], $heiId, $academicYear),
+            ];
+        }
 
         // Ensure each service has at least one empty row if no data
         foreach ($services as &$service) {
@@ -68,21 +63,27 @@ class MERFormBuilder
                     'hei_remarks' => null,
                     'ched_remark' => null,
                     'ched_remark_id' => null,
-                    'is_missing' => true, // Flag to show warning
+                    'is_missing' => true,
                 ]];
             }
         }
 
-        $formData = [
-            'hei' => $hei,
-            'academic_year' => $academicYear,
-            'services' => $services,
-        ];
-
         return [
             'success' => true,
-            'data' => $formData,
+            'data' => [
+                'hei' => $hei,
+                'academic_year' => $academicYear,
+                'services' => $services,
+            ],
         ];
+    }
+
+    /**
+     * Build Form 1: Student Welfare Services (Annexes A-D)
+     */
+    public function buildForm1($heiId, $academicYear)
+    {
+        return $this->buildFormFromConfig(1, $heiId, $academicYear);
     }
 
     /**
@@ -90,52 +91,7 @@ class MERFormBuilder
      */
     public function buildForm2($heiId, $academicYear)
     {
-        $hei = HEI::findOrFail($heiId);
-
-        $services = [
-            [
-                'service_name' => '1. Student Activities',
-                'annex_type' => 'annex_e',
-                'rows' => $this->getAnnexERows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '5. Student Discipline',
-                'annex_type' => 'annex_f',
-                'rows' => $this->getAnnexFRows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '6. Student Publication/Yearbook',
-                'annex_type' => 'annex_g',
-                'rows' => $this->getAnnexGRows($heiId, $academicYear),
-            ],
-        ];
-
-        // Ensure each service has at least one empty row if no data
-        foreach ($services as &$service) {
-            if (empty($service['rows'])) {
-                $service['rows'] = [[
-                    'id' => null,
-                    'batch_id' => null,
-                    'face_to_face' => false,
-                    'online' => false,
-                    'hei_remarks' => null,
-                    'ched_remark' => null,
-                    'ched_remark_id' => null,
-                    'is_missing' => true,
-                ]];
-            }
-        }
-
-        $formData = [
-            'hei' => $hei,
-            'academic_year' => $academicYear,
-            'services' => $services,
-        ];
-
-        return [
-            'success' => true,
-            'data' => $formData,
-        ];
+        return $this->buildFormFromConfig(2, $heiId, $academicYear);
     }
 
     /**
@@ -143,176 +99,44 @@ class MERFormBuilder
      */
     public function buildForm3($heiId, $academicYear)
     {
-        $hei = HEI::findOrFail($heiId);
+        return $this->buildFormFromConfig(3, $heiId, $academicYear);
+    }
 
-        $services = [
-            [
-                'service_name' => '1. Admission Services',
-                'annex_type' => 'annex_h',
-                'rows' => $this->getAnnexHRows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '2. Scholarships and Financial Assistance',
-                'annex_type' => 'annex_i',
-                'rows' => $this->getAnnexIRows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '3. Food Services',
-                'annex_type' => 'annex_i_1',
-                'rows' => $this->getAnnexI1Rows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '4. Health Services',
-                'annex_type' => 'annex_j',
-                'rows' => $this->getAnnexJRows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '5. Safety and Security Services',
-                'annex_type' => 'annex_k',
-                'rows' => $this->getAnnexKRows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '6. Student Housing and Residential Services',
-                'annex_type' => 'annex_l',
-                'rows' => $this->getAnnexLRows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '7. Foreign/International Students Services',
-                'annex_type' => 'annex_l_1',
-                'rows' => $this->getAnnexL1Rows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '8. Services for Students with Special Needs and Persons with Disabilities',
-                'annex_type' => 'annex_m',
-                'rows' => $this->getAnnexMRows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '9. Cultural and Arts Program',
-                'annex_type' => 'annex_n',
-                'rows' => $this->getAnnexNRows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '10. Sports Development Program',
-                'annex_type' => 'annex_n_1',
-                'rows' => $this->getAnnexN1Rows($heiId, $academicYear),
-            ],
-            [
-                'service_name' => '11. Social and Community Involvement Programs',
-                'annex_type' => 'annex_o',
-                'rows' => $this->getAnnexORows($heiId, $academicYear),
-            ],
+    /**
+     * Generic method to get rows for any annex type
+     * Routes to the appropriate specific method based on annex type
+     */
+    private function getAnnexRows($annexType, $heiId, $academicYear)
+    {
+        $methodMap = [
+            'annex_a' => 'getAnnexARows',
+            'annex_b' => 'getAnnexBRows',
+            'annex_c' => 'getAnnexCRows',
+            'annex_c_1' => 'getAnnexC1Rows',
+            'annex_d' => 'getAnnexDRows',
+            'annex_e' => 'getAnnexERows',
+            'annex_f' => 'getAnnexFRows',
+            'annex_g' => 'getAnnexGRows',
+            'annex_h' => 'getAnnexHRows',
+            'annex_i' => 'getAnnexIRows',
+            'annex_i_1' => 'getAnnexI1Rows',
+            'annex_j' => 'getAnnexJRows',
+            'annex_k' => 'getAnnexKRows',
+            'annex_l' => 'getAnnexLRows',
+            'annex_l_1' => 'getAnnexL1Rows',
+            'annex_m' => 'getAnnexMRows',
+            'annex_n' => 'getAnnexNRows',
+            'annex_n_1' => 'getAnnexN1Rows',
+            'annex_o' => 'getAnnexORows',
         ];
 
-        // Ensure each service has at least one empty row if no data
-        foreach ($services as &$service) {
-            if (empty($service['rows'])) {
-                $service['rows'] = [[
-                    'id' => null,
-                    'batch_id' => null,
-                    'face_to_face' => false,
-                    'online' => false,
-                    'hei_remarks' => null,
-                    'ched_remark' => null,
-                    'ched_remark_id' => null,
-                    'is_missing' => true,
-                ]];
-            }
+        $method = $methodMap[$annexType] ?? null;
+
+        if (!$method || !method_exists($this, $method)) {
+            throw new \Exception("No handler method found for annex type: {$annexType}");
         }
 
-        $formData = [
-            'hei' => $hei,
-            'academic_year' => $academicYear,
-            'services' => $services,
-        ];
-
-        return [
-            'success' => true,
-            'data' => $formData,
-        ];
-    }
-
-    // Validation methods
-
-    private function validateAnnexesForForm1($heiId, $academicYear)
-    {
-        return [
-            'annex_a' => $this->getAnnexStatus(AnnexABatch::class, $heiId, $academicYear),
-            'annex_b' => $this->getAnnexStatus(AnnexBBatch::class, $heiId, $academicYear),
-            'annex_c' => $this->getAnnexStatus(AnnexCBatch::class, $heiId, $academicYear),
-            'annex_d' => $this->getAnnexStatus(AnnexDSubmission::class, $heiId, $academicYear),
-            'all_submitted' => $this->checkAllSubmitted([
-                AnnexABatch::class,
-                AnnexBBatch::class,
-                AnnexCBatch::class,
-                AnnexDSubmission::class,
-            ], $heiId, $academicYear),
-        ];
-    }
-
-    private function validateAnnexesForForm2($heiId, $academicYear)
-    {
-        return [
-            'annex_e' => $this->getAnnexStatus(AnnexEBatch::class, $heiId, $academicYear),
-            'annex_f' => $this->getAnnexStatus(AnnexFBatch::class, $heiId, $academicYear),
-            'annex_g' => $this->getAnnexStatus(AnnexGSubmission::class, $heiId, $academicYear),
-            'all_submitted' => $this->checkAllSubmitted([
-                AnnexEBatch::class,
-                AnnexFBatch::class,
-                AnnexGSubmission::class,
-            ], $heiId, $academicYear),
-        ];
-    }
-
-    private function validateAnnexesForForm3($heiId, $academicYear)
-    {
-        return [
-            'annex_h' => $this->getAnnexStatus(AnnexHBatch::class, $heiId, $academicYear),
-            'annex_i' => $this->getAnnexStatus(AnnexIBatch::class, $heiId, $academicYear),
-            'annex_j' => $this->getAnnexStatus(AnnexJBatch::class, $heiId, $academicYear),
-            'annex_k' => $this->getAnnexStatus(AnnexKBatch::class, $heiId, $academicYear),
-            'annex_l' => $this->getAnnexStatus(AnnexLBatch::class, $heiId, $academicYear),
-            'annex_m' => $this->getAnnexStatus(AnnexMBatch::class, $heiId, $academicYear),
-            'annex_n' => $this->getAnnexStatus(AnnexNBatch::class, $heiId, $academicYear),
-            'annex_o' => $this->getAnnexStatus(AnnexOBatch::class, $heiId, $academicYear),
-            'all_submitted' => $this->checkAllSubmitted([
-                AnnexHBatch::class,
-                AnnexIBatch::class,
-                AnnexJBatch::class,
-                AnnexKBatch::class,
-                AnnexLBatch::class,
-                AnnexMBatch::class,
-                AnnexNBatch::class,
-                AnnexOBatch::class,
-            ], $heiId, $academicYear),
-        ];
-    }
-
-    private function getAnnexStatus($modelClass, $heiId, $academicYear)
-    {
-        $batch = $modelClass::where('hei_id', $heiId)
-            ->where('academic_year', $academicYear)
-            ->latest()
-            ->first();
-
-        // Accept both 'submitted' and 'published' statuses
-        $acceptableStatuses = ['submitted', 'published'];
-
-        return [
-            'exists' => $batch !== null,
-            'status' => $batch?->status,
-            'is_submitted' => $batch && in_array($batch->status, $acceptableStatuses),
-        ];
-    }
-
-    private function checkAllSubmitted($modelClasses, $heiId, $academicYear)
-    {
-        foreach ($modelClasses as $modelClass) {
-            $status = $this->getAnnexStatus($modelClass, $heiId, $academicYear);
-            if (!$status['is_submitted']) {
-                return false;
-            }
-        }
-        return true;
+        return $this->$method($heiId, $academicYear);
     }
 
     // Row fetching methods for each annex
@@ -418,6 +242,40 @@ class MERFormBuilder
         })->toArray();
     }
 
+    private function getAnnexC1Rows($heiId, $academicYear)
+    {
+        $batch = AnnexC1Batch::where('hei_id', $heiId)
+            ->where('academic_year', $academicYear)
+            ->whereIn('status', ['submitted', 'published'])
+            ->latest()
+            ->first();
+
+        if (!$batch || !$batch->programs) {
+            return [];
+        }
+
+        return $batch->programs->map(function ($program) use ($batch) {
+            $remark = CHEDRemark::getRemarkForRow('annex_c_1', $program->id);
+
+            return [
+                'id' => $program->id,
+                'batch_id' => $batch->batch_id,
+                'title' => $program->title,
+                'venue' => $program->venue,
+                'implementation_date' => $program->implementation_date,
+                'target_group' => $program->target_group,
+                'face_to_face' => $program->participants_face_to_face > 0,
+                'online' => $program->participants_online > 0,
+                'participants_face_to_face' => $program->participants_face_to_face,
+                'participants_online' => $program->participants_online,
+                'organizer' => $program->organizer,
+                'hei_remarks' => $program->remarks,
+                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark_id' => $remark?->id,
+            ];
+        })->toArray();
+    }
+
     private function getAnnexDRows($heiId, $academicYear)
     {
         $submission = AnnexDSubmission::where('hei_id', $heiId)
@@ -484,9 +342,6 @@ class MERFormBuilder
             ]
         ];
     }
-
-    // Placeholder methods for other annexes (E-O)
-    // These follow the same pattern as above
 
     private function getAnnexERows($heiId, $academicYear)
     {
