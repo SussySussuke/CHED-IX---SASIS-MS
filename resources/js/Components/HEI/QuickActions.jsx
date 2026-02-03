@@ -1,16 +1,16 @@
 import React, { useMemo } from 'react';
 import { Link } from '@inertiajs/react';
 import { IoSend, IoDocument, IoCheckmarkCircle } from 'react-icons/io5';
-import { ANNEX_PRIORITY_ORDER } from '../../Config/formConfig';
+import { PRIORITY_ORDER } from '../../Config/formConfig';
 
 const QuickActions = ({ checklist, selectedYear }) => {
   // Find the first incomplete form using priority order from formConfig (single source of truth)
   const nextIncompleteForm = useMemo(() => {
     if (!checklist || checklist.length === 0) return null;
 
-    // Use ANNEX_PRIORITY_ORDER from formConfig - no hardcoded lists!
-    for (const annex of ANNEX_PRIORITY_ORDER) {
-      const form = checklist.find(item => item.annex === annex);
+    // Use PRIORITY_ORDER from formConfig - single source of truth for all forms (Summary, MER, Annexes)
+    for (const formCode of PRIORITY_ORDER) {
+      const form = checklist.find(item => item.annex === formCode);
       if (form && form.status === 'not_started') {
         return form;
       }
@@ -30,21 +30,36 @@ const QuickActions = ({ checklist, selectedYear }) => {
     
     if (!nextIncompleteForm) return `/hei/submissions/history${yearParam}`;
     
-    if (nextIncompleteForm.annex === 'SUMMARY') {
+    const formCode = nextIncompleteForm.annex;
+    
+    // Special forms
+    if (formCode === 'SUMMARY') {
       return `/hei/summary/create${yearParam}`;
     }
     
-    return `/hei/annex-${nextIncompleteForm.annex.toLowerCase()}/submit${yearParam}`;
+    // MER forms
+    if (formCode.startsWith('MER')) {
+      return `/hei/${formCode.toLowerCase()}/create${yearParam}`;
+    }
+    
+    // Annexes (A-O)
+    return `/hei/annex-${formCode.toLowerCase()}/submit${yearParam}`;
   };
 
   const getContinueText = () => {
     if (!nextIncompleteForm) return 'View All Forms';
     
-    if (nextIncompleteForm.annex === 'SUMMARY') {
+    const formCode = nextIncompleteForm.annex;
+    
+    if (formCode === 'SUMMARY') {
       return 'Continue Summary';
     }
     
-    return `Continue Annex ${nextIncompleteForm.annex}`;
+    if (formCode.startsWith('MER')) {
+      return `Continue ${formCode}`;
+    }
+    
+    return `Continue Annex ${formCode}`;
   };
 
   return (

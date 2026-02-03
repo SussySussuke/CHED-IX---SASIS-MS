@@ -1,27 +1,26 @@
 /**
- * Main configuration file for Annex A-O
+ * Main configuration file for ALL Forms (Summary, MER, Annexes)
  * 
  * THIS IS THE SINGLE SOURCE OF TRUTH FOR:
- * - Annex display names (ANNEX_NAMES)
- * - Annex priority order (ANNEX_PRIORITY_ORDER)
- * - Form field configurations (ANNEX_CONFIG)
+ * - Form priority order (PRIORITY_ORDER)
+ * - Form display names (FORM_NAMES)
+ * - Annex field configurations (ANNEX_CONFIG)
  * 
- * When you need to add/remove/reorder annexes, change it here and ONLY here!
+ * When you need to add/remove/reorder forms, change it here and ONLY here!
  */
 
 import { FORM1_ANNEXES } from './annexConfigs/form1Annexes';
 import { FORM2_ANNEXES } from './annexConfigs/form2Annexes';
 import { FORM3_ANNEXES } from './annexConfigs/form3Annexes';
+import { SUMMARY_FORM, MER_FORMS } from './nonAnnexForms';
 
 /**
- * SINGLE SOURCE OF TRUTH: Priority order for all annexes
- * This defines the canonical order for iterating through annexes
+ * SINGLE SOURCE OF TRUTH: Priority order for ALL forms
  * Used in: QuickActions, Checklist ordering, Form navigation, etc.
- * 
- * IMPORTANT: When adding a new annex, add it to this array in the correct position!
  */
-export const ANNEX_PRIORITY_ORDER = [
+export const PRIORITY_ORDER = [
   'SUMMARY',
+  'MER1',
   'A',
   'B',
   'C',
@@ -44,10 +43,11 @@ export const ANNEX_PRIORITY_ORDER = [
 ];
 
 /**
- * SINGLE SOURCE OF TRUTH: Annex display names
- * Used throughout the application for consistent naming
+ * SINGLE SOURCE OF TRUTH: Display names for ALL forms
  */
-export const ANNEX_NAMES = {
+export const FORM_NAMES = {
+  SUMMARY: 'Summary - School Details',
+  MER1: 'HEI Profile on SAS',
   A: 'Information and Orientation Services',
   B: 'Guidance and Counseling Service',
   C: 'Career and Job Placement Services',
@@ -70,36 +70,7 @@ export const ANNEX_NAMES = {
 };
 
 /**
- * SINGLE SOURCE OF TRUTH: Annex metadata for MER forms
- * Maps annex letters to their service numbers and database types
- * Used by both frontend (merFormConfig) and backend (MERFormBuilder)
- */
-export const ANNEX_METADATA = {
-  A: { serviceNumber: '1', annexType: 'annex_a', name: 'Information and Orientation Services' },
-  B: { serviceNumber: '2', annexType: 'annex_b', name: 'Guidance and Counseling Service' },
-  C: { serviceNumber: '3', annexType: 'annex_c', name: 'Career and Job Placement Services' },
-  'C-1': { serviceNumber: '4', annexType: 'annex_c_1', name: 'Economic Enterprise Development' },
-  D: { serviceNumber: '5', annexType: 'annex_d', name: 'Student Handbook' },
-  E: { serviceNumber: '1', annexType: 'annex_e', name: 'Student Organizations' },
-  F: { serviceNumber: '5', annexType: 'annex_f', name: 'Student Discipline' },
-  G: { serviceNumber: '6', annexType: 'annex_g', name: 'Student Publication' },
-  H: { serviceNumber: '1', annexType: 'annex_h', name: 'Admission Services' },
-  I: { serviceNumber: '2', annexType: 'annex_i', name: 'Scholarships/Financial Assistance' },
-  'I-1': { serviceNumber: '3', annexType: 'annex_i_1', name: 'Food Services' },
-  J: { serviceNumber: '4', annexType: 'annex_j', name: 'Health Services' },
-  K: { serviceNumber: '5', annexType: 'annex_k', name: 'Safety and Security Committees' },
-  L: { serviceNumber: '6', annexType: 'annex_l', name: 'Student Housing' },
-  'L-1': { serviceNumber: '7', annexType: 'annex_l_1', name: 'Foreign/International Students Services' },
-  M: { serviceNumber: '8', annexType: 'annex_m', name: 'Sports Development' },
-  N: { serviceNumber: '9', annexType: 'annex_n', name: 'Culture and the Arts' },
-  'N-1': { serviceNumber: '10', annexType: 'annex_n_1', name: 'Sports Development Program' },
-  O: { serviceNumber: '11', annexType: 'annex_o', name: 'Community Involvement/Outreach' },
-};
-
-/**
- * SINGLE SOURCE OF TRUTH: MER Form groupings
- * Defines which annexes belong to which MER form for CHED review
- * Change these arrays to reorganize MER forms
+ * MER4 Form groupings - which annexes belong to which MER4 form
  */
 export const MER_FORM_GROUPINGS = {
   1: ['A', 'B', 'C', 'C-1', 'D'],
@@ -109,41 +80,28 @@ export const MER_FORM_GROUPINGS = {
 
 /**
  * Merged configuration for all annexes
- * Organized by MER Forms 1-3 for better maintainability
  * Contains form field definitions (columns, mappers, endpoints)
  */
 export const ANNEX_CONFIG = {
-  ...FORM1_ANNEXES,  // A, B, C, C-1
-  ...FORM2_ANNEXES,  // E, F
-  ...FORM3_ANNEXES   // I, J, K, L, N, O
+  ...FORM1_ANNEXES,
+  ...FORM2_ANNEXES,
+  ...FORM3_ANNEXES
 };
 
 /**
- * Get all valid annex codes (excluding SUMMARY)
- * @returns {string[]} Array of annex codes (A, B, C, C-1, D, etc.)
+ * Get display name for any form
  */
-export const getAllAnnexCodes = () => {
-  return ANNEX_PRIORITY_ORDER.filter(code => code !== 'SUMMARY');
+export const getFormName = (formCode) => {
+  return FORM_NAMES[formCode] || `Form ${formCode}`;
 };
 
-/**
- * Get display name for an annex
- * @param {string} annexLetter - Letter of the annex (A, B, C, C-1, etc.)
- * @returns {string} Display name for the annex
- */
-export const getAnnexName = (annexLetter) => {
-  const normalizedKey = annexLetter.toUpperCase();
-  return ANNEX_NAMES[normalizedKey] || `Annex ${annexLetter}`;
-};
+
 
 /**
  * Get configuration for a specific annex
- * @param {string} annexLetter - Letter of the annex (A, B, C, C-1, etc.)
- * @returns {object} Configuration object for the annex
  */
 export const getAnnexConfig = (annexLetter) => {
-  const normalizedKey = annexLetter.toUpperCase();
-  const config = ANNEX_CONFIG[normalizedKey];
+  const config = ANNEX_CONFIG[annexLetter];
   if (!config) {
     throw new Error(`No configuration found for Annex ${annexLetter}`);
   }
@@ -151,37 +109,68 @@ export const getAnnexConfig = (annexLetter) => {
 };
 
 /**
- * Check if an annex code is valid
- * @param {string} annexLetter - Letter to check
- * @returns {boolean} True if valid annex code
+ * Get all annex codes only (excluding SUMMARY and MER forms)
  */
-export const isValidAnnex = (annexLetter) => {
-  const normalizedKey = annexLetter.toUpperCase();
-  return ANNEX_PRIORITY_ORDER.includes(normalizedKey);
+export const getAllAnnexCodes = () => {
+  return PRIORITY_ORDER.filter(code => 
+    code !== 'SUMMARY' && !code.startsWith('MER')
+  );
 };
 
 /**
- * Get the next annex in priority order
- * @param {string} currentAnnex - Current annex code
- * @returns {string|null} Next annex code or null if at end
+ * Check if a form code is valid
  */
-export const getNextAnnex = (currentAnnex) => {
-  const currentIndex = ANNEX_PRIORITY_ORDER.indexOf(currentAnnex);
-  if (currentIndex === -1 || currentIndex === ANNEX_PRIORITY_ORDER.length - 1) {
+export const isValidForm = (formCode) => {
+  return PRIORITY_ORDER.includes(formCode);
+};
+
+/**
+ * Get the next form in priority order
+ */
+export const getNextForm = (currentForm) => {
+  const currentIndex = PRIORITY_ORDER.indexOf(currentForm);
+  if (currentIndex === -1 || currentIndex === PRIORITY_ORDER.length - 1) {
     return null;
   }
-  return ANNEX_PRIORITY_ORDER[currentIndex + 1];
+  return PRIORITY_ORDER[currentIndex + 1];
 };
 
 /**
- * Get the previous annex in priority order
- * @param {string} currentAnnex - Current annex code
- * @returns {string|null} Previous annex code or null if at start
+ * Get the previous form in priority order
  */
-export const getPreviousAnnex = (currentAnnex) => {
-  const currentIndex = ANNEX_PRIORITY_ORDER.indexOf(currentAnnex);
+export const getPreviousForm = (currentForm) => {
+  const currentIndex = PRIORITY_ORDER.indexOf(currentForm);
   if (currentIndex <= 0) {
     return null;
   }
-  return ANNEX_PRIORITY_ORDER[currentIndex - 1];
+  return PRIORITY_ORDER[currentIndex - 1];
 };
+
+/**
+ * Build grouped form options for selects
+ * Returns structured data with groups and options
+ * Used by: FormSelector, SubmissionFilters, etc.
+ */
+export const buildFormOptionsGrouped = () => {
+  return [
+    {
+      group: SUMMARY_FORM.category,
+      options: [{ value: SUMMARY_FORM.code, label: SUMMARY_FORM.name }]
+    },
+    {
+      group: 'MER Forms',
+      options: Object.values(MER_FORMS).map(form => ({
+        value: form.code,
+        label: form.name
+      }))
+    },
+    {
+      group: 'Student Services Annexes',
+      options: getAllAnnexCodes().map(annex => ({
+        value: annex,
+        label: `Annex ${annex} - ${FORM_NAMES[annex]}`
+      }))
+    }
+  ];
+};
+

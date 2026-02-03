@@ -33,6 +33,7 @@ class HandleInertiaRequests extends Middleware
                         'type' => $user->hei->type,
                         'code' => $user->hei->code,
                         'email' => $user->hei->email,
+                        'address' => $user->hei->address,
                     ] : null,
                 ] : null,
             ],

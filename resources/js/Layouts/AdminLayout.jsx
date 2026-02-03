@@ -28,17 +28,17 @@ const AdminLayout = ({ title, children, pendingCount = 0 }) => {
       divider: true,
       children: [
         {
-          href: '/admin/mer/form1',
+          href: '/admin/mer4/form1',
           label: 'Student Welfare Services (A-D)',
           icon: <IoStatsChart />
         },
         {
-          href: '/admin/mer/form2',
+          href: '/admin/mer4/form2',
           label: 'Student Welfare Services (E-G)',
           icon: <IoStatsChart />
         },
         {
-          href: '/admin/mer/form3',
+          href: '/admin/mer4/form3',
           label: 'Institutional Programs (H-O)',
           icon: <IoStatsChart />
         }

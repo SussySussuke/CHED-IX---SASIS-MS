@@ -75,8 +75,8 @@ const AGGridEditor = ({
     // Tooltips
     tooltipShowDelay: 500, // Show tooltip after 0.5 seconds instead of 2 seconds
 
-    // Selection
-    cellSelection: true,
+    // Selection - Disabled to avoid enterprise module requirement
+    // cellSelection: true,
 
     // Editing
     editType: 'fullRow',

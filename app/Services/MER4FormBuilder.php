@@ -24,11 +24,11 @@ use App\Models\AnnexNBatch;
 use App\Models\AnnexN1Batch;
 use App\Models\AnnexOBatch;
 
-class MERFormBuilder
+class MER4FormBuilder
 {
     /**
-     * Build MER form dynamically from config
-     * This method is configuration-driven - it reads from config/mer_forms.php
+     * Build MER4 form dynamically from config
+     * This method is configuration-driven - it reads from config/mer4_forms.php
      * and config/annex_metadata.php to build the form structure
      */
     private function buildFormFromConfig($formNumber, $heiId, $academicYear)

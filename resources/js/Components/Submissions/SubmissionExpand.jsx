@@ -4,7 +4,7 @@ import { IoChevronDown, IoChevronUp, IoEyeOutline, IoCreateOutline, IoCheckmarkC
 import IconButton from '../Common/IconButton';
 import { formatDateTime } from '../../Utils/formatters';
 import StatusBadge from '../Widgets/StatusBadge';
-import { ANNEX_NAMES } from '../../Config/formConfig';
+import { getFormName } from '../../Config/formConfig';
 import { renderBatchContent } from './renderers';
 
 /**
@@ -27,19 +27,24 @@ export default function SubmissionExpand({
     const data = batchData[key];
 
     return (
-        <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 shadow-md rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div
-                className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between"
+                className="p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between"
                 onClick={() => onToggle(submission.batch_id, submission.annex)}
             >
-                <div className="flex-1 grid grid-cols-6 gap-4 items-center">
+                <div className="flex-1 grid grid-cols-6 gap-3 items-center">
                     {/* Annex Name */}
                     <div>
-                        <div className="font-medium text-gray-900 dark:text-white">
-                            {submission.annex === 'SUMMARY' ? 'Summary' : `Annex ${submission.annex}`}
+                        <div className="font-medium text-sm text-gray-900 dark:text-white">
+                            {submission.annex === 'SUMMARY' 
+                                ? 'Summary' 
+                                : submission.annex.startsWith('MER')
+                                ? submission.annex
+                                : `Annex ${submission.annex}`
+                            }
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {submission.annex === 'SUMMARY' ? 'School Details' : ANNEX_NAMES[submission.annex]}
+                            {getFormName(submission.annex)}
                         </div>
                     </div>
 
@@ -68,9 +73,12 @@ export default function SubmissionExpand({
                         {/* HEI Mode: Edit Button */}
                         {mode === 'hei' && (
                             <Link
-                                href={submission.annex === 'SUMMARY' 
-                                    ? `/hei/summary/${submission.id}/edit`
-                                    : `/hei/annex-${submission.annex.toLowerCase()}/${submission.route_id}/edit`
+                                href={
+                                    submission.annex === 'SUMMARY' 
+                                        ? `/hei/summary/${submission.id}/edit`
+                                        : submission.annex.startsWith('MER')
+                                        ? `/hei/${submission.annex.toLowerCase()}/${submission.id}/edit`
+                                        : `/hei/annex-${submission.annex.toLowerCase()}/${submission.route_id}/edit`
                                 }
                                 onClick={(e) => e.stopPropagation()}
                             >

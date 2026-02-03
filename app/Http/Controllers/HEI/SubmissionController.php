@@ -75,6 +75,26 @@ class SubmissionController extends Controller
 
                 $submissions = array_merge($submissions, $summarySubmissions->toArray());
 
+                // Add MER1 submissions
+                $mer1Submissions = \App\Models\MER1Submission::where('hei_id', $heiId)
+                    ->orderBy('academic_year', 'desc')
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+                    ->map(function ($submission) {
+                        return [
+                            'id' => $submission->id,
+                            'batch_id' => $submission->id,
+                            'annex' => 'MER1',
+                            'academic_year' => $submission->academic_year,
+                            'status' => $submission->status,
+                            'submitted_at' => $submission->created_at,
+                            'request_notes' => $submission->request_notes ?? null,
+                            'cancelled_notes' => $submission->cancelled_notes ?? null,
+                        ];
+                    });
+
+                $submissions = array_merge($submissions, $mer1Submissions->toArray());
+
                 // Add Annex submissions
                 foreach ($annexTypes as $code => $config) {
                     $batches = $config['model']::where('hei_id', $heiId)
@@ -136,6 +156,20 @@ class SubmissionController extends Controller
 
                     return response()->json([
                         'summary' => $summary,
+                    ])->getData();
+                }
+
+                // Handle MER1
+                if ($annexType === 'MER1') {
+                    $submission = \App\Models\MER1Submission::where('hei_id', $hei->id)
+                        ->where('id', $batchId)
+                        ->with(['educationalAttainments', 'trainings'])
+                        ->firstOrFail();
+
+                    return response()->json([
+                        'mer1' => $submission,
+                        'educational_attainments' => $submission->educationalAttainments,
+                        'trainings' => $submission->trainings,
                     ])->getData();
                 }
 

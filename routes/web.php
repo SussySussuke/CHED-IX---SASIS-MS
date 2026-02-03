@@ -28,6 +28,7 @@ use App\Http\Controllers\HEI\AnnexMController;
 use App\Http\Controllers\HEI\AnnexNController;
 use App\Http\Controllers\HEI\AnnexN1Controller;
 use App\Http\Controllers\HEI\AnnexOController;
+use App\Http\Controllers\HEI\MER1Controller;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes
@@ -88,26 +89,26 @@ Route::middleware('auth')->group(function () {
         Route::delete('/ched-contacts/{contact}', [CHEDContactController::class, 'destroy'])->name('admin.ched-contacts.destroy');
         Route::post('/ched-contacts/reorder', [CHEDContactController::class, 'reorder'])->name('admin.ched-contacts.reorder');
 
-        // M&E Reports routes
-        Route::prefix('mer')->group(function () {
+        // M&ER Reports 4
+        Route::prefix('mer4')->group(function () {
             // Form 1 routes
-            Route::get('/form1', [App\Http\Controllers\Admin\MERFormController::class, 'form1Index'])->name('admin.mer.form1.index');
-            Route::get('/form1/{heiId}/{academicYear}', [App\Http\Controllers\Admin\MERFormController::class, 'form1Load'])->name('admin.mer.form1.load');
+            Route::get('/form1', [App\Http\Controllers\Admin\MER4FormController::class, 'form1Index'])->name('admin.mer4.form1.index');
+            Route::get('/form1/{heiId}/{academicYear}', [App\Http\Controllers\Admin\MER4FormController::class, 'form1Load'])->name('admin.mer4.form1.load');
 
             // Form 2 routes
-            Route::get('/form2', [App\Http\Controllers\Admin\MERFormController::class, 'form2Index'])->name('admin.mer.form2.index');
-            Route::get('/form2/{heiId}/{academicYear}', [App\Http\Controllers\Admin\MERFormController::class, 'form2Load'])->name('admin.mer.form2.load');
+            Route::get('/form2', [App\Http\Controllers\Admin\MER4FormController::class, 'form2Index'])->name('admin.mer4.form2.index');
+            Route::get('/form2/{heiId}/{academicYear}', [App\Http\Controllers\Admin\MER4FormController::class, 'form2Load'])->name('admin.mer4.form2.load');
 
             // Form 3 routes
-            Route::get('/form3', [App\Http\Controllers\Admin\MERFormController::class, 'form3Index'])->name('admin.mer.form3.index');
-            Route::get('/form3/{heiId}/{academicYear}', [App\Http\Controllers\Admin\MERFormController::class, 'form3Load'])->name('admin.mer.form3.load');
+            Route::get('/form3', [App\Http\Controllers\Admin\MER4FormController::class, 'form3Index'])->name('admin.mer4.form3.index');
+            Route::get('/form3/{heiId}/{academicYear}', [App\Http\Controllers\Admin\MER4FormController::class, 'form3Load'])->name('admin.mer4.form3.load');
 
             // CHED Remarks API routes
-            Route::post('/remarks/toggle', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'toggle'])->name('admin.mer.remarks.toggle');
-            Route::post('/remarks/set', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'setRemark'])->name('admin.mer.remarks.set');
-            Route::post('/remarks/batch', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'batchSave'])->name('admin.mer.remarks.batch');
-            Route::get('/remarks/{heiId}/{academicYear}', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'getRemarks'])->name('admin.mer.remarks.get');
-            Route::get('/remarks/summary/{heiId}/{academicYear}', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'getSummary'])->name('admin.mer.remarks.summary');
+            Route::post('/remarks/toggle', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'toggle'])->name('admin.mer4.remarks.toggle');
+            Route::post('/remarks/set', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'setRemark'])->name('admin.mer4.remarks.set');
+            Route::post('/remarks/batch', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'batchSave'])->name('admin.mer4.remarks.batch');
+            Route::get('/remarks/{heiId}/{academicYear}', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'getRemarks'])->name('admin.mer4.remarks.get');
+            Route::get('/remarks/summary/{heiId}/{academicYear}', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'getSummary'])->name('admin.mer4.remarks.summary');
         });
     });
 
@@ -125,6 +126,13 @@ Route::middleware('auth')->group(function () {
         Route::put('/summary/{id}', [SummaryController::class, 'update'])->name('hei.summary.update');
         Route::post('/summary/{id}/cancel', [SummaryController::class, 'cancel'])->name('hei.summary.cancel');
         Route::get('/summary/history', [SummaryController::class, 'history'])->name('hei.summary.history');
+
+        // MER1 routes (Monitoring and Evaluation Report - HEI Profile)
+        Route::get('/mer1/create', [MER1Controller::class, 'create'])->name('hei.mer1.create');
+        Route::post('/mer1', [MER1Controller::class, 'store'])->name('hei.mer1.store');
+        Route::get('/mer1/{academicYear}/data', [MER1Controller::class, 'getData'])->name('hei.mer1.data');
+        Route::get('/mer1/{submissionId}/edit', [MER1Controller::class, 'edit'])->name('hei.mer1.edit');
+        Route::post('/mer1/{submissionId}/cancel', [MER1Controller::class, 'cancel'])->name('hei.mer1.cancel');
 
         // Annex A routes
         Route::get('/annex-a/submit', [AnnexAController::class, 'create'])->name('hei.annex-a.submit');

@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import AdminLayout from '../../Layouts/AdminLayout';
-import MERTableComponent from './MERTableComponent';
-import { getMERFormConfig } from '../../Config/merFormConfig';
-import { getMERFilters, saveMERFilters } from '../../Utils/merSessionStorage';
+import MER4TableComponent from './MER4TableComponent';
+import { getMER4FormConfig } from '../../Config/mer4FormConfig';
+import { getMER4Filters, saveMER4Filters } from '../../Utils/mer4SessionStorage';
 import EmptyState from '../Common/EmptyState';
 
 /**
- * Shared component for MER Forms 1, 2, and 3
- * Handles HEI/Year selection and delegates table rendering to MERTableComponent
+ * Shared component for MER4 Forms 1, 2, and 3
+ * Handles HEI/Year selection and delegates table rendering to MER4TableComponent
  */
-const SharedMERForm = ({ formNumber, heis, academicYears, initialHeiId, initialAcademicYear, formData }) => {
-  const config = getMERFormConfig(formNumber);
+const SharedMER4Form = ({ formNumber, heis, academicYears, initialHeiId, initialAcademicYear, formData }) => {
+  const config = getMER4FormConfig(formNumber);
   const { flash } = usePage().props;
 
   // Calculate default academic year based on deadline (September 1st)
@@ -35,7 +35,7 @@ const SharedMERForm = ({ formNumber, heis, academicYears, initialHeiId, initialA
     }
 
     // Otherwise check sessionStorage (for persistence across form pages)
-    const savedFilters = getMERFilters();
+    const savedFilters = getMER4Filters();
     if (savedFilters.heiId && savedFilters.academicYear) {
       return {
         heiId: savedFilters.heiId,
@@ -78,7 +78,7 @@ const SharedMERForm = ({ formNumber, heis, academicYears, initialHeiId, initialA
   // Save filters to session storage whenever they change
   useEffect(() => {
     if (selectedHEI && selectedYear) {
-      saveMERFilters(selectedHEI, selectedYear);
+      saveMER4Filters(selectedHEI, selectedYear);
     }
   }, [selectedHEI, selectedYear]);
 
@@ -254,11 +254,11 @@ const SharedMERForm = ({ formNumber, heis, academicYears, initialHeiId, initialA
 
         {/* Show table if data is available */}
         {selectedHEI && formData && (
-          <MERTableComponent formData={formData} config={config} />
+          <MER4TableComponent formData={formData} config={config} />
         )}
       </div>
     </AdminLayout>
   );
 };
 
-export default SharedMERForm;
+export default SharedMER4Form;

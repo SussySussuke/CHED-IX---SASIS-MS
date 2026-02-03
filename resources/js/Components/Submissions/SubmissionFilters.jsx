@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from '@inertiajs/react';
 import { IoCreate, IoChevronDown } from 'react-icons/io5';
-import { ANNEX_NAMES } from '../../Config/formConfig';
+import { FORM_NAMES, getAllAnnexCodes, buildFormOptionsGrouped } from '../../Config/formConfig';
+import { MER_FORMS, SUMMARY_FORM } from '../../Config/nonAnnexForms';
+import SearchableSelect from '../Form/SearchableSelect';
 
 export default function SubmissionFilters({
     mode,
@@ -15,24 +17,135 @@ export default function SubmissionFilters({
     academicYears,
     showCreateButton,
     createButtonUrl,
-    selectedYear // Add selectedYear prop
+    selectedYear
 }) {
     const [showDropdown, setShowDropdown] = useState(false);
 
     // Get year parameter for URLs
     const yearParam = selectedYear ? `?year=${selectedYear}` : '';
 
-    // Build form options for dropdown
-    const formOptions = [
-        { value: 'SUMMARY', label: 'Summary - School Details', url: `/hei/summary/create${yearParam}` },
-        ...Object.keys(ANNEX_NAMES)
-            .sort()
-            .map(annex => ({
-                value: annex,
-                label: `Annex ${annex} - ${ANNEX_NAMES[annex]}`,
-                url: `/hei/annex-${annex.toLowerCase()}/submit${yearParam}`
-            }))
-    ];
+    // Build ALL form options for create dropdown (grouped)
+    const createFormOptions = useMemo(() => {
+        const grouped = buildFormOptionsGrouped();
+        
+        // Add URLs to each option
+        return grouped.map(group => ({
+            ...group,
+            options: group.options.map(option => {
+                let url;
+                if (option.value === 'SUMMARY') {
+                    url = `${SUMMARY_FORM.route}${yearParam}`;
+                } else if (MER_FORMS[option.value]) {
+                    url = `${MER_FORMS[option.value].route}${yearParam}`;
+                } else {
+                    url = `/hei/annex-${option.value.toLowerCase()}/submit${yearParam}`;
+                }
+                return { ...option, url };
+            })
+        }));
+    }, [yearParam]);
+
+    // Build filter options (for filtering existing submissions)
+    const formSelectOptions = useMemo(() => {
+        if (mode === 'hei') {
+            // HEI: Show all possible forms with grouping
+            const grouped = buildFormOptionsGrouped();
+            // Add "All Forms" at the beginning without a group
+            const allFormsGroup = grouped[0];
+            return [
+                {
+                    ...allFormsGroup,
+                    options: [{ value: 'all', label: 'All Forms' }, ...allFormsGroup.options]
+                },
+                ...grouped.slice(1)
+            ];
+        } else {
+            // Admin: Build grouped structure from actual submissions
+            const allOption = { value: 'all', label: 'All Forms' };
+            const summaryOptions = [];
+            const merOptions = [];
+            const annexOptions_list = [];
+            
+            annexOptions.forEach(formCode => {
+                let label = formCode;
+                
+                if (formCode === 'SUMMARY') {
+                    label = SUMMARY_FORM.name;
+                    summaryOptions.push({ value: formCode, label });
+                } else if (MER_FORMS[formCode]) {
+                    label = MER_FORMS[formCode].name;
+                    merOptions.push({ value: formCode, label });
+                } else if (FORM_NAMES[formCode]) {
+                    label = `Annex ${formCode} - ${FORM_NAMES[formCode]}`;
+                    annexOptions_list.push({ value: formCode, label });
+                }
+            });
+            
+            const groups = [];
+            
+            // Add "All Forms" to the first available group
+            if (summaryOptions.length > 0) {
+                groups.push({ group: 'Institutional Forms', options: [allOption, ...summaryOptions] });
+            } else if (merOptions.length > 0) {
+                groups.push({ group: 'MER Forms', options: [allOption, ...merOptions] });
+                if (annexOptions_list.length > 0) {
+                    groups.push({ group: 'Student Services Annexes', options: annexOptions_list });
+                }
+                return groups;
+            } else if (annexOptions_list.length > 0) {
+                groups.push({ group: 'Student Services Annexes', options: [allOption, ...annexOptions_list] });
+                return groups;
+            } else {
+                // Fallback if no forms exist
+                return [{ group: 'Forms', options: [allOption] }];
+            }
+            
+            if (merOptions.length > 0) {
+                groups.push({ group: 'MER Forms', options: merOptions });
+            }
+            if (annexOptions_list.length > 0) {
+                groups.push({ group: 'Student Services Annexes', options: annexOptions_list });
+            }
+            
+            return groups;
+        }
+    }, [mode, annexOptions]);
+
+    const statusSelectOptions = useMemo(() => [
+        { value: 'all', label: 'All Statuses' },
+        { value: 'submitted', label: 'Submitted' },
+        { value: 'published', label: 'Published' },
+        { value: 'request', label: 'Pending Requests' },
+        { value: 'overwritten', label: 'Overwritten' },
+        { value: 'rejected', label: 'Rejected' }
+    ], []);
+
+    const yearSelectOptions = useMemo(() => [
+        { value: '', label: 'All Years' },
+        ...academicYears.map(year => ({ value: year, label: year }))
+    ], [academicYears]);
+
+    // Helper to get the correct URL for the current filter
+    const getCurrentCreateUrl = () => {
+        if (filterAnnex === 'all') return null;
+        
+        if (filterAnnex === 'SUMMARY') return `${SUMMARY_FORM.route}${yearParam}`;
+        if (MER_FORMS[filterAnnex]) return `${MER_FORMS[filterAnnex].route}${yearParam}`;
+        
+        // It's an annex
+        return `/hei/annex-${filterAnnex.toLowerCase()}/submit${yearParam}`;
+    };
+
+    const currentCreateUrl = getCurrentCreateUrl();
+
+    // Group create options by category for the "Create New" dropdown
+    const groupedCreateOptions = useMemo(() => {
+        const groups = {};
+        createFormOptions.forEach(group => {
+            groups[group.group] = group.options;
+        });
+        return groups;
+    }, [createFormOptions]);
 
     return (
         <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 mb-6 border border-gray-200 dark:border-gray-700">
@@ -41,7 +154,7 @@ export default function SubmissionFilters({
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filter Submissions</h2>
                     
                     {/* Show dropdown if "all" is selected, otherwise show direct link */}
-                    {filterAnnex === 'all' ? (
+                    {!currentCreateUrl ? (
                         <div className="relative">
                             <button
                                 onClick={() => setShowDropdown(!showDropdown)}
@@ -60,18 +173,25 @@ export default function SubmissionFilters({
                                         onClick={() => setShowDropdown(false)}
                                     />
                                     
-                                    {/* Dropdown menu */}
-                                    <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 z-20 max-h-96 overflow-y-auto">
+                                    {/* Dropdown menu with groups */}
+                                    <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 z-20 max-h-96 overflow-y-auto">
                                         <div className="py-2">
-                                            {formOptions.map(option => (
-                                                <Link
-                                                    key={option.value}
-                                                    href={option.url}
-                                                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                                                    onClick={() => setShowDropdown(false)}
-                                                >
-                                                    {option.label}
-                                                </Link>
+                                            {Object.entries(groupedCreateOptions).map(([group, options]) => (
+                                                <div key={group}>
+                                                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                                        {group}
+                                                    </div>
+                                                    {options.map(option => (
+                                                        <Link
+                                                            key={option.value}
+                                                            href={option.url}
+                                                            className="block pl-8 pr-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                                            onClick={() => setShowDropdown(false)}
+                                                        >
+                                                            {option.label}
+                                                        </Link>
+                                                    ))}
+                                                </div>
                                             ))}
                                         </div>
                                     </div>
@@ -80,81 +200,43 @@ export default function SubmissionFilters({
                         </div>
                     ) : (
                         <Link
-                            href={filterAnnex === 'SUMMARY' 
-                                ? `/hei/summary/create${yearParam}`
-                                : `/hei/annex-${filterAnnex.toLowerCase()}/submit${yearParam}`
-                            }
+                            href={currentCreateUrl}
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
                         >
                             <IoCreate />
-                            Create New {filterAnnex === 'SUMMARY' ? 'Summary' : (filterAnnex === 'D' || filterAnnex === 'G' ? 'Submission' : 'Batch')}
+                            Create New {
+                                filterAnnex === 'SUMMARY' ? 'Summary' :
+                                MER_FORMS[filterAnnex] ? filterAnnex :
+                                (filterAnnex === 'D' || filterAnnex === 'G' ? 'Submission' : 'Batch')
+                            }
                         </Link>
                     )}
                 </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {mode === 'hei' ? 'Select Form' : 'Filter by Form'}
-                    </label>
-                    <select
-                        value={filterAnnex}
-                        onChange={(e) => handleAnnexChange(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                    >
-                        {/* Both HEI and Admin now have "All" option */}
-                        <option value="all">All Forms</option>
-                        {annexOptions.map(annex => {
-                            // Handle SUMMARY specially
-                            if (annex === 'SUMMARY') {
-                                return (
-                                    <option key="SUMMARY" value="SUMMARY">
-                                        Summary - School Details
-                                    </option>
-                                );
-                            }
-                            // For standard annexes, look up name in ANNEX_NAMES
-                            const name = ANNEX_NAMES[annex];
-                            return (
-                                <option key={annex} value={annex}>
-                                    Annex {annex} - {name || annex}
-                                </option>
-                            );
-                        })}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Filter by Status
-                    </label>
-                    <select
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="all">All Statuses</option>
-                        <option value="submitted">Submitted</option>
-                        <option value="published">Published</option>
-                        <option value="request">Pending Requests</option>
-                        <option value="overwritten">Overwritten</option>
-                        <option value="rejected">Rejected</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Filter by Academic Year
-                    </label>
-                    <select
-                        value={filterYear}
-                        onChange={(e) => setFilterYear(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="">All Years</option>
-                        {academicYears.map(year => (
-                            <option key={year} value={year}>{year}</option>
-                        ))}
-                    </select>
-                </div>
+                <SearchableSelect
+                    label={mode === 'hei' ? 'Select Form' : 'Filter by Form'}
+                    value={filterAnnex}
+                    onChange={handleAnnexChange}
+                    options={formSelectOptions}
+                    placeholder="Select form..."
+                />
+                
+                <SearchableSelect
+                    label="Filter by Status"
+                    value={filterStatus}
+                    onChange={setFilterStatus}
+                    options={statusSelectOptions}
+                    placeholder="Select status..."
+                />
+                
+                <SearchableSelect
+                    label="Filter by Academic Year"
+                    value={filterYear}
+                    onChange={setFilterYear}
+                    options={yearSelectOptions}
+                    placeholder="Select year..."
+                />
             </div>
         </div>
     );

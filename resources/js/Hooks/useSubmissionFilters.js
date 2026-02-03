@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { router, usePage } from '@inertiajs/react';
-import { ANNEX_NAMES } from '../Config/formConfig';
+import { FORM_NAMES, getAllAnnexCodes } from '../Config/formConfig';
+import { MER_FORMS, SUMMARY_FORM } from '../Config/nonAnnexForms';
 
 /**
  * Hook to manage submission filtering logic
- * Handles filter state, annex options, and filtered submissions
+ * Handles filter state, annex options (including MER forms), and filtered submissions
  */
 export function useSubmissionFilters({ mode, submissions, selectedAnnex }) {
     const { url } = usePage();
@@ -27,7 +28,6 @@ export function useSubmissionFilters({ mode, submissions, selectedAnnex }) {
         }
         if (mode === 'hei') {
             const stored = sessionStorage.getItem('selectedAnnex');
-            // Default to 'all' for HEI instead of 'A'
             return stored || selectedAnnex || 'all';
         }
         return selectedAnnex || 'all';
@@ -46,7 +46,7 @@ export function useSubmissionFilters({ mode, submissions, selectedAnnex }) {
         if (params.annex) setFilterAnnex(params.annex);
     }, [url]);
 
-    // Custom sort function for annex keys that handles insertion notation (e.g., C-1, D-1)
+    // Custom sort function for annex keys that handles insertion notation (e.g., C-1, I-1)
     const sortAnnexKeys = (keys) => {
         return keys.sort((a, b) => {
             // Extract base letter and suffix (if any)
@@ -76,17 +76,29 @@ export function useSubmissionFilters({ mode, submissions, selectedAnnex }) {
     // Build annex options from available data
     const annexOptions = useMemo(() => {
         if (mode === 'admin') {
-            // Admin: Extract unique annexes from submissions
-            const uniqueAnnexes = [...new Set(submissions.map(s => s.annex))];
-            // Separate SUMMARY from other annexes
-            const hasSummary = uniqueAnnexes.includes('SUMMARY');
-            const otherAnnexes = sortAnnexKeys(uniqueAnnexes.filter(a => a !== 'SUMMARY'));
-            // Return SUMMARY first (if it exists), then others sorted properly
-            return hasSummary ? ['SUMMARY', ...otherAnnexes] : otherAnnexes;
+            // Admin: Extract unique form codes from submissions
+            const uniqueForms = [...new Set(submissions.map(s => s.annex))];
+            
+            // Separate and sort
+            const summary = uniqueForms.includes('SUMMARY') ? ['SUMMARY'] : [];
+            const merForms = uniqueForms.filter(f => MER_FORMS[f]);
+            const annexes = sortAnnexKeys(
+                uniqueForms.filter(f => f !== 'SUMMARY' && !MER_FORMS[f])
+            );
+            
+            return [...summary, ...merForms, ...annexes];
         } else {
-            // HEI: Build from ANNEX_NAMES (which has ALL annexes A-O plus insertions like C-1)
-            const standardAnnexes = sortAnnexKeys(Object.keys(ANNEX_NAMES));
-            return ['SUMMARY', ...standardAnnexes];  // Always include SUMMARY first
+            // HEI: Show all possible forms
+            const allForms = ['SUMMARY'];
+            
+            // Add MER forms
+            Object.keys(MER_FORMS).forEach(code => allForms.push(code));
+            
+            // Add annexes
+            const standardAnnexes = sortAnnexKeys(getAllAnnexCodes());
+            allForms.push(...standardAnnexes);
+            
+            return allForms;
         }
     }, [mode, submissions]);
 

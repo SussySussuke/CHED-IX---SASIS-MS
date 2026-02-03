@@ -1,21 +1,21 @@
 /**
- * Session storage utility for MER form filters
- * Persists HEI and Academic Year selections across MER form pages during runtime
+ * Session storage utility for MER4 form filters
+ * Persists HEI and Academic Year selections across MER4 form pages during runtime
  * Automatically cleared when browser tab is closed
  */
 
-const MER_STORAGE_KEYS = {
-  HEI_ID: 'mer_selected_hei_id',
-  ACADEMIC_YEAR: 'mer_selected_academic_year',
+const MER4_STORAGE_KEYS = {
+  HEI_ID: 'mer4_selected_hei_id',
+  ACADEMIC_YEAR: 'mer4_selected_academic_year',
 };
 
 /**
  * Save the selected HEI ID to session storage
  * @param {string|number} heiId - The HEI ID to save
  */
-export const saveMERHEI = (heiId) => {
+export const saveMER4HEI = (heiId) => {
   if (typeof window !== 'undefined' && heiId) {
-    sessionStorage.setItem(MER_STORAGE_KEYS.HEI_ID, String(heiId));
+    sessionStorage.setItem(MER4_STORAGE_KEYS.HEI_ID, String(heiId));
   }
 };
 
@@ -23,9 +23,9 @@ export const saveMERHEI = (heiId) => {
  * Save the selected Academic Year to session storage
  * @param {string} academicYear - The academic year to save (e.g., "2024-2025")
  */
-export const saveMERAcademicYear = (academicYear) => {
+export const saveMER4AcademicYear = (academicYear) => {
   if (typeof window !== 'undefined' && academicYear) {
-    sessionStorage.setItem(MER_STORAGE_KEYS.ACADEMIC_YEAR, academicYear);
+    sessionStorage.setItem(MER4_STORAGE_KEYS.ACADEMIC_YEAR, academicYear);
   }
 };
 
@@ -33,9 +33,9 @@ export const saveMERAcademicYear = (academicYear) => {
  * Get the saved HEI ID from session storage
  * @returns {string|null} - The saved HEI ID or null
  */
-export const getMERHEI = () => {
+export const getMER4HEI = () => {
   if (typeof window !== 'undefined') {
-    return sessionStorage.getItem(MER_STORAGE_KEYS.HEI_ID);
+    return sessionStorage.getItem(MER4_STORAGE_KEYS.HEI_ID);
   }
   return null;
 };
@@ -44,20 +44,20 @@ export const getMERHEI = () => {
  * Get the saved Academic Year from session storage
  * @returns {string|null} - The saved academic year or null
  */
-export const getMERAcademicYear = () => {
+export const getMER4AcademicYear = () => {
   if (typeof window !== 'undefined') {
-    return sessionStorage.getItem(MER_STORAGE_KEYS.ACADEMIC_YEAR);
+    return sessionStorage.getItem(MER4_STORAGE_KEYS.ACADEMIC_YEAR);
   }
   return null;
 };
 
 /**
- * Clear all MER filter selections from session storage
+ * Clear all MER4 filter selections from session storage
  */
-export const clearMERFilters = () => {
+export const clearMER4Filters = () => {
   if (typeof window !== 'undefined') {
-    sessionStorage.removeItem(MER_STORAGE_KEYS.HEI_ID);
-    sessionStorage.removeItem(MER_STORAGE_KEYS.ACADEMIC_YEAR);
+    sessionStorage.removeItem(MER4_STORAGE_KEYS.HEI_ID);
+    sessionStorage.removeItem(MER4_STORAGE_KEYS.ACADEMIC_YEAR);
   }
 };
 
@@ -66,18 +66,18 @@ export const clearMERFilters = () => {
  * @param {string|number} heiId - The HEI ID to save
  * @param {string} academicYear - The academic year to save
  */
-export const saveMERFilters = (heiId, academicYear) => {
-  saveMERHEI(heiId);
-  saveMERAcademicYear(academicYear);
+export const saveMER4Filters = (heiId, academicYear) => {
+  saveMER4HEI(heiId);
+  saveMER4AcademicYear(academicYear);
 };
 
 /**
  * Get both HEI and Academic Year at once
  * @returns {{heiId: string|null, academicYear: string|null}}
  */
-export const getMERFilters = () => {
+export const getMER4Filters = () => {
   return {
-    heiId: getMERHEI(),
-    academicYear: getMERAcademicYear(),
+    heiId: getMER4HEI(),
+    academicYear: getMER4AcademicYear(),
   };
 };

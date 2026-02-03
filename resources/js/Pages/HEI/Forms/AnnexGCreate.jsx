@@ -648,9 +648,9 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
           <button
             type="button"
             onClick={() => handleAddRow('publications')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-blue-500 hover:bg-blue-600 text-white"
           >
-            <IoAddCircle className="text-lg" />
+            <IoAddCircle size={20} />
             Add Publication
           </button>
         </div>
@@ -679,14 +679,16 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
             />
           </div>
 
-          <button
-            type="button"
-            onClick={() => handleAddRow('programs')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <IoAddCircle className="text-lg" />
-            Add Program
-          </button>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => handleAddRow('programs')}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              <IoAddCircle size={20} />
+              Add Program
+            </button>
+          </div>
         </div>
 
         <AdditionalNotesSection
@@ -694,21 +696,14 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
           onChange={setRequestNotes}
         />
 
-        <div className="flex justify-end gap-4">
-          <button
-            type="button"
-            onClick={() => router.visit('/hei/annex-g/history')}
-            className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            Cancel
-          </button>
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={handleSubmit}
             disabled={processing}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors bg-green-500 hover:bg-green-600 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            <IoSave className="text-lg" />
+            <IoSave size={20} />
             {processing ? 'Submitting...' : 'Submit'}
           </button>
         </div>

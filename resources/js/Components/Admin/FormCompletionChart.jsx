@@ -1,13 +1,13 @@
 import React from 'react';
-import { getAnnexName, ANNEX_PRIORITY_ORDER } from '../../Config/formConfig';
+import { getFormName, PRIORITY_ORDER } from '../../Config/formConfig';
 
 const FormCompletionChart = ({ data }) => {
   // DEBUG: Log what data we're receiving
   console.log('FormCompletionChart received data:', data);
-  console.log('ANNEX_PRIORITY_ORDER:', ANNEX_PRIORITY_ORDER);
+  console.log('PRIORITY_ORDER:', PRIORITY_ORDER);
 
   // Convert data object to array, translate codes to names, and sort by priority order
-  const chartData = ANNEX_PRIORITY_ORDER
+  const chartData = PRIORITY_ORDER
     .filter(code => {
       const exists = data[code] !== undefined;
       console.log(`Checking code "${code}": exists=${exists}, value=${data[code]}`);
@@ -15,8 +15,8 @@ const FormCompletionChart = ({ data }) => {
     })
     .map(code => ({
       code,  // Keep code for reference (A, B, C-1, etc.)
-      name: code === 'SUMMARY' ? 'Summary' : getAnnexName(code),  // Full name from formConfig
-      displayLabel: code === 'SUMMARY' ? 'Summary' : `Annex ${code}`,  // Short label for display
+      name: getFormName(code),  // Full name from formConfig
+      displayLabel: code === 'SUMMARY' || code.startsWith('MER') ? code : `Annex ${code}`,  // Short label for display
       percentage: data[code]
     }))
     .sort((a, b) => b.percentage - a.percentage);  // Sort by completion rate descending

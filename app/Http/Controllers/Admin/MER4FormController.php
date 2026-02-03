@@ -4,21 +4,21 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\HEI;
-use App\Services\MERFormBuilder;
+use App\Services\MER4FormBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class MERFormController extends Controller
+class MER4FormController extends Controller
 {
     protected $formBuilder;
 
-    public function __construct(MERFormBuilder $formBuilder)
+    public function __construct(MER4FormBuilder $formBuilder)
     {
         $this->formBuilder = $formBuilder;
     }
 
     /**
-     * Show Form 1 selector page
+     * Show MER4 Form 1 selector page
      */
     public function form1Index()
     {
@@ -43,7 +43,7 @@ class MERFormController extends Controller
             sort($academicYears);
         }
 
-        return inertia('Admin/MER/Form1Index', [
+        return inertia('Admin/MER4/Form1Index', [
             'heis' => $heis,
             'academicYears' => $academicYears,
             'initialHeiId' => null, // No default selection
@@ -53,14 +53,14 @@ class MERFormController extends Controller
     }
 
     /**
-     * Load Form 1 with data
+     * Load MER4 Form 1 with data
      */
     public function form1Load($heiId, $academicYear)
     {
         $result = $this->formBuilder->buildForm1($heiId, $academicYear);
 
         // Return the same page with form data
-        return inertia('Admin/MER/Form1Index', [
+        return inertia('Admin/MER4/Form1Index', [
             'heis' => HEI::where('is_active', true)->orderBy('name')->get(),
             'academicYears' => $this->getAvailableAcademicYears(),
             'initialHeiId' => $heiId,
@@ -70,7 +70,7 @@ class MERFormController extends Controller
     }
 
     /**
-     * Show Form 2 selector page
+     * Show MER4 Form 2 selector page
      */
     public function form2Index()
     {
@@ -92,7 +92,7 @@ class MERFormController extends Controller
             sort($academicYears);
         }
 
-        return inertia('Admin/MER/Form2Index', [
+        return inertia('Admin/MER4/Form2Index', [
             'heis' => $heis,
             'academicYears' => $academicYears,
             'initialHeiId' => null,
@@ -102,13 +102,13 @@ class MERFormController extends Controller
     }
 
     /**
-     * Load Form 2 with data
+     * Load MER4 Form 2 with data
      */
     public function form2Load($heiId, $academicYear)
     {
         $result = $this->formBuilder->buildForm2($heiId, $academicYear);
 
-        return inertia('Admin/MER/Form2Index', [
+        return inertia('Admin/MER4/Form2Index', [
             'heis' => HEI::where('is_active', true)->orderBy('name')->get(),
             'academicYears' => $this->getAvailableAcademicYears(),
             'initialHeiId' => $heiId,
@@ -118,7 +118,7 @@ class MERFormController extends Controller
     }
 
     /**
-     * Show Form 3 selector page
+     * Show MER4 Form 3 selector page
      */
     public function form3Index()
     {
@@ -140,7 +140,7 @@ class MERFormController extends Controller
             sort($academicYears);
         }
 
-        return inertia('Admin/MER/Form3Index', [
+        return inertia('Admin/MER4/Form3Index', [
             'heis' => $heis,
             'academicYears' => $academicYears,
             'initialHeiId' => null,
@@ -150,13 +150,13 @@ class MERFormController extends Controller
     }
 
     /**
-     * Load Form 3 with data
+     * Load MER4 Form 3 with data
      */
     public function form3Load($heiId, $academicYear)
     {
         $result = $this->formBuilder->buildForm3($heiId, $academicYear);
 
-        return inertia('Admin/MER/Form3Index', [
+        return inertia('Admin/MER4/Form3Index', [
             'heis' => HEI::where('is_active', true)->orderBy('name')->get(),
             'academicYears' => $this->getAvailableAcademicYears(),
             'initialHeiId' => $heiId,

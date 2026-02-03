@@ -146,18 +146,46 @@ abstract class BaseAnnexController extends Controller
      */
     protected function overwriteExisting($model, int $heiId, string $academicYear, string $status): void
     {
-        if ($status === 'published' || $status === 'request') {
-            // Always overwrite ALL existing requests for this year
-            $model::where('hei_id', $heiId)
-                ->where('academic_year', $academicYear)
-                ->where('status', 'request')
-                ->update(['status' => 'overwritten']);
-        } else {
-            // For 'submitted', only overwrite that specific status
-            $model::where('hei_id', $heiId)
-                ->where('academic_year', $academicYear)
-                ->where('status', $status)
-                ->update(['status' => 'overwritten']);
+        try {
+            if ($status === 'published' || $status === 'request') {
+                // Always overwrite ALL existing requests for this year
+                $affected = $model::where('hei_id', $heiId)
+                    ->where('academic_year', $academicYear)
+                    ->where('status', 'request')
+                    ->update(['status' => 'overwritten']);
+                    
+                \Log::info('Overwrite operation completed', [
+                    'model' => $model,
+                    'hei_id' => $heiId,
+                    'academic_year' => $academicYear,
+                    'old_status' => 'request',
+                    'affected_rows' => $affected
+                ]);
+            } else {
+                // For 'submitted', only overwrite that specific status
+                $affected = $model::where('hei_id', $heiId)
+                    ->where('academic_year', $academicYear)
+                    ->where('status', $status)
+                    ->update(['status' => 'overwritten']);
+                    
+                \Log::info('Overwrite operation completed', [
+                    'model' => $model,
+                    'hei_id' => $heiId,
+                    'academic_year' => $academicYear,
+                    'old_status' => $status,
+                    'affected_rows' => $affected
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('OVERWRITE FAILED', [
+                'error' => $e->getMessage(),
+                'model' => $model,
+                'hei_id' => $heiId,
+                'academic_year' => $academicYear,
+                'status' => $status,
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e; // Re-throw so the transaction fails
         }
         
         // Clear caches when data is modified

@@ -10,7 +10,6 @@ import { usePage } from '@inertiajs/react';
 const HEILayout = ({ title, children, showHeader = true }) => {
   const { props, url } = usePage();
   const { hei, academicYears, selectedYear } = props;
-
   // Extract year from URL if present, otherwise use selectedYear from props
   const currentYear = new URLSearchParams(window.location.search).get('year') || selectedYear;
   const yearParam = currentYear ? `?year=${currentYear}` : '';
