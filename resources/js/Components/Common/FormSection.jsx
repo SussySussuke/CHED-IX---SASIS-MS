@@ -6,7 +6,7 @@ import { useTheme } from '../../Context/ThemeContext';
  * Provides consistent styling for form sections with title, subtitle, and optional divider
  * 
  * @param {string} title - Section title
- * @param {string} subtitle - Optional subtitle
+ * @param {string|string[]} subtitle - Optional subtitle (string for paragraph, array for bullet list)
  * @param {string} type - Section type: 'section', 'divider', or 'table'
  * @param {React.ReactNode} children - Section content
  */
@@ -49,12 +49,23 @@ const FormSection = ({
             {title}
           </h3>
           {subtitle && (
-            <p className={`
-              text-sm mt-1
-              ${isDark ? 'text-gray-400' : 'text-gray-600'}
-            `}>
-              {subtitle}
-            </p>
+            Array.isArray(subtitle) ? (
+              <ul className={`
+                list-disc list-inside text-sm mt-1 space-y-1
+                ${isDark ? 'text-gray-400' : 'text-gray-600'}
+              `}>
+                {subtitle.map((item, index) => (
+                  <li key={index}>{item}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className={`
+                text-sm mt-1
+                ${isDark ? 'text-gray-400' : 'text-gray-600'}
+              `}>
+                {subtitle}
+              </p>
+            )
           )}
         </div>
       )}

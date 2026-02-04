@@ -21,6 +21,8 @@ import { SUMMARY_FORM, MER_FORMS } from './nonAnnexForms';
 export const PRIORITY_ORDER = [
   'SUMMARY',
   'MER1',
+  'MER2',
+  'MER3',
   'A',
   'B',
   'C',
@@ -48,6 +50,8 @@ export const PRIORITY_ORDER = [
 export const FORM_NAMES = {
   SUMMARY: 'Summary - School Details',
   MER1: 'HEI Profile on SAS',
+  MER2: 'HEI Directory of SAS',
+  MER3: 'Matrix of School Fees for SAS',
   A: 'Information and Orientation Services',
   B: 'Guidance and Counseling Service',
   C: 'Career and Job Placement Services',

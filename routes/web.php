@@ -29,6 +29,8 @@ use App\Http\Controllers\HEI\AnnexNController;
 use App\Http\Controllers\HEI\AnnexN1Controller;
 use App\Http\Controllers\HEI\AnnexOController;
 use App\Http\Controllers\HEI\MER1Controller;
+use App\Http\Controllers\HEI\MER2Controller;
+use App\Http\Controllers\HEI\MER3Controller;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes
@@ -133,6 +135,20 @@ Route::middleware('auth')->group(function () {
         Route::get('/mer1/{academicYear}/data', [MER1Controller::class, 'getData'])->name('hei.mer1.data');
         Route::get('/mer1/{submissionId}/edit', [MER1Controller::class, 'edit'])->name('hei.mer1.edit');
         Route::post('/mer1/{submissionId}/cancel', [MER1Controller::class, 'cancel'])->name('hei.mer1.cancel');
+
+        // MER2 routes (Monitoring and Evaluation Report - HEI Directory of SAS)
+        Route::get('/mer2/create', [MER2Controller::class, 'create'])->name('hei.mer2.create');
+        Route::post('/mer2', [MER2Controller::class, 'store'])->name('hei.mer2.store');
+        Route::get('/mer2/{academicYear}/data', [MER2Controller::class, 'getData'])->name('hei.mer2.data');
+        Route::get('/mer2/{submissionId}/edit', [MER2Controller::class, 'edit'])->name('hei.mer2.edit');
+        Route::post('/mer2/{submissionId}/cancel', [MER2Controller::class, 'cancel'])->name('hei.mer2.cancel');
+
+        // MER3 routes (Monitoring and Evaluation Report - Matrix of School Fees)
+        Route::get('/mer3/create', [MER3Controller::class, 'create'])->name('hei.mer3.create');
+        Route::post('/mer3', [MER3Controller::class, 'store'])->name('hei.mer3.store');
+        Route::get('/mer3/{academicYear}/data', [MER3Controller::class, 'getData'])->name('hei.mer3.data');
+        Route::get('/mer3/{submissionId}/edit', [MER3Controller::class, 'edit'])->name('hei.mer3.edit');
+        Route::post('/mer3/{submissionId}/cancel', [MER3Controller::class, 'cancel'])->name('hei.mer3.cancel');
 
         // Annex A routes
         Route::get('/annex-a/submit', [AnnexAController::class, 'create'])->name('hei.annex-a.submit');

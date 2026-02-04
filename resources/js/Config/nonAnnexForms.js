@@ -27,7 +27,18 @@ export const MER_FORMS = {
     route: '/hei/mer1/create',
     category: 'MER Forms',
   },
-  // Future: MER2, MER3, etc.
+  MER2: {
+    code: 'MER2',
+    name: 'HEI Directory of SAS',
+    route: '/hei/mer2/create',
+    category: 'MER Forms',
+  },
+  MER3: {
+    code: 'MER3',
+    name: 'Matrix of School Fees for SAS',
+    route: '/hei/mer3/create',
+    category: 'MER Forms',
+  },
 };
 
 /**

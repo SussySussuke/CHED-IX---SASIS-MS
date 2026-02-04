@@ -87,6 +87,11 @@ const SharedFormCreate = ({
           // Start with one empty row
           newTableData[section.entityName] = [createEmptyRow(section.columns)];
         }
+        
+        // Initialize summary field for MER2 tables
+        if (section.summary) {
+          newFormData[section.summary.studentsHandledKey] = existingSubmission?.[section.summary.studentsHandledKey] || '';
+        }
       }
     });
 
@@ -249,6 +254,11 @@ const SharedFormCreate = ({
         minWidth: col.minWidth || 150,
       };
 
+      // Handle grouped headers (for MER2 License/Eligibility columns)
+      if (col.headerGroup) {
+        baseCol.headerClass = 'ag-header-group-cell-with-group';
+      }
+
       if (col.type === 'numeric') {
         baseCol.valueParser = params => {
           let val = params.newValue;
@@ -330,20 +340,65 @@ const SharedFormCreate = ({
           autoHeightForSmallData={true}
         />
         
-        <div className="mt-2 flex justify-end">
+        {/* Add Row Button + Summary Row (for MER2 tables) */}
+        <div className="mt-2 flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2 sm:gap-3">
+          {/* Summary (for MER2 tables) - Left side of button */}
+          {section.summary && (
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-4">
+              {/* Auto-calculated personnel count */}
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {section.summary.personnelCountLabel}
+                </span>
+                <span className={`font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                  {currentData.filter(row => {
+                    // Count rows with at least one filled field
+                    return Object.keys(row).some(key => {
+                      const value = row[key];
+                      return value !== null && value !== '' && value !== undefined;
+                    });
+                  }).length}
+                </span>
+              </div>
+
+              {/* Manual input for students handled */}
+              <div className="flex items-center gap-2">
+                <label className={`text-sm font-medium whitespace-nowrap ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {section.summary.studentsHandledLabel}
+                </label>
+                <input
+                  type="number"
+                  name={section.summary.studentsHandledKey}
+                  value={formData[section.summary.studentsHandledKey] || ''}
+                  onChange={(e) => handleFormFieldChange(section.summary.studentsHandledKey, e.target.value)}
+                  placeholder={section.summary.studentsHandledPlaceholder}
+                  className={`
+                    w-28 h-[40px] px-3 text-sm rounded-lg border
+                    focus:outline-none focus:ring-2 focus:ring-blue-500
+                    ${isDark 
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                    }
+                  `}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Add Row Button - Rightmost element */}
           <button
             type="button"
             onClick={() => handleAddRow(section)}
             className={`
-              flex items-center gap-2 px-4 py-2 rounded-lg font-medium
-              transition-colors
+              flex items-center gap-2 h-[40px] px-4 rounded-lg font-medium text-sm
+              transition-colors whitespace-nowrap
               ${isDark 
                 ? 'bg-blue-600 hover:bg-blue-700 text-white' 
                 : 'bg-blue-500 hover:bg-blue-600 text-white'
               }
             `}
           >
-            <IoAddCircle size={20} />
+            <IoAddCircle size={18} />
             Add Row
           </button>
         </div>
