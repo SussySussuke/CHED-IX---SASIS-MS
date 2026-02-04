@@ -1,0 +1,143 @@
+# EXPAND/COLLAPSE BUG - FAILED SOLUTION ATTEMPTS
+
+## THE BUG:
+When closing a batch (collapsing it), OTHER opened batches have row height issues in their AG Grid tables.
+Opening a batch seems to fix the issue temporarily.
+
+## HYPOTHESIS:
+AG Grid's `autoHeight` mode (used for tables with ≤10 rows) doesn't recalculate row heights when page layout changes due to other elements expanding/collapsing.
+
+---
+
+## ATTEMPTED SOLUTIONS (ALL FAILED):
+
+### Attempt 1: Store Grid API + onGridReady Callback
+**What I tried:**
+- Added `gridApi` state to store AG Grid API reference
+- Created `onGridReady` callback to store API and force initial `resetRowHeights()`
+- Used `setTimeout(() => params.api.resetRowHeights(), 50)` on grid ready
+
+**Result:** ❌ FAILED - Did not fix the collapse bug
+
+---
+
+### Attempt 2: React useEffect on rowData Changes
+**What I tried:**
+- Added `useEffect` that watches `rowData` changes
+- Called `gridApi.resetRowHeights()` wrapped in `requestAnimationFrame()`
+- Theory: When data changes, force recalculation
+
+**Result:** ❌ FAILED - Did not fix the collapse bug
+
+---
+
+### Attempt 3: IntersectionObserver for Visibility
+**What I tried:**
+- Created separate `containerRef` for the grid container DOM element
+- Added `IntersectionObserver` to detect when grid becomes visible/invisible
+- On intersection, call `gridApi.resetRowHeights()`
+- Used `rootMargin: '50px'` and `threshold: 0.1`
+
+**Result:** ❌ FAILED - Did not fix the collapse bug
+**Note:** Initially had error because was using gridRef (component) instead of containerRef (DOM element)
+
+---
+
+### Attempt 4: ResizeObserver for Container Size Changes
+**What I tried:**
+- Added `ResizeObserver` on the grid container element
+- Theory: When page layout shifts (other batches collapse), container size changes
+- On resize, call `gridApi.resetRowHeights()`
+
+**Result:** ❌ FAILED - Did not fix the collapse bug
+
+---
+
+### Attempt 5: Window Resize Listener (Backup)
+**What I tried:**
+- Added global `window.addEventListener('resize')` as backup
+- Call `gridApi.resetRowHeights()` on window resize
+
+**Result:** ❌ FAILED - Did not fix the collapse bug
+
+---
+
+### Attempt 6: More Aggressive API Calls (onBodyScroll)
+**What I tried:**
+- Changed from just `resetRowHeights()` to:
+  ```javascript
+  gridApi.resetRowHeights();
+  gridApi.onBodyScroll();
+  ```
+- Theory: Maybe onBodyScroll forces a more complete refresh
+
+**Result:** ❌ FAILED - Did not fix the collapse bug
+
+---
+
+### Attempt 7: Nuclear Option (redrawRows)
+**What I tried:**
+- Changed to even more aggressive:
+  ```javascript
+  gridApi.resetRowHeights();
+  gridApi.redrawRows();
+  ```
+- Theory: Force complete grid redraw
+
+**Result:** ❌ FAILED - Did not fix the collapse bug
+
+---
+
+## WHAT WE LEARNED:
+
+1. **The bug persists despite all observer patterns**
+   - IntersectionObserver (visibility)
+   - ResizeObserver (size changes)
+   - Window resize listener
+   - Data change effects
+
+2. **Multiple AG Grid API methods don't help**
+   - `resetRowHeights()`
+   - `onBodyScroll()`
+   - `redrawRows()`
+   - Even in combination
+
+3. **The problem might NOT be in AGGridViewer at all**
+   - Could be in how SubmissionExpand handles the collapse
+   - Could be CSS-related
+   - Could be React rendering issue
+   - Could be AG Grid's autoHeight fundamentally broken for this use case
+
+---
+
+## NEXT STEPS TO INVESTIGATE:
+
+1. **Test without autoHeight mode entirely**
+   - Set `autoHeightForSmallData = false` 
+   - See if normal pagination mode has the same bug
+
+2. **Check SubmissionExpand component**
+   - How does it handle expand/collapse?
+   - Is there animation that might interfere?
+   - Does it use CSS transitions?
+
+3. **Check if it's CSS related**
+   - Inspect element when bug occurs
+   - Check computed styles
+   - Look for conflicting CSS rules
+
+4. **Try a completely different approach**
+   - Maybe don't use AG Grid's autoHeight at all
+   - Use fixed heights for all grids
+   - Or use a different table library for small datasets
+
+5. **Check AG Grid version and known issues**
+   - Maybe this is a known AG Grid bug?
+   - Try updating AG Grid version?
+
+---
+
+## CURRENT STATUS:
+❌ UNSOLVED - All attempts to fix via observers and API calls have failed.
+
+The bug remains: Closing one batch causes row height issues in other opened batches.

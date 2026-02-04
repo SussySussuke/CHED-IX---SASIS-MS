@@ -76,6 +76,63 @@ class SubmissionController extends Controller
 
         $submissions = array_merge($submissions, $summarySubmissions->toArray());
 
+        // Add MER1 submissions
+        $mer1Submissions = \App\Models\MER1Submission::where('hei_id', $heiId)
+            ->orderBy('academic_year', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($submission) {
+                return [
+                    'id' => $submission->id,
+                    'batch_id' => $submission->id,
+                    'annex' => 'MER1',
+                    'academic_year' => $submission->academic_year,
+                    'status' => $submission->status,
+                    'submitted_at' => $submission->created_at,
+                    'request_notes' => $submission->request_notes ?? null,
+                ];
+            });
+
+        $submissions = array_merge($submissions, $mer1Submissions->toArray());
+
+        // Add MER2 submissions
+        $mer2Submissions = \App\Models\MER2Submission::where('hei_id', $heiId)
+            ->orderBy('academic_year', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($submission) {
+                return [
+                    'id' => $submission->id,
+                    'batch_id' => $submission->id,
+                    'annex' => 'MER2',
+                    'academic_year' => $submission->academic_year,
+                    'status' => $submission->status,
+                    'submitted_at' => $submission->created_at,
+                    'request_notes' => $submission->request_notes ?? null,
+                ];
+            });
+
+        $submissions = array_merge($submissions, $mer2Submissions->toArray());
+
+        // Add MER3 submissions
+        $mer3Submissions = \App\Models\MER3Submission::where('hei_id', $heiId)
+            ->orderBy('academic_year', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($submission) {
+                return [
+                    'id' => $submission->id,
+                    'batch_id' => $submission->id,
+                    'annex' => 'MER3',
+                    'academic_year' => $submission->academic_year,
+                    'status' => $submission->status,
+                    'submitted_at' => $submission->created_at,
+                    'request_notes' => $submission->request_notes ?? null,
+                ];
+            });
+
+        $submissions = array_merge($submissions, $mer3Submissions->toArray());
+
         foreach ($annexTypes as $code => $config) {
             $batches = $config['model']::where('hei_id', $heiId)
                 ->orderBy('academic_year', 'desc')
@@ -332,6 +389,43 @@ class SubmissionController extends Controller
 
             return response()->json([
                 'summary' => $summary,
+            ]);
+        }
+
+        // Handle MER1 - SharedRenderer compatible format
+        if ($annexType === 'MER1') {
+            $submission = \App\Models\MER1Submission::where('id', $batchId)
+                ->with(['educationalAttainments', 'trainings'])
+                ->firstOrFail();
+
+            return response()->json([
+                'batch' => $submission,  // Using 'batch' for SharedRenderer compatibility
+                'educational_attainments' => $submission->educationalAttainments,
+                'trainings' => $submission->trainings,
+            ]);
+        }
+
+        // Handle MER2 - SharedRenderer compatible format
+        if ($annexType === 'MER2') {
+            $submission = \App\Models\MER2Submission::where('id', $batchId)
+                ->with(['personnel'])
+                ->firstOrFail();
+
+            return response()->json([
+                'batch' => $submission,
+                'personnel' => $submission->personnel,
+            ]);
+        }
+
+        // Handle MER3 - SharedRenderer compatible format
+        if ($annexType === 'MER3') {
+            $submission = \App\Models\MER3Submission::where('id', $batchId)
+                ->with(['schoolFees'])
+                ->firstOrFail();
+
+            return response()->json([
+                'batch' => $submission,
+                'school_fees' => $submission->schoolFees,
             ]);
         }
 
