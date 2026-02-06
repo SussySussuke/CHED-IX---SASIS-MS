@@ -137,7 +137,76 @@ AG Grid's `autoHeight` mode (used for tables with ≤10 rows) doesn't recalculat
 
 ---
 
-## CURRENT STATUS:
-❌ UNSOLVED - All attempts to fix via observers and API calls have failed.
+---
 
-The bug remains: Closing one batch causes row height issues in other opened batches.
+### Attempt 8: Parent-Driven layoutVersion Signal (Prop Drilling)
+**What I tried:**
+- Added `layoutVersion` state counter to `useSubmissionData.js` hook
+- Increments every time ANY batch is toggled (expand or collapse)
+- Propagated `layoutVersion` down through the entire component tree:
+  - `useSubmissionData.js` → `SubmissionsList.jsx` → `SubmissionExpand.jsx` → `renderers/index.jsx` → `SharedRenderer.jsx` → `AGGridViewer.jsx`
+- In `AGGridViewer.jsx`, added `useEffect` that watches `layoutVersion` changes
+- When `layoutVersion` changes, calls `gridApi.resetRowHeights()` wrapped in `requestAnimationFrame()`
+- Only triggers for grids in `autoHeight` mode (shouldUseAutoHeight check)
+- Skips initial render (layoutVersion === 0)
+
+**Files Modified:**
+- `resources/js/Hooks/useSubmissionData.js`
+- `resources/js/Components/Submissions/SubmissionsList.jsx`
+- `resources/js/Components/Submissions/SubmissionExpand.jsx`
+- `resources/js/Components/Submissions/renderers/index.jsx`
+- `resources/js/Components/Submissions/renderers/SharedRenderer.jsx`
+- `resources/js/Components/Common/AGGridViewer.jsx`
+
+**Theory:**
+The parent component KNOWS when any batch toggles, so we can signal ALL child AG Grids to recalculate their row heights. This should fix the "sibling doesn't know about layout change" problem.
+
+**Result:** ❌ FAILED - Did not fix the collapse bug
+
+**Analysis:** The signal WAS being propagated correctly and `resetRowHeights()` WAS being called, but AG Grid still doesn't recalculate properly. This indicates the problem is deeper within AG Grid's autoHeight implementation itself.
+
+---
+
+## FINAL SOLUTION: Accordion Behavior (Single Expansion)
+
+### Attempt 9: Only Allow One Batch Expanded At A Time
+**What I implemented:**
+- Changed `useSubmissionData.js` from tracking multiple expanded batches to tracking only ONE
+- Changed from `expandedBatches` (object) → `expandedBatch` (single key or null)
+- When user opens a new batch, any previously open batch automatically closes
+- Derived `expandedBatches` object for backwards compatibility (no other files need changes)
+
+**Files Modified:**
+- `resources/js/Hooks/useSubmissionData.js` (minimal change)
+
+**Theory:**
+If only ONE batch can be expanded at a time, there are no "other opened batches" to corrupt. The bug condition simply cannot occur.
+
+**Result:** ✅ WORKAROUND IMPLEMENTED
+
+**Trade-off:** Users can no longer have multiple batches open simultaneously, but this is actually a cleaner UX pattern (accordion behavior) and completely sidesteps the AG Grid autoHeight bug.
+
+---
+
+## LESSONS LEARNED:
+
+1. **AG Grid's `autoHeight` mode is fundamentally buggy with dynamic layouts**
+   - `resetRowHeights()` doesn't work reliably
+   - No combination of API calls fixes it
+   - The bug exists at a deeper level in AG Grid's implementation
+
+2. **Sometimes the best fix is avoiding the bug condition entirely**
+   - Instead of fighting AG Grid's broken behavior, change the UX
+   - Accordion pattern (single expansion) is actually better UX anyway
+   - Simpler code, no complex observers or signals needed
+
+3. **Don't over-engineer solutions**
+   - 8 attempts at fixing the symptom failed
+   - 1 simple change to prevent the condition succeeded
+
+---
+
+## CURRENT STATUS:
+✅ RESOLVED via workaround - Accordion behavior implemented.
+
+Only one batch can be expanded at a time, preventing the row height corruption bug from manifesting.

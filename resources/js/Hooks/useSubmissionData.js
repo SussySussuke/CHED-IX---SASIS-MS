@@ -3,21 +3,28 @@ import { useState } from 'react';
 /**
  * Hook to manage batch data fetching and expansion state
  * Handles expandedBatches, batchData, and loading states
+ * 
+ * ACCORDION BEHAVIOR: Only ONE batch can be expanded at a time.
+ * Opening a new batch automatically closes any previously opened batch.
+ * This prevents AG Grid autoHeight row corruption bugs when multiple grids exist.
  */
 export function useSubmissionData({ fetchDataUrl }) {
-    const [expandedBatches, setExpandedBatches] = useState({});
+    const [expandedBatch, setExpandedBatch] = useState(null);  // Single expanded batch key (or null)
     const [batchData, setBatchData] = useState({});
     const [loadingBatch, setLoadingBatch] = useState(null);
+
+    // For backwards compatibility, derive expandedBatches object from expandedBatch
+    const expandedBatches = expandedBatch ? { [expandedBatch]: true } : {};
 
     const toggleBatch = async (batchId, annex) => {
         const key = `${annex}-${batchId}`;
 
-        if (expandedBatches[key]) {
-            // Collapse the batch
-            setExpandedBatches(prev => ({ ...prev, [key]: false }));
+        if (expandedBatch === key) {
+            // Collapse the currently expanded batch
+            setExpandedBatch(null);
         } else {
-            // Expand the batch
-            setExpandedBatches(prev => ({ ...prev, [key]: true }));
+            // Close any open batch and expand the new one (accordion behavior)
+            setExpandedBatch(key);
 
             // Fetch data if not already cached
             if (!batchData[key]) {
