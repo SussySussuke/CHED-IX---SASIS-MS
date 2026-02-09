@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import HEILayout from '../../Layouts/HEILayout';
 import { router } from '@inertiajs/react';
 import AGGridEditor from '../Common/AGGridEditor';
+import CustomTable from '../Common/CustomTable';
 import FormSection from '../Common/FormSection';
 import TextInput from '../Forms/TextInput';
 import IconButton from '../Common/IconButton';
@@ -22,11 +23,12 @@ import FormSelector from '../Forms/FormSelector';
  * - Locked profile sections (autofilled, non-editable)
  * - Form fields (text, textarea)
  * - AG Grid tables with add/remove rows
+ * - CustomTable for fixed-row tables with file uploads
  * - Year selection
  * - View/Edit modes
  * 
- * @param {string} formType - Form type identifier (e.g., 'MER1')
- * @param {object} config - Form configuration object (from mer1Config.js)
+ * @param {string} formType - Form type identifier (e.g., 'MER1', 'MER4')
+ * @param {object} config - Form configuration object (from merXConfig.js)
  * @param {array} availableYears - Available academic years
  * @param {object} existingData - Existing submission data by year
  * @param {string} defaultYear - Default academic year
@@ -91,6 +93,47 @@ const SharedFormCreate = ({
         // Initialize summary field for MER2 tables
         if (section.summary) {
           newFormData[section.summary.studentsHandledKey] = existingSubmission?.[section.summary.studentsHandledKey] || '';
+        }
+      }
+      
+      // Handle custom_table type (fixed rows)
+      if (section.type === 'custom_table') {
+        const entities = existingSubmission?.[section.entityName] || [];
+        if (entities.length > 0) {
+          // Load existing data, matching by row ID
+          newTableData[section.entityName] = section.fixedRows.map(fixedRow => {
+            const existingRow = entities.find(e => e.id === fixedRow.id);
+            if (existingRow && section.dataMapper) {
+              return section.dataMapper(existingRow);
+            }
+            // Return fixed row with empty values for other columns
+            const emptyRow = { ...fixedRow };
+            section.columns.forEach(col => {
+              if (col.type === 'checkbox') {
+                emptyRow[col.field] = false;
+              } else if (col.type === 'file') {
+                emptyRow[col.field] = null;
+              } else if (!emptyRow.hasOwnProperty(col.field)) {
+                emptyRow[col.field] = '';
+              }
+            });
+            return emptyRow;
+          });
+        } else {
+          // Initialize with fixed rows and empty values
+          newTableData[section.entityName] = section.fixedRows.map(fixedRow => {
+            const row = { ...fixedRow };
+            section.columns.forEach(col => {
+              if (col.type === 'checkbox') {
+                row[col.field] = false;
+              } else if (col.type === 'file') {
+                row[col.field] = null;
+              } else if (!row.hasOwnProperty(col.field)) {
+                row[col.field] = '';
+              }
+            });
+            return row;
+          });
         }
       }
     });
@@ -406,6 +449,21 @@ const SharedFormCreate = ({
     );
   };
 
+  // Render custom table section (fixed rows)
+  const renderCustomTable = (section) => {
+    const currentData = tableData[section.entityName] || [];
+    
+    return (
+      <CustomTable
+        title={section.title}
+        subtitle={section.subtitle}
+        rows={currentData}
+        columns={section.columns}
+        onChange={(updatedRows) => handleTableDataChange(section.entityName, updatedRows)}
+      />
+    );
+  };
+
   // Render section based on type
   const renderSection = (section) => {
     switch (section.type) {
@@ -415,6 +473,8 @@ const SharedFormCreate = ({
         return renderFormFields(section);
       case 'table':
         return renderTable(section);
+      case 'custom_table':
+        return renderCustomTable(section);
       case 'divider':
         return <FormSection type="divider" title={section.text} />;
       default:

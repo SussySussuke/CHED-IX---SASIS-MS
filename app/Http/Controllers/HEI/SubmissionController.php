@@ -135,6 +135,26 @@ class SubmissionController extends Controller
 
                 $submissions = array_merge($submissions, $mer3Submissions->toArray());
 
+                // Add MER4 submissions
+                $mer4Submissions = \App\Models\MER4Submission::where('hei_id', $heiId)
+                    ->orderBy('academic_year', 'desc')
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+                    ->map(function ($submission) {
+                        return [
+                            'id' => $submission->id,
+                            'batch_id' => $submission->id,
+                            'annex' => 'MER4',
+                            'academic_year' => $submission->academic_year,
+                            'status' => $submission->status,
+                            'submitted_at' => $submission->created_at,
+                            'request_notes' => $submission->request_notes ?? null,
+                            'cancelled_notes' => $submission->cancelled_notes ?? null,
+                        ];
+                    });
+
+                $submissions = array_merge($submissions, $mer4Submissions->toArray());
+
                 // Add Annex submissions
                 foreach ($annexTypes as $code => $config) {
                     $batches = $config['model']::where('hei_id', $heiId)
@@ -236,6 +256,20 @@ class SubmissionController extends Controller
                     return response()->json([
                         'batch' => $submission,
                         'school_fees' => $submission->schoolFees,
+                    ])->getData();
+                }
+
+                // Handle MER4 - SharedRenderer compatible format
+                if ($annexType === 'MER4') {
+                    $submission = \App\Models\MER4Submission::where('hei_id', $hei->id)
+                        ->where('id', $batchId)
+                        ->with(['sasManagementItems', 'guidanceCounselingItems'])
+                        ->firstOrFail();
+
+                    return response()->json([
+                        'batch' => $submission,
+                        'sas_management_items' => $submission->sasManagementItems,
+                        'guidance_counseling_items' => $submission->guidanceCounselingItems,
                     ])->getData();
                 }
 

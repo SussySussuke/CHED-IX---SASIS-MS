@@ -31,6 +31,7 @@ use App\Http\Controllers\HEI\AnnexOController;
 use App\Http\Controllers\HEI\MER1Controller;
 use App\Http\Controllers\HEI\MER2Controller;
 use App\Http\Controllers\HEI\MER3Controller;
+use App\Http\Controllers\HEI\MER4Controller;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes
@@ -149,6 +150,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/mer3/{academicYear}/data', [MER3Controller::class, 'getData'])->name('hei.mer3.data');
         Route::get('/mer3/{submissionId}/edit', [MER3Controller::class, 'edit'])->name('hei.mer3.edit');
         Route::post('/mer3/{submissionId}/cancel', [MER3Controller::class, 'cancel'])->name('hei.mer3.cancel');
+
+        // MER4 routes (Monitoring and Evaluation Report - SAS Programs and Services Strategic Approaches)
+        Route::get('/mer4/create', [MER4Controller::class, 'create'])->name('hei.mer4.create');
+        Route::post('/mer4', [MER4Controller::class, 'store'])->name('hei.mer4.store');
+        Route::get('/mer4/{academicYear}/data', [MER4Controller::class, 'getData'])->name('hei.mer4.data');
+        Route::get('/mer4/{submissionId}/edit', [MER4Controller::class, 'edit'])->name('hei.mer4.edit');
+        Route::post('/mer4/{submissionId}/cancel', [MER4Controller::class, 'cancel'])->name('hei.mer4.cancel');
 
         // Annex A routes
         Route::get('/annex-a/submit', [AnnexAController::class, 'create'])->name('hei.annex-a.submit');
