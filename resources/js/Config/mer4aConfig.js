@@ -1,21 +1,21 @@
 /**
- * MER4 Configuration - SAS Programs and Services Strategic Approaches/Actions
+ * MER4A Configuration - SAS Programs and Services Strategic Approaches/Actions
  * 
- * SINGLE SOURCE OF TRUTH for MER4 structure
+ * SINGLE SOURCE OF TRUTH for MER4A structure
  * 
- * MER4 uses CustomTable for fixed-row tables with:
+ * MER4A uses CustomTable for fixed-row tables with:
  * - Fixed rows (no add/remove)
- * - File upload support
+ * - File upload support (max 100MB per file)
  * - Checkbox columns
  * - Text input columns
  */
 
-export const MER4_CONFIG = {
+export const MER4A_CONFIG = {
   // Form metadata
-  name: 'MER4',
+  name: 'MER4A',
   title: 'Report 4. SAS PROGRAMS AND SERVICES STRATEGIC APPROACHES/ACTIONS',
   subtitle: 'Monitoring and Evaluation Report - Strategic Approaches',
-  endpoint: '/hei/mer4',
+  endpoint: '/hei/mer4a',
   
   // Form sections in order
   sections: [
@@ -62,6 +62,7 @@ export const MER4_CONFIG = {
           headerName: 'Evidence/Supporting Documents',
           type: 'file',
           accept: '.pdf',
+          maxFileSize: 100, // Max file size in MB
           minWidth: '250px',
         },
         {
@@ -124,6 +125,7 @@ export const MER4_CONFIG = {
           headerName: 'Evidence/Supporting Documents',
           type: 'file',
           accept: '.pdf',
+          maxFileSize: 100, // Max file size in MB
           minWidth: '250px',
         },
         {
@@ -174,13 +176,13 @@ export const MER4_CONFIG = {
 /**
  * Get section by ID
  */
-export const getMER4Section = (sectionId) => {
-  return MER4_CONFIG.sections.find(s => s.id === sectionId);
+export const getMER4ASection = (sectionId) => {
+  return MER4A_CONFIG.sections.find(s => s.id === sectionId);
 };
 
 /**
  * Get all custom table sections
  */
-export const getMER4Tables = () => {
-  return MER4_CONFIG.sections.filter(s => s.type === 'custom_table');
+export const getMER4ATables = () => {
+  return MER4A_CONFIG.sections.filter(s => s.type === 'custom_table');
 };

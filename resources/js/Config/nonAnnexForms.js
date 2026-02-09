@@ -39,10 +39,10 @@ export const MER_FORMS = {
     route: '/hei/mer3/create',
     category: 'MER Forms',
   },
-  MER4: {
-    code: 'MER4',
+  MER4A: {
+    code: 'MER4A',
     name: 'SAS Programs and Services Strategic Approaches/Actions',
-    route: '/hei/mer4/create',
+    route: '/hei/mer4a/create',
     category: 'MER Forms',
   },
 };

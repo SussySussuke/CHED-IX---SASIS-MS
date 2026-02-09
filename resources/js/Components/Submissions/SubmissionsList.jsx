@@ -8,6 +8,7 @@ import SubmissionFilters from './SubmissionFilters';
 import SubmissionExpand from './SubmissionExpand';
 import CompareModal from './CompareModal';
 import Pagination from '../Common/Pagination';
+import { getFormCreateUrl } from '../../Utils/urlHelpers';
 
 /**
  * Main component for displaying and managing submissions list
@@ -102,7 +103,7 @@ export default function SubmissionsList({
                         title="No Submissions Yet"
                         message="You haven't created any submissions yet. Get started by creating your first submission."
                         buttonText={showCreateButton ? "Create Your First Submission" : undefined}
-                        buttonHref={showCreateButton ? `/hei/annex-${filterAnnex.toLowerCase()}/submit` : undefined}
+                        buttonHref={showCreateButton ? getFormCreateUrl(filterAnnex, selectedYear) : undefined}
                     />
                 ) : !hasFilteredData ? (
                     <EmptyState

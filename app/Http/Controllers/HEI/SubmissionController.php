@@ -135,8 +135,8 @@ class SubmissionController extends Controller
 
                 $submissions = array_merge($submissions, $mer3Submissions->toArray());
 
-                // Add MER4 submissions
-                $mer4Submissions = \App\Models\MER4Submission::where('hei_id', $heiId)
+                // Add MER4A submissions
+                $mer4aSubmissions = \App\Models\MER4ASubmission::where('hei_id', $heiId)
                     ->orderBy('academic_year', 'desc')
                     ->orderBy('created_at', 'desc')
                     ->get()
@@ -144,7 +144,7 @@ class SubmissionController extends Controller
                         return [
                             'id' => $submission->id,
                             'batch_id' => $submission->id,
-                            'annex' => 'MER4',
+                            'annex' => 'MER4A',
                             'academic_year' => $submission->academic_year,
                             'status' => $submission->status,
                             'submitted_at' => $submission->created_at,
@@ -153,7 +153,7 @@ class SubmissionController extends Controller
                         ];
                     });
 
-                $submissions = array_merge($submissions, $mer4Submissions->toArray());
+                $submissions = array_merge($submissions, $mer4aSubmissions->toArray());
 
                 // Add Annex submissions
                 foreach ($annexTypes as $code => $config) {
@@ -259,9 +259,9 @@ class SubmissionController extends Controller
                     ])->getData();
                 }
 
-                // Handle MER4 - SharedRenderer compatible format
-                if ($annexType === 'MER4') {
-                    $submission = \App\Models\MER4Submission::where('hei_id', $hei->id)
+                // Handle MER4A - SharedRenderer compatible format
+                if ($annexType === 'MER4A') {
+                    $submission = \App\Models\MER4ASubmission::where('hei_id', $hei->id)
                         ->where('id', $batchId)
                         ->with(['sasManagementItems', 'guidanceCounselingItems'])
                         ->firstOrFail();

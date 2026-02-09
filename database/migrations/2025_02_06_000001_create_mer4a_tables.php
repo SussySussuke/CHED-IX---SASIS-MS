@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Create mer4_submissions table (main table)
-        Schema::create('mer4_submissions', function (Blueprint $table) {
+        // Create mer4a_submissions table (main table)
+        Schema::create('mer4a_submissions', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('hei_id');
             $table->string('academic_year');
@@ -32,10 +32,10 @@ return new class extends Migration
             $table->index(['hei_id', 'academic_year', 'status']);
         });
 
-        // Create mer4_sas_management_items table (fixed rows - SAS Management and Administration)
-        Schema::create('mer4_sas_management_items', function (Blueprint $table) {
+        // Create mer4a_sas_management_items table (fixed rows - SAS Management and Administration)
+        Schema::create('mer4a_sas_management_items', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('mer4_submission_id');
+            $table->unsignedBigInteger('mer4a_submission_id');
             
             // Row identifier (matches fixedRows id from config)
             $table->string('row_id'); // e.g., 'sas_admin_1', 'sas_admin_2'
@@ -44,26 +44,26 @@ return new class extends Migration
             $table->text('requirement');
             
             // Editable fields
-            $table->text('evidence_file')->nullable(); // JSON: {name, size, type, data}
+            $table->longText('evidence_file')->nullable(); // JSON: {name, size, type, data} - LONGTEXT for large PDFs
             $table->boolean('status_compiled')->default(false);
             $table->text('hei_remarks')->nullable();
             
             $table->timestamps();
             
             // Foreign key constraint
-            $table->foreign('mer4_submission_id')->references('id')->on('mer4_submissions')->onDelete('cascade');
+            $table->foreign('mer4a_submission_id')->references('id')->on('mer4a_submissions')->onDelete('cascade');
             
             // Index for faster queries
-            $table->index('mer4_submission_id');
+            $table->index('mer4a_submission_id');
             
             // Unique row per submission
-            $table->unique(['mer4_submission_id', 'row_id']);
+            $table->unique(['mer4a_submission_id', 'row_id']);
         });
 
-        // Create mer4_guidance_counseling_items table (fixed rows - Guidance and Counseling Office)
-        Schema::create('mer4_guidance_counseling_items', function (Blueprint $table) {
+        // Create mer4a_guidance_counseling_items table (fixed rows - Guidance and Counseling Office)
+        Schema::create('mer4a_guidance_counseling_items', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('mer4_submission_id');
+            $table->unsignedBigInteger('mer4a_submission_id');
             
             // Row identifier (matches fixedRows id from config)
             $table->string('row_id'); // e.g., 'guidance_1', 'guidance_2'
@@ -72,20 +72,20 @@ return new class extends Migration
             $table->text('requirement');
             
             // Editable fields
-            $table->text('evidence_file')->nullable(); // JSON: {name, size, type, data}
+            $table->longText('evidence_file')->nullable(); // JSON: {name, size, type, data} - LONGTEXT for large PDFs
             $table->boolean('status_compiled')->default(false);
             $table->text('hei_remarks')->nullable();
             
             $table->timestamps();
             
             // Foreign key constraint
-            $table->foreign('mer4_submission_id')->references('id')->on('mer4_submissions')->onDelete('cascade');
+            $table->foreign('mer4a_submission_id')->references('id')->on('mer4a_submissions')->onDelete('cascade');
             
             // Index for faster queries
-            $table->index('mer4_submission_id');
+            $table->index('mer4a_submission_id');
             
             // Unique row per submission
-            $table->unique(['mer4_submission_id', 'row_id']);
+            $table->unique(['mer4a_submission_id', 'row_id']);
         });
     }
 
@@ -94,8 +94,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('mer4_guidance_counseling_items');
-        Schema::dropIfExists('mer4_sas_management_items');
-        Schema::dropIfExists('mer4_submissions');
+        Schema::dropIfExists('mer4a_guidance_counseling_items');
+        Schema::dropIfExists('mer4a_sas_management_items');
+        Schema::dropIfExists('mer4a_submissions');
     }
 };

@@ -2,24 +2,24 @@
 
 namespace App\Http\Controllers\HEI;
 
-use App\Models\MER4Submission;
-use App\Models\MER4SASManagementItem;
-use App\Models\MER4GuidanceCounselingItem;
+use App\Models\MER4ASubmission;
+use App\Models\MER4ASASManagementItem;
+use App\Models\MER4AGuidanceCounselingItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class MER4Controller extends BaseAnnexController
+class MER4AController extends BaseAnnexController
 {
     /**
-     * Show the MER4 creation/edit form
+     * Show the MER4A creation/edit form
      */
     public function create()
     {
         $heiId = $this->getHeiId();
         
         // Get all existing submissions for this HEI with related data
-        $existingSubmissions = MER4Submission::where('hei_id', $heiId)
+        $existingSubmissions = MER4ASubmission::where('hei_id', $heiId)
             ->with(['sasManagementItems', 'guidanceCounselingItems'])
             ->get()
             ->keyBy('academic_year');
@@ -42,7 +42,7 @@ class MER4Controller extends BaseAnnexController
             $existingData = new \stdClass();
         }
 
-        return inertia('HEI/Forms/MER4Create', [
+        return inertia('HEI/Forms/MER4ACreate', [
             'availableYears' => $this->getAvailableYears(),
             'existingData' => $existingData,
             'defaultYear' => $this->getCurrentAcademicYear(),
@@ -50,7 +50,7 @@ class MER4Controller extends BaseAnnexController
     }
 
     /**
-     * Store or update MER4 submission
+     * Store or update MER4A submission
      */
     public function store(Request $request)
     {
@@ -87,23 +87,23 @@ class MER4Controller extends BaseAnnexController
         }
 
         // Check for existing submission
-        $existingSubmission = MER4Submission::where('hei_id', $heiId)
+        $existingSubmission = MER4ASubmission::where('hei_id', $heiId)
             ->where('academic_year', $academicYear)
             ->whereIn('status', ['submitted', 'published', 'request'])
             ->first();
 
         // Determine new status and message
-        [$newStatus, $message] = $this->determineStatusAndMessage($existingSubmission, 'MER4');
+        [$newStatus, $message] = $this->determineStatusAndMessage($existingSubmission, 'MER4A');
 
         DB::beginTransaction();
         try {
             // If overwriting existing, mark old as overwritten
             if ($existingSubmission) {
-                $this->overwriteExisting(MER4Submission::class, $heiId, $academicYear, $existingSubmission->status);
+                $this->overwriteExisting(MER4ASubmission::class, $heiId, $academicYear, $existingSubmission->status);
             }
             
             // Create new submission
-            $submission = MER4Submission::create([
+            $submission = MER4ASubmission::create([
                 'hei_id' => $heiId,
                 'academic_year' => $academicYear,
                 'status' => $newStatus,
@@ -141,7 +141,7 @@ class MER4Controller extends BaseAnnexController
             
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('MER4 submission error: ' . $e->getMessage(), [
+            Log::error('MER4A submission error: ' . $e->getMessage(), [
                 'exception' => $e,
                 'trace' => $e->getTraceAsString(),
                 'hei_id' => $heiId,
@@ -150,21 +150,21 @@ class MER4Controller extends BaseAnnexController
             
             // Return the actual error message for debugging
             $errorMessage = config('app.debug') 
-                ? 'Failed to save MER4 submission: ' . $e->getMessage()
-                : 'Failed to save MER4 submission. Please try again.';
+                ? 'Failed to save MER4A submission: ' . $e->getMessage()
+                : 'Failed to save MER4A submission. Please try again.';
             
             return redirect()->back()->withErrors(['error' => $errorMessage])->withInput();
         }
     }
 
     /**
-     * Get MER4 data for a specific year (AJAX endpoint)
+     * Get MER4A data for a specific year (AJAX endpoint)
      */
     public function getData($academicYear)
     {
         $heiId = $this->getHeiId();
         
-        $submission = MER4Submission::where('hei_id', $heiId)
+        $submission = MER4ASubmission::where('hei_id', $heiId)
             ->where('academic_year', $academicYear)
             ->with(['sasManagementItems', 'guidanceCounselingItems'])
             ->first();
@@ -183,11 +183,11 @@ class MER4Controller extends BaseAnnexController
     }
 
     /**
-     * Edit an existing MER4 submission
+     * Edit an existing MER4A submission
      */
     public function edit($submissionId)
     {
-        $submission = MER4Submission::findOrFail($submissionId);
+        $submission = MER4ASubmission::findOrFail($submissionId);
         $heiId = $this->getHeiId();
 
         // Validate edit request using the base controller's method
@@ -197,7 +197,7 @@ class MER4Controller extends BaseAnnexController
         }
 
         // Get all existing submissions for year selector
-        $existingSubmissions = MER4Submission::where('hei_id', $heiId)
+        $existingSubmissions = MER4ASubmission::where('hei_id', $heiId)
             ->with(['sasManagementItems', 'guidanceCounselingItems'])
             ->get()
             ->keyBy('academic_year');
@@ -219,7 +219,7 @@ class MER4Controller extends BaseAnnexController
             $existingData = new \stdClass();
         }
 
-        return inertia('HEI/Forms/MER4Create', [
+        return inertia('HEI/Forms/MER4ACreate', [
             'availableYears' => $this->getAvailableYears(),
             'existingData' => $existingData,
             'defaultYear' => $submission->academic_year,
@@ -228,11 +228,11 @@ class MER4Controller extends BaseAnnexController
     }
 
     /**
-     * Cancel a MER4 submission
+     * Cancel a MER4A submission
      */
     public function cancel(Request $request, $submissionId)
     {
-        $submission = MER4Submission::findOrFail($submissionId);
+        $submission = MER4ASubmission::findOrFail($submissionId);
         $heiId = $this->getHeiId();
 
         // Validate ownership and status
@@ -256,6 +256,6 @@ class MER4Controller extends BaseAnnexController
         // Clear caches
         $this->clearSubmissionCaches($heiId, $submission->academic_year);
 
-        return redirect()->route('hei.submissions.history')->with('success', 'MER4 request cancelled successfully.');
+        return redirect()->route('hei.submissions.history')->with('success', 'MER4A request cancelled successfully.');
     }
 }

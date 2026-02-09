@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class MER4Submission extends Model
+class MER4ASubmission extends Model
 {
-    protected $table = 'mer4_submissions';
+    protected $table = 'mer4a_submissions';
 
     protected $fillable = [
         'hei_id',
@@ -30,12 +30,12 @@ class MER4Submission extends Model
 
     public function sasManagementItems()
     {
-        return $this->hasMany(MER4SASManagementItem::class, 'mer4_submission_id');
+        return $this->hasMany(MER4ASASManagementItem::class, 'mer4a_submission_id');
     }
 
     public function guidanceCounselingItems()
     {
-        return $this->hasMany(MER4GuidanceCounselingItem::class, 'mer4_submission_id');
+        return $this->hasMany(MER4AGuidanceCounselingItem::class, 'mer4a_submission_id');
     }
 
     // Accessors

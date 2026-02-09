@@ -358,6 +358,91 @@ export const MER3_CONFIG = {
 };
 
 /**
+ * MER4A Configuration - Custom Table (SAS Programs and Services Strategic Approaches)
+ * Uses CustomTable component with fixed rows and file uploads
+ */
+export const MER4A_CONFIG = {
+  renderType: 'custom-table',
+  
+  customTableSections: [
+    {
+      key: 'sas_management_items',
+      title: 'A. SAS Management and Administration',
+      columns: [
+        {
+          field: 'requirement',
+          headerName: 'Minimum Requirements',
+          type: 'static',
+          minWidth: '300px',
+        },
+        {
+          field: 'evidence_file',
+          headerName: 'Evidence/Supporting Documents',
+          type: 'file',
+          minWidth: '250px',
+        },
+        {
+          field: 'status_compiled',
+          headerName: 'Status: Compiled',
+          type: 'checkbox',
+          width: '150px',
+        },
+        {
+          field: 'hei_remarks',
+          headerName: 'HEI Remarks',
+          type: 'text',
+          minWidth: '200px',
+        },
+      ],
+      dataMapper: (entity) => ({
+        id: entity.row_id || entity.id,
+        requirement: entity.requirement,
+        evidence_file: entity.evidence_file ? (typeof entity.evidence_file === 'string' ? JSON.parse(entity.evidence_file) : entity.evidence_file) : null,
+        status_compiled: entity.status_compiled || false,
+        hei_remarks: entity.hei_remarks || '',
+      })
+    },
+    {
+      key: 'guidance_counseling_items',
+      title: 'B. Guidance and Counseling Office',
+      columns: [
+        {
+          field: 'requirement',
+          headerName: 'Minimum Requirements',
+          type: 'static',
+          minWidth: '300px',
+        },
+        {
+          field: 'evidence_file',
+          headerName: 'Evidence/Supporting Documents',
+          type: 'file',
+          minWidth: '250px',
+        },
+        {
+          field: 'status_compiled',
+          headerName: 'Status: Compiled',
+          type: 'checkbox',
+          width: '150px',
+        },
+        {
+          field: 'hei_remarks',
+          headerName: 'HEI Remarks',
+          type: 'text',
+          minWidth: '200px',
+        },
+      ],
+      dataMapper: (entity) => ({
+        id: entity.row_id || entity.id,
+        requirement: entity.requirement,
+        evidence_file: entity.evidence_file ? (typeof entity.evidence_file === 'string' ? JSON.parse(entity.evidence_file) : entity.evidence_file) : null,
+        status_compiled: entity.status_compiled || false,
+        hei_remarks: entity.hei_remarks || '',
+      })
+    }
+  ]
+};
+
+/**
  * Standard Annex Configuration Template
  * Most annexes (A, B, C, C-1, E, F, I, I-1, J, K, L, L-1, N, N-1, O) follow this pattern
  */
@@ -375,7 +460,7 @@ export const STANDARD_ANNEX_CONFIG = {
 
 /**
  * Get renderer configuration for a given form/annex
- * @param {string} annexType - The annex identifier (A-O, MER1-3, SUMMARY, etc.)
+ * @param {string} annexType - The annex identifier (A-O, MER1-4A, SUMMARY, etc.)
  * @returns {object|null} The renderer configuration or null if not using SharedRenderer
  */
 export function getSharedRendererConfig(annexType) {
@@ -386,6 +471,7 @@ export function getSharedRendererConfig(annexType) {
   if (annexType === 'MER1') return MER1_CONFIG;
   if (annexType === 'MER2') return MER2_CONFIG;
   if (annexType === 'MER3') return MER3_CONFIG;
+  if (annexType === 'MER4A') return MER4A_CONFIG;
   
   // These forms use custom renderers in AnnexRenderers.jsx (too complex)
   const customRendererForms = ['H', 'M'];

@@ -102,7 +102,8 @@ const SharedFormCreate = ({
         if (entities.length > 0) {
           // Load existing data, matching by row ID
           newTableData[section.entityName] = section.fixedRows.map(fixedRow => {
-            const existingRow = entities.find(e => e.id === fixedRow.id);
+            // Find by either 'id' or 'row_id' (backend uses row_id)
+            const existingRow = entities.find(e => (e.id === fixedRow.id) || (e.row_id === fixedRow.id));
             if (existingRow && section.dataMapper) {
               return section.dataMapper(existingRow);
             }

@@ -1,16 +1,18 @@
 import React from 'react';
 import { IoCheckmarkCircle } from 'react-icons/io5';
 import AGGridViewer from '../../Common/AGGridViewer';
+import CustomTable from '../../Common/CustomTable';
 import { getAnnexConfig } from '../../../Config/formConfig';
 import { getSharedRendererConfig } from '../../../Config/sharedRendererConfig';
 
 /**
  * SharedRenderer - Universal renderer for standard forms
  * 
- * Handles three rendering types:
+ * Handles four rendering types:
  * 1. form-only: Display form fields only (SUMMARY, D)
  * 2. table-only: Single table display (standard annexes A, B, C, MER3, etc.)
  * 3. hybrid: Form fields + multiple tables (MER1, MER2, G)
+ * 4. custom-table: Fixed-row tables with file uploads (MER4A)
  * 
  * Does NOT handle: H, M (they use custom renderers in AnnexRenderers.jsx)
  */
@@ -32,6 +34,10 @@ export function renderSharedContent(annex, data, isDark) {
   
   if (config.renderType === 'hybrid') {
     return renderHybrid(annex, data, config, isDark);
+  }
+  
+  if (config.renderType === 'custom-table') {
+    return renderCustomTable(annex, data, config, isDark);
   }
 
   return <p className="text-gray-500 dark:text-gray-400">Unknown render type for {annex}</p>;
@@ -313,6 +319,52 @@ function renderHybrid(annex, data, config, isDark) {
               {textContent}
             </p>
           </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Render custom table view (MER4A) - Fixed rows with file uploads
+ */
+function renderCustomTable(annex, data, config, isDark) {
+  if (!config.customTableSections || config.customTableSections.length === 0) {
+    return <p className="text-gray-500 dark:text-gray-400">No custom table sections configured.</p>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {config.customTableSections.map((section, index) => {
+        const tableData = data[section.key] || [];
+        
+        if (tableData.length === 0) {
+          return (
+            <div key={index}>
+              {section.title && (
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                  {section.title}
+                </h3>
+              )}
+              <p className="text-gray-500 dark:text-gray-400 italic">No data available.</p>
+            </div>
+          );
+        }
+
+        // Map data using dataMapper if provided
+        const mappedData = section.dataMapper 
+          ? tableData.map(section.dataMapper)
+          : tableData;
+
+        return (
+          <CustomTable
+            key={index}
+            title={section.title}
+            rows={mappedData}
+            columns={section.columns}
+            viewMode={true} // Always view mode in submissions list
+            className=""
+          />
         );
       })}
     </div>

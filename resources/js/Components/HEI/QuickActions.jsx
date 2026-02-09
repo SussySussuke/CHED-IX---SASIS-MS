@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Link } from '@inertiajs/react';
 import { IoSend, IoDocument, IoCheckmarkCircle } from 'react-icons/io5';
 import { PRIORITY_ORDER } from '../../Config/formConfig';
+import { getFormCreateUrl } from '../../Utils/urlHelpers';
 
 const QuickActions = ({ checklist, selectedYear }) => {
   // Find the first incomplete form using priority order from formConfig (single source of truth)
@@ -32,18 +33,8 @@ const QuickActions = ({ checklist, selectedYear }) => {
     
     const formCode = nextIncompleteForm.annex;
     
-    // Special forms
-    if (formCode === 'SUMMARY') {
-      return `/hei/summary/create${yearParam}`;
-    }
-    
-    // MER forms
-    if (formCode.startsWith('MER')) {
-      return `/hei/${formCode.toLowerCase()}/create${yearParam}`;
-    }
-    
-    // Annexes (A-O)
-    return `/hei/annex-${formCode.toLowerCase()}/submit${yearParam}`;
+    // Use centralized URL helper for all form types
+    return getFormCreateUrl(formCode, selectedYear);
   };
 
   const getContinueText = () => {
