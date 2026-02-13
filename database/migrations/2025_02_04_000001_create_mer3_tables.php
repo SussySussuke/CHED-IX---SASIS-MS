@@ -33,7 +33,8 @@ return new class extends Migration
                 'approved',     // Approved by CHED
                 'published',    // Published/Final
                 'rejected',     // Rejected by CHED
-                'cancelled'     // Cancelled by HEI
+                'cancelled',    // Cancelled by HEI
+                'overwritten'   // Replaced by newer submission
             ])->default('pending');
             
             // Notes/Comments (for workflow communication)
@@ -49,8 +50,8 @@ return new class extends Migration
                   ->on('heis')
                   ->onDelete('cascade');
             
-            // Ensure one submission per year per HEI
-            $table->unique(['hei_id', 'academic_year'], 'mer3_hei_year_unique');
+            // Index for performance (NOT unique - allows multiple submissions per year)
+            // Application-level uniqueness handled by status filtering
             
             // Composite index for common queries
             $table->index(['hei_id', 'academic_year', 'status'], 'mer3_hei_year_status_idx');

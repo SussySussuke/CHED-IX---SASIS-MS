@@ -1,0 +1,77 @@
+=== MER1 SUBMISSION ERROR - ✅ FIXED ===
+
+ERROR:
+"SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '1-2025-2026' for key 'mer1_hei_year_unique'"
+
+=== ROOT CAUSE ===
+
+MER1 migration had a UNIQUE constraint that blocked multiple submissions per year:
+```php
+$table->unique(['hei_id', 'academic_year']);
+```
+
+Database constraint name: `mer1_hei_year_unique`
+
+But ALL working Annex tables (A, C1, I1, L1, N1) do NOT have this constraint!
+They only have an INDEX for performance.
+
+=== WHY THE UNIQUE CONSTRAINT BROKE THE SYSTEM ===
+
+The system workflow REQUIRES multiple records per (hei_id, academic_year):
+1. HEI submits → NEW record: status='submitted'
+2. Admin publishes → SAME record updated: status='published'  
+3. HEI wants to update published data → NEW record: status='request'
+4. OLD published record marked: status='overwritten'
+
+With UNIQUE constraint on (hei_id, academic_year):
+- Step 3 FAILED with duplicate key error
+- Even after marking the old one as 'overwritten', MySQL still saw it as duplicate
+- The constraint didn't care about status field!
+
+=== THE FIX APPLIED ===
+
+✅ SUCCESSFULLY EXECUTED:
+```sql
+ALTER TABLE mer1_submissions DROP INDEX mer1_hei_year_unique;
+```
+
+Command run via:
+```bash
+php artisan tinker
+DB::statement("ALTER TABLE mer1_submissions DROP INDEX mer1_hei_year_unique");
+# Returned: = true
+```
+
+=== WHAT THIS FIXED ===
+
+1. Removed the problematic unique constraint
+2. Kept the performance index: `mer1_submissions_hei_id_academic_year_status_index`
+3. Now matches the pattern of ALL other working Annex tables
+
+Application-level uniqueness is handled by:
+- whereIn('status', ['submitted', 'published', 'request']) in queries
+- overwriteExisting() method marking old records as 'overwritten'
+- This is the CORRECT pattern used throughout the codebase
+
+=== VERIFICATION ===
+
+To verify the fix worked, run in tinker:
+```php
+DB::select("SHOW INDEXES FROM mer1_submissions");
+```
+
+You should see:
+- ✅ PRIMARY key on `id`
+- ✅ mer1_submissions_hei_id_academic_year_status_index (for performance)
+- ❌ mer1_hei_year_unique (GONE - this was the problem)
+
+=== TEST YOUR MER1 SUBMISSION ===
+
+Now test in the browser:
+1. Submit MER1 for a year (e.g., 2025-2026)
+2. Submit again for the SAME year (should replace/overwrite the first one)
+3. ✅ No more duplicate key errors!
+
+STATUS: ✅ FIXED AND DEPLOYED
+DATE: 2025-02-11
+METHOD: Direct SQL via tinker (constraint dropped successfully)

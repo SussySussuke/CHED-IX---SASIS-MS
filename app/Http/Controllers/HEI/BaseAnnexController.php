@@ -143,6 +143,7 @@ abstract class BaseAnnexController extends Controller
     /**
      * Overwrite existing records based on status
      * When overwriting 'published' or 'request', always overwrite ALL requests for that year
+     * If no records found to overwrite, silently continues (allows creating new records)
      */
     protected function overwriteExisting($model, int $heiId, string $academicYear, string $status): void
     {
@@ -155,7 +156,7 @@ abstract class BaseAnnexController extends Controller
                     ->update(['status' => 'overwritten']);
                     
                 \Log::info('Overwrite operation completed', [
-                    'model' => $model,
+                    'model' => class_basename($model),
                     'hei_id' => $heiId,
                     'academic_year' => $academicYear,
                     'old_status' => 'request',
@@ -169,17 +170,22 @@ abstract class BaseAnnexController extends Controller
                     ->update(['status' => 'overwritten']);
                     
                 \Log::info('Overwrite operation completed', [
-                    'model' => $model,
+                    'model' => class_basename($model),
                     'hei_id' => $heiId,
                     'academic_year' => $academicYear,
                     'old_status' => $status,
                     'affected_rows' => $affected
                 ]);
             }
+            
+            // Clear caches when data is modified (only if something was actually overwritten)
+            if ($affected > 0) {
+                CacheService::clearHeiCaches($heiId, $academicYear);
+            }
         } catch (\Exception $e) {
             \Log::error('OVERWRITE FAILED', [
                 'error' => $e->getMessage(),
-                'model' => $model,
+                'model' => class_basename($model),
                 'hei_id' => $heiId,
                 'academic_year' => $academicYear,
                 'status' => $status,
@@ -187,9 +193,6 @@ abstract class BaseAnnexController extends Controller
             ]);
             throw $e; // Re-throw so the transaction fails
         }
-        
-        // Clear caches when data is modified
-        CacheService::clearHeiCaches($heiId, $academicYear);
     }
 
     /**

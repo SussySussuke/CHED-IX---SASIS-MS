@@ -195,7 +195,7 @@ const SharedFormCreate = ({
         // Success message is handled by backend redirect with flash message
       },
       onError: (errors) => {
-        console.error('MER1 Submission ERRORS:', errors);
+        console.error(`${formType} Submission ERRORS:`, errors);
         console.error('Error details:', JSON.stringify(errors, null, 2));
         setProcessing(false);
         
