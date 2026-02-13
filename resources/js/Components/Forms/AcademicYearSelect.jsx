@@ -8,7 +8,8 @@ const AcademicYearSelect = ({
   availableYears = [],
   required = true,
   label = "Academic Year",
-  disabled = false
+  disabled = false,
+  mode = 'submit' // 'submit' for HEI submission, 'view' for admin viewing
 }) => {
   return (
     <div className="space-y-2">
@@ -38,9 +39,16 @@ const AcademicYearSelect = ({
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
-      <p className="text-xs text-gray-500 dark:text-gray-400">
-        You can only submit for years where no published submission exists, or overwrite the current year if not yet published.
-      </p>
+      {mode === 'submit' && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          You can only submit for years where no published submission exists, or overwrite the current year if not yet published.
+        </p>
+      )}
+      {mode === 'view' && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Filter data by academic year
+        </p>
+      )}
     </div>
   );
 };

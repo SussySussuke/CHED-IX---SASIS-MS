@@ -49,7 +49,7 @@ export const PRIORITY_ORDER = [
  * SINGLE SOURCE OF TRUTH: Display names for ALL forms
  */
 export const FORM_NAMES = {
-  SUMMARY: 'Summary - School Details',
+  SUMMARY: '1A - Profile',
   MER1: 'HEI Profile on SAS',
   MER2: 'HEI Directory of SAS',
   MER3: 'Matrix of School Fees for SAS',

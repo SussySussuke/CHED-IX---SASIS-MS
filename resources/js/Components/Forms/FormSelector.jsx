@@ -10,8 +10,11 @@ import SearchableSelect from '../Form/SearchableSelect';
  * Allows quick navigation between different forms (Annexes and MER forms)
  * Warns users before navigating away from unsaved work
  */
-const FormSelector = ({ currentForm, disabled = false }) => {
+const FormSelector = ({ currentForm, disabled = false, mode = 'navigate' }) => {
+  // mode: 'navigate' for HEI (allows switching forms), 'view' for admin (read-only display)
+  
   const handleFormChange = (newForm) => {
+    if (mode === 'view') return; // No navigation in view mode
     if (newForm === currentForm) return;
 
     const confirmed = window.confirm(
@@ -44,12 +47,19 @@ const FormSelector = ({ currentForm, disabled = false }) => {
         onChange={handleFormChange}
         options={formOptions}
         placeholder="Select form..."
-        disabled={disabled}
+        disabled={disabled || mode === 'view'}
       />
       
-      <p className="text-xs text-gray-500 dark:text-gray-400">
-        Switch between different forms. Unsaved changes will be lost.
-      </p>
+      {mode === 'navigate' && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Switch between different forms. Unsaved changes will be lost.
+        </p>
+      )}
+      {mode === 'view' && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Currently viewing this form type
+        </p>
+      )}
     </div>
   );
 };

@@ -7,6 +7,7 @@ use App\Http\Controllers\SuperAdmin\AdminManagementController;
 use App\Http\Controllers\Admin\HEIManagementController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\CHEDContactController;
+use App\Http\Controllers\Admin\SummaryViewController;
 use App\Http\Controllers\HEI\SummaryController;
 use App\Http\Controllers\HEI\DashboardController;
 use App\Http\Controllers\HEI\AnnexAController;
@@ -85,6 +86,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/submissions/{id}/reject', [App\Http\Controllers\Admin\SubmissionController::class, 'reject'])->name('admin.submissions.reject');
 
         Route::get('/audit-logs', [App\Http\Controllers\Admin\AuditLogController::class, 'index'])->name('admin.audit-logs');
+
+        Route::get('/summary', [SummaryViewController::class, 'index'])->name('admin.summary');
 
         Route::get('/ched-contacts', [CHEDContactController::class, 'index'])->name('admin.ched-contacts');
         Route::post('/ched-contacts', [CHEDContactController::class, 'store'])->name('admin.ched-contacts.store');

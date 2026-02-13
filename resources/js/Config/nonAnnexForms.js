@@ -12,7 +12,7 @@
  */
 export const SUMMARY_FORM = {
   code: 'SUMMARY',
-  name: 'Summary - School Details',
+  name: '1A - Profile',
   route: '/hei/summary/create',
   category: 'Institutional Forms',
 };

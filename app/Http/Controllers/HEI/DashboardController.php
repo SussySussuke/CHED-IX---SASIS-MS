@@ -4,7 +4,7 @@ namespace App\Http\Controllers\HEI;
 
 use App\Http\Controllers\Controller;
 use App\Services\CacheService;
-use App\Services\AnnexConfigService;
+use App\Services\FormConfigService;
 use App\Services\AcademicYearService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -62,26 +62,12 @@ class DashboardController extends Controller
             CacheService::dashboardChecklistKey($heiId, $academicYear),
             CacheService::TTL_SHORT, // 5 minutes - data changes when user submits
             function () use ($heiId, $academicYear) {
-                $annexTypes = AnnexConfigService::getAnnexTypes();
+                // Get ALL form types (Summary + MER + Annexes) from FormConfigService
+                $allFormTypes = FormConfigService::getAllFormTypes();
                 $checklist = [];
 
-                // Add Summary to checklist
-                $summarySubmission = \App\Models\Summary::where('hei_id', $heiId)
-                    ->where('academic_year', $academicYear)
-                    ->whereIn('status', ['published', 'submitted', 'request'])
-                    ->orderBy('created_at', 'desc')
-                    ->first();
-
-                $checklist[] = [
-                    'annex' => 'SUMMARY',
-                    'name' => 'School Details',
-                    'status' => $this->determineStatus($summarySubmission),
-                    'lastUpdated' => $summarySubmission?->updated_at?->format('Y-m-d H:i:s'),
-                    'submissionId' => $summarySubmission?->id,
-                ];
-
-                // Add all annexes to checklist
-                foreach ($annexTypes as $code => $config) {
+                // Add ALL forms to checklist
+                foreach ($allFormTypes as $code => $config) {
                     $modelClass = $config['model'];
 
                     $submission = $modelClass::where('hei_id', $heiId)
@@ -91,10 +77,10 @@ class DashboardController extends Controller
                         ->first();
 
                     $checklist[] = [
-                    'annex' => $code,
-                    'status' => $this->determineStatus($submission),
-                    'lastUpdated' => $submission?->updated_at?->format('Y-m-d H:i:s'),
-                    'submissionId' => $submission?->id ?? $submission?->batch_id ?? null,
+                        'annex' => $code,
+                        'status' => $this->determineStatus($submission),
+                        'lastUpdated' => $submission?->updated_at?->format('Y-m-d H:i:s'),
+                        'submissionId' => $submission?->id ?? $submission?->batch_id ?? null,
                     ];
                 }
 
@@ -193,21 +179,19 @@ class DashboardController extends Controller
                     ->select('updated_at', 'status', DB::raw("'Summary' as form_name"))
                     ->get();
                 
-                // Collect from all annex batches using AnnexConfigService
-                $annexTypes = AnnexConfigService::getAnnexTypes();
-                $tables = [];
+                // Collect from ALL form types (Summary + MER + Annexes) using FormConfigService
+                $allFormTypes = FormConfigService::getAllFormTypes();
                 
-                foreach ($annexTypes as $code => $config) {
+                foreach ($allFormTypes as $code => $config) {
                     $modelClass = $config['model'];
+                    $table = (new $modelClass())->getTable();
                     
-                    // Get table name from model
-                    $model = new $modelClass();
-                    $tableName = $model->getTable();
-                    
-                    $tables[$tableName] = "Annex {$code}";
-                }
-                
-                foreach ($tables as $table => $formName) {
+                    // Determine display name
+                    $formName = match($code) {
+                        'SUMMARY' => 'Summary',
+                        'MER1', 'MER2', 'MER3', 'MER4A' => $code,
+                        default => "Annex {$code}"
+                    };
                     try {
                         $tableActivities = DB::table($table)
                             ->where('hei_id', $heiId)

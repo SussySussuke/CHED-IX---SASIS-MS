@@ -18,6 +18,11 @@ const AdminLayout = ({ title, children, pendingCount = 0 }) => {
       icon: <IoSchool />
     },
     {
+      href: '/admin/summary',
+      label: 'Summary',
+      icon: <IoDocument />
+    },
+    {
       href: '/admin/submissions',
       label: 'Submissions',
       icon: <IoDocumentText />,
@@ -69,5 +74,6 @@ const AdminLayout = ({ title, children, pendingCount = 0 }) => {
     </PermissionGate>
   );
 };
+
 
 export default AdminLayout;

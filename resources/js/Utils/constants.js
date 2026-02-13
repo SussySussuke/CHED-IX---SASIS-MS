@@ -35,7 +35,8 @@ export const STATUS_COLORS = {
   [OVERWRITE_STATUS.PENDING]: 'yellow',
   [OVERWRITE_STATUS.APPROVED]: 'green',
   [OVERWRITE_STATUS.REJECTED]: 'red',
-  'not_started': 'gray'
+  'not_started': 'gray',
+  'not_submitted': 'gray'
 };
 
 export const STATUS_LABELS = {
@@ -49,7 +50,8 @@ export const STATUS_LABELS = {
   [OVERWRITE_STATUS.PENDING]: 'Pending',
   [OVERWRITE_STATUS.APPROVED]: 'Approved',
   [OVERWRITE_STATUS.REJECTED]: 'Rejected',
-  'not_started': 'Not Started'
+  'not_started': 'Not Started',
+  'not_submitted': 'Not Submitted'
 };
 
 // Note: This should ideally be fetched from settings, not hardcoded

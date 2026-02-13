@@ -16,14 +16,14 @@ import FormCompletionChart from '../../Components/Admin/FormCompletionChart';
 const Dashboard = ({ academicYears, selectedYear, stats }) => {
   return (
     <AdminLayout title="Admin Dashboard" pendingCount={stats.pendingReviews}>
+      {/* Academic Year Header - Full Width */}
+      <AdminYearHeader
+        academicYears={academicYears}
+        selectedYear={selectedYear}
+      />
+      
       {/* MAIN COLUMN */}
-      <div className="space-y-6">
-        {/* Academic Year Header */}
-        <AdminYearHeader
-          academicYears={academicYears}
-          selectedYear={selectedYear}
-        />
-
+      <div className="p-6 space-y-6">
         {/* Page Title */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">

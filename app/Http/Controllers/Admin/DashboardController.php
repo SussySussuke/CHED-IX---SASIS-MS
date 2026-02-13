@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Services\CacheService;
-use App\Services\AnnexConfigService;
+use App\Services\FormConfigService;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -50,32 +50,14 @@ class DashboardController extends Controller
     {
         $count = 0;
 
-        // Count from summary
-        $count += DB::table('summary')
-            ->where('status', 'request')
-            ->count();
+        // Count from ALL form types (Summary + MER + Annexes) using FormConfigService
+        $allFormTypes = FormConfigService::getAllFormTypes();
 
-        // Count from all annex tables
-        $tables = [
-            'annex_a_batches',
-            'annex_b_batches',
-            'annex_c_batches',
-            'annex_d_submissions',
-            'annex_e_batches',
-            'annex_f_batches',
-            'annex_g_submissions',
-            'annex_h_batches',
-            'annex_i_batches',
-            'annex_j_batches',
-            'annex_k_batches',
-            'annex_l_batches',
-            'annex_m_batches',
-            'annex_n_batches',
-            'annex_o_batches',
-        ];
-
-        foreach ($tables as $table) {
+        foreach ($allFormTypes as $code => $config) {
             try {
+                $modelClass = $config['model'];
+                $table = (new $modelClass)->getTable();
+
                 $count += DB::table($table)
                     ->where('status', 'request')
                     ->count();
@@ -89,12 +71,12 @@ class DashboardController extends Controller
 
     /**
      * Calculate total completion percentage for selected academic year
-     * Formula: (Total completed forms across all HEIs / (Total HEIs × 16)) × 100
+     * Formula: (Total completed forms across all HEIs / (Total HEIs × TOTAL_FORMS)) × 100
      */
     private function getTotalCompletionPercentage($academicYear)
     {
-        // Total number of forms (Summary + 15 Annexes = 16)
-        $totalFormsPerHEI = 16;
+        // Get total number of forms dynamically from FormConfigService
+        $totalFormsPerHEI = FormConfigService::getTotalFormsCount();
 
         // Get active HEIs established before the academic year
         $cutoffDate = $this->getAcademicYearCutoffDate($academicYear);
@@ -110,34 +92,14 @@ class DashboardController extends Controller
         $totalPossibleForms = $totalHEIs * $totalFormsPerHEI;
         $completedForms = 0;
 
-        // Count completed Summary submissions
-        $completedForms += DB::table('summary')
-            ->where('academic_year', $academicYear)
-            ->whereIn('status', ['submitted', 'published'])
-            ->distinct('hei_id')
-            ->count('hei_id');
+        // Count completed forms for ALL form types (Summary + MER + Annexes)
+        $allFormTypes = FormConfigService::getAllFormTypes();
 
-        // Count completed Annex submissions
-        $tables = [
-            'annex_a_batches',
-            'annex_b_batches',
-            'annex_c_batches',
-            'annex_d_submissions',
-            'annex_e_batches',
-            'annex_f_batches',
-            'annex_g_submissions',
-            'annex_h_batches',
-            'annex_i_batches',
-            'annex_j_batches',
-            'annex_k_batches',
-            'annex_l_batches',
-            'annex_m_batches',
-            'annex_n_batches',
-            'annex_o_batches',
-        ];
-
-        foreach ($tables as $table) {
+        foreach ($allFormTypes as $code => $config) {
             try {
+                $modelClass = $config['model'];
+                $table = (new $modelClass)->getTable();
+
                 $completedForms += DB::table($table)
                     ->where('academic_year', $academicYear)
                     ->whereIn('status', ['submitted', 'published'])
@@ -241,59 +203,36 @@ class DashboardController extends Controller
     {
         $submissions = collect();
 
-        // Get from Summary
-        $summarySubmissions = DB::table('summary')
-            ->join('heis', 'summary.hei_id', '=', 'heis.id')
-            ->select(
-                'summary.id',
-                'heis.id as hei_id',
-                'heis.name as hei_name',
-                'heis.code as hei_code',
-                DB::raw("'Summary' as annex"),
-                'summary.academic_year',
-                'summary.updated_at as submitted_at',
-                'summary.status'
-            )
-            ->get();
+        // Get from ALL form types (Summary + MER + Annexes) using FormConfigService
+        $allFormTypes = FormConfigService::getAllFormTypes();
 
-        $submissions = $submissions->merge($summarySubmissions);
-
-        // Get from all Annex tables
-        $annexTables = [
-            ['table' => 'annex_a_batches', 'name' => 'Annex A'],
-            ['table' => 'annex_b_batches', 'name' => 'Annex B'],
-            ['table' => 'annex_c_batches', 'name' => 'Annex C'],
-            ['table' => 'annex_d_submissions', 'name' => 'Annex D'],
-            ['table' => 'annex_e_batches', 'name' => 'Annex E'],
-            ['table' => 'annex_f_batches', 'name' => 'Annex F'],
-            ['table' => 'annex_g_submissions', 'name' => 'Annex G'],
-            ['table' => 'annex_h_batches', 'name' => 'Annex H'],
-            ['table' => 'annex_i_batches', 'name' => 'Annex I'],
-            ['table' => 'annex_j_batches', 'name' => 'Annex J'],
-            ['table' => 'annex_k_batches', 'name' => 'Annex K'],
-            ['table' => 'annex_l_batches', 'name' => 'Annex L'],
-            ['table' => 'annex_m_batches', 'name' => 'Annex M'],
-            ['table' => 'annex_n_batches', 'name' => 'Annex N'],
-            ['table' => 'annex_o_batches', 'name' => 'Annex O'],
-        ];
-
-        foreach ($annexTables as $annex) {
+        foreach ($allFormTypes as $code => $config) {
             try {
-                $annexSubmissions = DB::table($annex['table'])
-                    ->join('heis', $annex['table'] . '.hei_id', '=', 'heis.id')
+                $modelClass = $config['model'];
+                $table = (new $modelClass)->getTable();
+                
+                // Determine display name
+                $displayName = match($code) {
+                    'SUMMARY' => 'Summary',
+                    'MER1', 'MER2', 'MER3', 'MER4A' => $code,
+                    default => "Annex {$code}"
+                };
+
+                $formSubmissions = DB::table($table)
+                    ->join('heis', $table . '.hei_id', '=', 'heis.id')
                     ->select(
-                        $annex['table'] . '.id',
+                        $table . '.id',
                         'heis.id as hei_id',
                         'heis.name as hei_name',
                         'heis.code as hei_code',
-                        DB::raw("'" . $annex['name'] . "' as annex"),
-                        $annex['table'] . '.academic_year',
-                        $annex['table'] . '.updated_at as submitted_at',
-                        $annex['table'] . '.status'
+                        DB::raw("'{$displayName}' as annex"),
+                        $table . '.academic_year',
+                        $table . '.updated_at as submitted_at',
+                        $table . '.status'
                     )
                     ->get();
 
-                $submissions = $submissions->merge($annexSubmissions);
+                $submissions = $submissions->merge($formSubmissions);
             } catch (\Exception $e) {
                 continue;
             }
@@ -321,7 +260,7 @@ class DashboardController extends Controller
 
     /**
      * Get top performing HEIs for selected academic year
-     * Based on completion rate (completed forms / 16 total forms)
+     * Based on completion rate (completed forms / TOTAL_FORMS)
      */
     private function getTopPerformingHEIs($academicYear, $limit = 5)
     {
@@ -334,50 +273,26 @@ class DashboardController extends Controller
             ->get();
 
         $heiPerformance = [];
+        $totalForms = FormConfigService::getTotalFormsCount();
 
         foreach ($heis as $hei) {
             $completedForms = 0;
-            $totalForms = 16;
 
-            // Check Summary
-            $hasSummary = DB::table('summary')
-                ->where('hei_id', $hei->id)
-                ->where('academic_year', $academicYear)
-                ->whereIn('status', ['submitted', 'published'])
-                ->exists();
+            // Check ALL form types (Summary + MER + Annexes) using FormConfigService
+            $allFormTypes = FormConfigService::getAllFormTypes();
 
-            if ($hasSummary) {
-                $completedForms++;
-            }
-
-            // Check all Annexes
-            $tables = [
-                'annex_a_batches',
-                'annex_b_batches',
-                'annex_c_batches',
-                'annex_d_submissions',
-                'annex_e_batches',
-                'annex_f_batches',
-                'annex_g_submissions',
-                'annex_h_batches',
-                'annex_i_batches',
-                'annex_j_batches',
-                'annex_k_batches',
-                'annex_l_batches',
-                'annex_m_batches',
-                'annex_n_batches',
-                'annex_o_batches',
-            ];
-
-            foreach ($tables as $table) {
+            foreach ($allFormTypes as $code => $config) {
                 try {
-                    $hasAnnex = DB::table($table)
+                    $modelClass = $config['model'];
+                    $table = (new $modelClass)->getTable();
+
+                    $hasForm = DB::table($table)
                         ->where('hei_id', $hei->id)
                         ->where('academic_year', $academicYear)
                         ->whereIn('status', ['submitted', 'published'])
                         ->exists();
 
-                    if ($hasAnnex) {
+                    if ($hasForm) {
                         $completedForms++;
                     }
                 } catch (\Exception $e) {
@@ -409,8 +324,8 @@ class DashboardController extends Controller
     /**
      * Get form completion rates for selected academic year
      * Shows percentage of HEIs that completed each form
-     * Uses AnnexConfigService to dynamically get all annexes (including C-1)
-     * Returns codes (A, B, C, C-1, etc.) instead of names - frontend handles display
+     * Uses FormConfigService to dynamically get ALL forms (Summary + MER + Annexes)
+     * Returns codes (SUMMARY, MER1, A, B, C, C-1, etc.) - frontend handles display
      */
     private function getFormCompletionRates($academicYear)
     {
@@ -425,30 +340,24 @@ class DashboardController extends Controller
             return [];
         }
 
-        // Get all annex types dynamically from AnnexConfigService (includes C-1!)
-        $annexTypes = AnnexConfigService::getAnnexTypes();
-        
-        // Build forms array: code => table name
-        $forms = ['SUMMARY' => 'summary'];  // Start with Summary
-        
-        foreach ($annexTypes as $code => $config) {
-            // Get table name from model
-            $modelClass = $config['model'];
-            $forms[$code] = (new $modelClass)->getTable();
-        }
+        // Get ALL form types dynamically from FormConfigService (Summary + MER + Annexes!)
+        $allFormTypes = FormConfigService::getAllFormTypes();
 
         $completionRates = [];
 
         // Calculate completion rate for each form, using CODE as key
-        foreach ($forms as $code => $table) {
+        foreach ($allFormTypes as $code => $config) {
             try {
+                $modelClass = $config['model'];
+                $table = (new $modelClass)->getTable();
+
                 $completedCount = DB::table($table)
                     ->where('academic_year', $academicYear)
                     ->whereIn('status', ['submitted', 'published'])
                     ->distinct('hei_id')
                     ->count('hei_id');
 
-                // Store with CODE as key (e.g., 'A', 'B', 'C-1'), NOT name
+                // Store with CODE as key (e.g., 'SUMMARY', 'MER1', 'A', 'B', 'C-1'), NOT name
                 $completionRates[$code] = round(($completedCount / $totalHEIs) * 100);
             } catch (\Exception $e) {
                 $completionRates[$code] = 0;
@@ -456,7 +365,7 @@ class DashboardController extends Controller
         }
 
         return $completionRates;
-        // Returns: ['SUMMARY' => 85, 'A' => 92, 'B' => 78, 'C' => 88, 'C-1' => 95, ...]
+        // Returns: ['SUMMARY' => 85, 'MER1' => 90, 'MER2' => 88, 'A' => 92, 'B' => 78, 'C-1' => 95, ...]
     }
 
     /**
@@ -482,35 +391,14 @@ class DashboardController extends Controller
     {
         $years = collect();
 
-        // Get years from Summary
-        $summaryYears = DB::table('summary')
-            ->select('academic_year')
-            ->distinct()
-            ->pluck('academic_year');
+        // Get years from ALL form types (Summary + MER + Annexes) using FormConfigService
+        $allFormTypes = FormConfigService::getAllFormTypes();
 
-        $years = $years->merge($summaryYears);
-
-        // Get years from annex batches
-        $tables = [
-            'annex_a_batches',
-            'annex_b_batches',
-            'annex_c_batches',
-            'annex_d_submissions',
-            'annex_e_batches',
-            'annex_f_batches',
-            'annex_g_submissions',
-            'annex_h_batches',
-            'annex_i_batches',
-            'annex_j_batches',
-            'annex_k_batches',
-            'annex_l_batches',
-            'annex_m_batches',
-            'annex_n_batches',
-            'annex_o_batches',
-        ];
-
-        foreach ($tables as $table) {
+        foreach ($allFormTypes as $code => $config) {
             try {
+                $modelClass = $config['model'];
+                $table = (new $modelClass)->getTable();
+
                 $tableYears = DB::table($table)
                     ->select('academic_year')
                     ->distinct()
