@@ -7,6 +7,7 @@ use App\Models\HEI;
 use App\Models\CHEDRemark;
 use App\Models\AuditLog;
 use App\Services\CacheService;
+use App\Services\FormConfigService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -54,7 +55,7 @@ class SubmissionController extends Controller
     {
         $hei = HEI::findOrFail($heiId);
 
-        $annexTypes = $this->getAnnexTypes();
+        $annexTypes = FormConfigService::getAnnexTypes();
         $submissions = [];
 
         // Add Summary submissions
@@ -429,13 +430,11 @@ class SubmissionController extends Controller
             ]);
         }
 
-        $annexTypes = $this->getAnnexTypes();
-
-        if (!isset($annexTypes[$annexType])) {
+        if (!FormConfigService::isValidFormType($annexType)) {
             return response()->json(['error' => 'Invalid annex type'], 400);
         }
 
-        $config = $annexTypes[$annexType];
+        $config = FormConfigService::getFormConfig($annexType);
         $modelClass = $config['model'];
 
         // Handle different ID fields for different annexes
@@ -577,37 +576,11 @@ class SubmissionController extends Controller
     }
 
     /**
-     * Get annex types configuration
-     * Note: Display names are handled by frontend (formConfig.js ANNEX_NAMES)
-     */
-    private function getAnnexTypes()
-    {
-        return [
-            'A' => ['model' => \App\Models\AnnexABatch::class, 'relation' => 'programs'],
-            'B' => ['model' => \App\Models\AnnexBBatch::class, 'relation' => 'programs'],
-            'C' => ['model' => \App\Models\AnnexCBatch::class, 'relation' => 'programs'],
-            'D' => ['model' => \App\Models\AnnexDSubmission::class, 'relation' => null],
-            'E' => ['model' => \App\Models\AnnexEBatch::class, 'relation' => 'organizations'],
-            'F' => ['model' => \App\Models\AnnexFBatch::class, 'relation' => 'activities'],
-            'G' => ['model' => \App\Models\AnnexGSubmission::class, 'relation' => null],
-            'H' => ['model' => \App\Models\AnnexHBatch::class, 'relation' => 'admissionStatistics'],
-            'I' => ['model' => \App\Models\AnnexIBatch::class, 'relation' => 'scholarships'],
-            'J' => ['model' => \App\Models\AnnexJBatch::class, 'relation' => 'programs'],
-            'K' => ['model' => \App\Models\AnnexKBatch::class, 'relation' => 'committees'],
-            'L' => ['model' => \App\Models\AnnexLBatch::class, 'relation' => 'housing'],
-            'M' => ['model' => \App\Models\AnnexMBatch::class, 'relation' => 'statistics'],
-            'N' => ['model' => \App\Models\AnnexNBatch::class, 'relation' => 'activities'],
-            'O' => ['model' => \App\Models\AnnexOBatch::class, 'relation' => 'programs'],
-        ];
-    }
-
-    /**
      * Get model class by annex type
      */
     private function getModelClass($annexType)
     {
-        $annexTypes = $this->getAnnexTypes();
-        return $annexTypes[$annexType]['model'];
+        return FormConfigService::getFormModel($annexType);
     }
 
     /**

@@ -20,7 +20,7 @@ const SummaryView = ({
       preserveState: true,
       preserveScroll: true,
     });
-  };
+  };  
 
   // Dynamic column definitions based on activeSection
   const columnDefs = useMemo(() => {

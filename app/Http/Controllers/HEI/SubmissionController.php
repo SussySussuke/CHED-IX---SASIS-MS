@@ -4,7 +4,7 @@ namespace App\Http\Controllers\HEI;
 
 use App\Http\Controllers\Controller;
 use App\Services\CacheService;
-use App\Services\AnnexConfigService;
+use App\Services\FormConfigService;
 use App\Services\AcademicYearService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -52,7 +52,7 @@ class SubmissionController extends Controller
             CacheService::submissionsListKey($heiId),
             CacheService::TTL_SHORT, // 5 minutes
             function () use ($heiId) {
-                $annexTypes = AnnexConfigService::getAnnexTypes();
+                $annexTypes = FormConfigService::getAnnexTypes();
                 $submissions = [];
 
                 // Add Summary submissions
@@ -273,11 +273,11 @@ class SubmissionController extends Controller
                     ])->getData();
                 }
 
-                if (!AnnexConfigService::isValidAnnexType($annexType)) {
+                if (!FormConfigService::isValidFormType($annexType)) {
                     return response()->json(['error' => 'Invalid annex type'], 400)->getData();
                 }
 
-                $config = AnnexConfigService::getAnnexConfig($annexType);
+                $config = FormConfigService::getFormConfig($annexType);
                 $modelClass = $config['model'];
 
                 // Handle different ID fields for different annexes

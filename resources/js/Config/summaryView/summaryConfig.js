@@ -1,5 +1,5 @@
-import { profileConfig } from './profileConfig';
-import { personnelConfig } from './personnelConfig';
+import { profileConfig } from './profileConfig.jsx';
+import { personnelConfig } from './personnelConfig.jsx';
 
 /**
  * Summary View Master Configuration

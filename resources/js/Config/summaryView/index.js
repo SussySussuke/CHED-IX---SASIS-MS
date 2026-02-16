@@ -5,7 +5,7 @@
  * Import what you need, when you need it.
  */
 
-export { profileConfig } from './profileConfig';
-export { personnelConfig } from './personnelConfig';
+export { profileConfig } from './profileConfig.jsx';
+export { personnelConfig } from './personnelConfig.jsx';
 export { summaryConfig } from './summaryConfig';
 export default summaryConfig;

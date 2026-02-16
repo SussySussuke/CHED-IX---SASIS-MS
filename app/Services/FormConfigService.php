@@ -263,49 +263,4 @@ class FormConfigService
     {
         return count(self::getAllFormTypes());
     }
-
-    // ============================================================================
-    // LEGACY METHODS - For backwards compatibility with AnnexConfigService
-    // These will be deprecated once all code is migrated to use FormConfigService
-    // ============================================================================
-
-    /**
-     * @deprecated Use getFormConfig() instead
-     */
-    public static function getAnnexConfig(string $annexType): ?array
-    {
-        return self::getFormConfig($annexType);
-    }
-
-    /**
-     * @deprecated Use isValidFormType() instead
-     */
-    public static function isValidAnnexType(string $annexType): bool
-    {
-        return self::isValidFormType($annexType);
-    }
-
-    /**
-     * @deprecated Use getFormModel() instead
-     */
-    public static function getAnnexModel(string $annexType): ?string
-    {
-        return self::getFormModel($annexType);
-    }
-
-    /**
-     * @deprecated Use getFormRelation() instead
-     */
-    public static function getAnnexRelation(string $annexType): ?string
-    {
-        return self::getFormRelation($annexType);
-    }
-
-    /**
-     * @deprecated Use getFormName() instead. Display names now managed in frontend formConfig.js
-     */
-    public static function getAnnexName(string $annexType): ?string
-    {
-        return self::getFormName($annexType);
-    }
 }
