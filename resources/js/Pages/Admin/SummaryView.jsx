@@ -5,10 +5,15 @@ import AGGridViewer from '../../Components/Common/AGGridViewer';
 import EmptyState from '../../Components/Common/EmptyState';
 import FormSelector from '../../Components/Forms/FormSelector';
 import AcademicYearSelect from '../../Components/Forms/AcademicYearSelect';
-import StatusBadge from '../../Components/Widgets/StatusBadge';
 import { IoDocumentText, IoInformationCircle } from 'react-icons/io5';
+import { summaryConfig } from '../../Config/summaryView/summaryConfig';
 
-const SummaryView = ({ summaries = [], availableYears = [], selectedYear = null }) => {
+const SummaryView = ({ 
+  summaries = [], 
+  availableYears = [], 
+  selectedYear = null,
+  activeSection = null, // Optional: specify which section to display
+}) => {
   const handleYearChange = (e) => {
     const year = e.target.value;
     router.get('/admin/summary', { year }, {
@@ -17,196 +22,18 @@ const SummaryView = ({ summaries = [], availableYears = [], selectedYear = null 
     });
   };
 
-  const columnDefs = useMemo(() => [
-    {
-      headerName: 'HEI Code',
-      field: 'hei_code',
-      width: 130,
-      filter: 'agTextColumnFilter',
-      cellStyle: { fontWeight: '500' },
-      pinned: 'left',
-    },
-    {
-      headerName: 'Institution Name',
-      field: 'hei_name',
-      flex: 1,
-      minWidth: 300,
-      filter: 'agTextColumnFilter',
-    },
-    {
-      headerName: 'Type',
-      field: 'hei_type',
-      width: 100,
-      filter: 'agTextColumnFilter',
-      cellStyle: { textAlign: 'center' },
-    },
-    {
-      headerName: 'Male',
-      field: 'population_male',
-      width: 100,
-      filter: 'agNumberColumnFilter',
-      cellStyle: { textAlign: 'right' },
-      cellRenderer: (params) => {
-        if (params.value === null || params.value === undefined) {
-          return <span className="text-gray-400">—</span>;
-        }
-        return params.value.toLocaleString();
-      },
-    },
-    {
-      headerName: 'Female',
-      field: 'population_female',
-      width: 100,
-      filter: 'agNumberColumnFilter',
-      cellStyle: { textAlign: 'right' },
-      cellRenderer: (params) => {
-        if (params.value === null || params.value === undefined) {
-          return <span className="text-gray-400">—</span>;
-        }
-        return params.value.toLocaleString();
-      },
-    },
-    {
-      headerName: 'Intersex',
-      field: 'population_intersex',
-      width: 110,
-      filter: 'agNumberColumnFilter',
-      cellStyle: { textAlign: 'right' },
-      cellRenderer: (params) => {
-        if (params.value === null || params.value === undefined) {
-          return <span className="text-gray-400">—</span>;
-        }
-        return params.value.toLocaleString();
-      },
-    },
-    {
-      headerName: 'Total',
-      field: 'population_total',
-      width: 120,
-      filter: 'agNumberColumnFilter',
-      cellStyle: { textAlign: 'right', fontWeight: '600' },
-      cellRenderer: (params) => {
-        if (params.value === null || params.value === undefined) {
-          return <span className="text-gray-400">—</span>;
-        }
-        return params.value.toLocaleString();
-      },
-    },
-    {
-      headerName: 'Org Chart',
-      field: 'submitted_org_chart',
-      width: 130,
-      filter: 'agTextColumnFilter',
-      cellStyle: { textAlign: 'center' },
-      cellRenderer: (params) => {
-        if (!params.value) return <span className="text-gray-400">—</span>;
-        return params.value.toUpperCase();
-      },
-    },
-    {
-      headerName: 'HEI Website',
-      field: 'hei_website',
-      width: 200,
-      filter: 'agTextColumnFilter',
-      cellRenderer: (params) => {
-        if (!params.value) return <span className="text-gray-400">—</span>;
-        return (
-          <a 
-            href={params.value} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {params.value.length > 30 ? params.value.substring(0, 30) + '...' : params.value}
-          </a>
-        );
-      },
-    },
-    {
-      headerName: 'SAS Website',
-      field: 'sas_website',
-      width: 200,
-      filter: 'agTextColumnFilter',
-      cellRenderer: (params) => {
-        if (!params.value) return <span className="text-gray-400">—</span>;
-        return (
-          <a 
-            href={params.value} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {params.value.length > 30 ? params.value.substring(0, 30) + '...' : params.value}
-          </a>
-        );
-      },
-    },
-    {
-      headerName: 'Social Media',
-      field: 'social_media_contacts',
-      width: 250,
-      filter: 'agTextColumnFilter',
-      cellRenderer: (params) => {
-        if (!params.value) return <span className="text-gray-400">—</span>;
-        const text = params.value;
-        return (
-          <span className="text-sm" title={text}>
-            {text.length > 40 ? text.substring(0, 40) + '...' : text}
-          </span>
-        );
-      },
-    },
-    {
-      headerName: 'Student Handbook',
-      field: 'student_handbook',
-      width: 180,
-      filter: 'agTextColumnFilter',
-      cellRenderer: (params) => {
-        if (!params.value) return <span className="text-gray-400">—</span>;
-        return <span className="text-sm">{params.value}</span>;
-      },
-    },
-    {
-      headerName: 'Student Publication',
-      field: 'student_publication',
-      width: 200,
-      filter: 'agTextColumnFilter',
-      cellRenderer: (params) => {
-        if (!params.value) return <span className="text-gray-400">—</span>;
-        return <span className="text-sm">{params.value}</span>;
-      },
-    },
-    {
-      headerName: 'Status',
-      field: 'status',
-      width: 140,
-      filter: 'agTextColumnFilter',
-      cellRenderer: (params) => {
-        return (
-          <div className="flex justify-center">
-            <StatusBadge status={params.value} />
-          </div>
-        );
-      },
-      cellStyle: { textAlign: 'center' },
-    },
-    {
-      headerName: 'Submitted At',
-      field: 'submitted_at',
-      width: 180,
-      filter: 'agDateColumnFilter',
-      cellRenderer: (params) => {
-        if (!params.value) return <span className="text-gray-400">—</span>;
-        return new Date(params.value).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        });
-      },
-    },
-  ], []);
+  // Dynamic column definitions based on activeSection
+  const columnDefs = useMemo(() => {
+    if (activeSection) {
+      // Display specific section
+      return summaryConfig.getSectionColumns(activeSection);
+    }
+    // Default: display all columns (combined view)
+    return summaryConfig.getAllColumns();
+  }, [activeSection]);
+
+  // Get grid configuration
+  const gridConfig = summaryConfig.gridDefaults;
 
   return (
     <AdminLayout title="Summary View">
@@ -223,7 +50,7 @@ const SummaryView = ({ summaries = [], availableYears = [], selectedYear = null 
           </div>
         </div>
 
-        {/* Filters Section - Using Blessed Components! */}
+        {/* Filters Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormSelector 
             currentForm="SUMMARY" 
@@ -257,11 +84,11 @@ const SummaryView = ({ summaries = [], availableYears = [], selectedYear = null 
             <AGGridViewer
               rowData={summaries}
               columnDefs={columnDefs}
-              height="calc(100vh - 350px)"
-              paginationPageSize={50}
-              paginationPageSizeSelector={[25, 50, 100, 200]}
-              enableQuickFilter={true}
-              quickFilterPlaceholder="Search by HEI name, code, type, websites..."
+              height={gridConfig.height}
+              paginationPageSize={gridConfig.paginationPageSize}
+              paginationPageSizeSelector={gridConfig.paginationPageSizeSelector}
+              enableQuickFilter={gridConfig.enableQuickFilter}
+              quickFilterPlaceholder={gridConfig.quickFilterPlaceholder}
             />
           </div>
         )}
