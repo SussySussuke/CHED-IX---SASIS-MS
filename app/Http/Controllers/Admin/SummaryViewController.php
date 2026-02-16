@@ -10,6 +10,7 @@ use App\Models\AnnexAProgram;
 use App\Models\AnnexBBatch;
 use App\Models\AnnexBProgram;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SummaryViewController extends Controller
 {
@@ -372,6 +373,158 @@ class SummaryViewController extends Controller
             'data' => $infoOrientationData,
             'availableYears' => $availableYears,
             'selectedYear' => $selectedYear,
+        ]);
+    }
+
+    /**
+     * Get detailed program evidence for a specific HEI and category
+     * Used for drill-down when clicking on activity counts
+     * 
+     * @param Request $request
+     * @param int $heiId
+     * @param string $category - One of: campus_orientation, gender_sensitivity, anti_hazing, 
+     *                           substance_abuse, sexual_health, mental_health, disaster_risk
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getInfoOrientationEvidence(Request $request, $heiId, $category)
+    {
+        $selectedYear = $request->query('year');
+        
+        if (!$selectedYear) {
+            return response()->json([
+                'error' => 'Academic year is required',
+                'programs' => [],
+            ], 400);
+        }
+        
+        // Get HEI info
+        $hei = HEI::find($heiId);
+        if (!$hei) {
+            return response()->json([
+                'error' => 'HEI not found',
+                'programs' => [],
+            ], 404);
+        }
+        
+        // Get Annex A programs
+        $annexAPrograms = AnnexAProgram::whereHas('batch', function ($query) use ($heiId, $selectedYear) {
+            $query->where('hei_id', $heiId)
+                  ->where('academic_year', $selectedYear)
+                  ->whereIn('status', ['published', 'submitted', 'request']);
+        })->get();
+        
+        // Get Annex B programs
+        $annexBPrograms = AnnexBProgram::whereHas('batch', function ($query) use ($heiId, $selectedYear) {
+            $query->where('hei_id', $heiId)
+                  ->where('academic_year', $selectedYear)
+                  ->whereIn('status', ['published', 'submitted', 'request']);
+        })->get();
+        
+        // Merge both annexes
+        $allPrograms = $annexAPrograms->merge($annexBPrograms);
+        
+        // Filter by category using the same logic as aggregation
+        $filteredPrograms = [];
+        
+        foreach ($allPrograms as $program) {
+            $titleLower = strtolower($program->title);
+            $targetLower = strtolower($program->target_group ?? '');
+            $searchText = $titleLower . ' ' . $targetLower;
+            
+            $matches = false;
+            
+            switch ($category) {
+                case 'campus_orientation':
+                    $matches = str_contains($searchText, 'orientation') || 
+                               str_contains($searchText, 'freshmen') || 
+                               str_contains($searchText, 'freshman') ||
+                               str_contains($searchText, 'new student') ||
+                               str_contains($searchText, 'welcome') ||
+                               str_contains($searchText, 'induction');
+                    break;
+                    
+                case 'gender_sensitivity':
+                    $matches = str_contains($searchText, 'gender') || 
+                               str_contains($searchText, 'vawc') || 
+                               str_contains($searchText, 'women') ||
+                               str_contains($searchText, 'harassment') ||
+                               str_contains($searchText, 'sensitivity') ||
+                               str_contains($searchText, 'safe space');
+                    break;
+                    
+                case 'anti_hazing':
+                    $matches = str_contains($searchText, 'hazing') || 
+                               str_contains($searchText, 'anti-hazing') ||
+                               str_contains($searchText, 'bullying') ||
+                               str_contains($searchText, 'fraternity');
+                    break;
+                    
+                case 'substance_abuse':
+                    $matches = str_contains($searchText, 'substance') || 
+                               str_contains($searchText, 'drug') || 
+                               str_contains($searchText, 'alcohol') ||
+                               str_contains($searchText, 'tobacco') ||
+                               str_contains($searchText, 'smoking') ||
+                               str_contains($searchText, 'vape') ||
+                               str_contains($searchText, 'vaping');
+                    break;
+                    
+                case 'sexual_health':
+                    $matches = str_contains($searchText, 'sexual') || 
+                               str_contains($searchText, 'reproductive') || 
+                               str_contains($searchText, 'hiv') ||
+                               str_contains($searchText, 'aids') ||
+                               str_contains($searchText, 'std') ||
+                               str_contains($searchText, 'sti') ||
+                               str_contains($searchText, 'pregnancy');
+                    break;
+                    
+                case 'mental_health':
+                    $matches = str_contains($searchText, 'mental') || 
+                               str_contains($searchText, 'wellness') || 
+                               str_contains($searchText, 'well-being') ||
+                               str_contains($searchText, 'wellbeing') ||
+                               str_contains($searchText, 'counseling') ||
+                               str_contains($searchText, 'stress') ||
+                               str_contains($searchText, 'anxiety') ||
+                               str_contains($searchText, 'depression') ||
+                               str_contains($searchText, 'psychological');
+                    break;
+                    
+                case 'disaster_risk':
+                    $matches = str_contains($searchText, 'disaster') || 
+                               str_contains($searchText, 'earthquake') || 
+                               str_contains($searchText, 'fire drill') ||
+                               str_contains($searchText, 'emergency') ||
+                               str_contains($searchText, 'evacuation') ||
+                               str_contains($searchText, 'preparedness') ||
+                               str_contains($searchText, 'risk reduction');
+                    break;
+            }
+            
+            if ($matches) {
+                $filteredPrograms[] = [
+                    'id' => $program->id,
+                    'title' => $program->title,
+                    'venue' => $program->venue,
+                    'implementation_date' => $program->implementation_date ? $program->implementation_date->format('Y-m-d') : null,
+                    'target_group' => $program->target_group,
+                    'participants_online' => $program->participants_online ?? 0,
+                    'participants_face_to_face' => $program->participants_face_to_face ?? 0,
+                    'total_participants' => ($program->participants_online ?? 0) + ($program->participants_face_to_face ?? 0),
+                    'organizer' => $program->organizer,
+                    'remarks' => $program->remarks,
+                ];
+            }
+        }
+        
+        return response()->json([
+            'hei_name' => $hei->name,
+            'hei_code' => $hei->code,
+            'category' => $category,
+            'academic_year' => $selectedYear,
+            'programs' => $filteredPrograms,
+            'total_count' => count($filteredPrograms),
         ]);
     }
 }

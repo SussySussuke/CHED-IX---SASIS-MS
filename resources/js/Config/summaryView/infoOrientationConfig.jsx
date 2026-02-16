@@ -12,12 +12,19 @@ import StatusBadge from '../../Components/Widgets/StatusBadge';
  * - Sexual/Reproductive Health
  * - Mental Health/Wellness
  * - Disaster Risk Management
+ * 
+ * Note: The columns accept an onCellClick callback that can be passed dynamically
  */
 export const infoOrientationConfig = {
   sectionId: '2-Info-Orientation',
   sectionTitle: 'Information and Orientation Services & Activities',
   
-  columns: [
+  /**
+   * Generate columns with optional click handlers
+   * @param {Function} onActivityClick - Callback when activity count is clicked
+   *                                      Receives (category, heiId, heiName, activityCount)
+   */
+  getColumns: (onActivityClick = null) => [
     {
       headerName: 'HEI Name',
       field: 'hei_name',
@@ -41,16 +48,14 @@ export const infoOrientationConfig = {
           cellRenderer: (params) => {
             if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
             return (
-              <span className="font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-                {params.value}
-              </span>
+              <button 
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
+                onClick={() => onActivityClick && onActivityClick('campus_orientation', params.data.hei_id, params.data.hei_name, params.value)}
+                title="Click to view program details"
+              >
+                {params.value} →
+              </button>
             );
-          },
-          onCellClicked: (params) => {
-            if (params.value) {
-              console.log('Show drill-down for Campus Orientation', params.data);
-              // TODO: Implement modal/drawer for drill-down
-            }
           },
         },
         {
@@ -80,9 +85,13 @@ export const infoOrientationConfig = {
           cellRenderer: (params) => {
             if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
             return (
-              <span className="font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-                {params.value}
-              </span>
+              <button 
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
+                onClick={() => onActivityClick && onActivityClick('gender_sensitivity', params.data.hei_id, params.data.hei_name, params.value)}
+                title="Click to view program details"
+              >
+                {params.value} →
+              </button>
             );
           },
         },
@@ -113,9 +122,13 @@ export const infoOrientationConfig = {
           cellRenderer: (params) => {
             if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
             return (
-              <span className="font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-                {params.value}
-              </span>
+              <button 
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
+                onClick={() => onActivityClick && onActivityClick('anti_hazing', params.data.hei_id, params.data.hei_name, params.value)}
+                title="Click to view program details"
+              >
+                {params.value} →
+              </button>
             );
           },
         },
@@ -146,9 +159,13 @@ export const infoOrientationConfig = {
           cellRenderer: (params) => {
             if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
             return (
-              <span className="font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-                {params.value}
-              </span>
+              <button 
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
+                onClick={() => onActivityClick && onActivityClick('substance_abuse', params.data.hei_id, params.data.hei_name, params.value)}
+                title="Click to view program details"
+              >
+                {params.value} →
+              </button>
             );
           },
         },
@@ -179,9 +196,13 @@ export const infoOrientationConfig = {
           cellRenderer: (params) => {
             if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
             return (
-              <span className="font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-                {params.value}
-              </span>
+              <button 
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
+                onClick={() => onActivityClick && onActivityClick('sexual_health', params.data.hei_id, params.data.hei_name, params.value)}
+                title="Click to view program details"
+              >
+                {params.value} →
+              </button>
             );
           },
         },
@@ -212,9 +233,13 @@ export const infoOrientationConfig = {
           cellRenderer: (params) => {
             if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
             return (
-              <span className="font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-                {params.value}
-              </span>
+              <button 
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
+                onClick={() => onActivityClick && onActivityClick('mental_health', params.data.hei_id, params.data.hei_name, params.value)}
+                title="Click to view program details"
+              >
+                {params.value} →
+              </button>
             );
           },
         },
@@ -245,9 +270,13 @@ export const infoOrientationConfig = {
           cellRenderer: (params) => {
             if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
             return (
-              <span className="font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-                {params.value}
-              </span>
+              <button 
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
+                onClick={() => onActivityClick && onActivityClick('disaster_risk', params.data.hei_id, params.data.hei_name, params.value)}
+                title="Click to view program details"
+              >
+                {params.value} →
+              </button>
             );
           },
         },
@@ -326,4 +355,9 @@ export const infoOrientationConfig = {
       cellStyle: { textAlign: 'center' },
     },
   ],
+  
+  // For backward compatibility, expose columns without handlers
+  get columns() {
+    return this.getColumns(null);
+  },
 };

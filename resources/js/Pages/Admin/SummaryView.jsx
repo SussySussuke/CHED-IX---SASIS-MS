@@ -5,6 +5,7 @@ import AGGridViewer from '../../Components/Common/AGGridViewer';
 import EmptyState from '../../Components/Common/EmptyState';
 import AcademicYearSelect from '../../Components/Forms/AcademicYearSelect';
 import FormSelector from '../../Components/Forms/FormSelector';
+import InfoOrientationEvidenceModal from '../../Components/Modals/InfoOrientationEvidenceModal';
 import { IoDocumentText, IoInformationCircle, IoGridOutline } from 'react-icons/io5';
 import { summaryConfig } from '../../Config/summaryView/summaryConfig';
 
@@ -16,6 +17,15 @@ const SummaryView = ({
   const [activeSection, setActiveSection] = useState('1A-Profile');
   const [sectionData, setSectionData] = useState(summaries);
   const [loading, setLoading] = useState(false);
+  
+  // Evidence modal state
+  const [evidenceModal, setEvidenceModal] = useState({
+    isOpen: false,
+    heiId: null,
+    heiName: '',
+    category: '',
+    categoryLabel: '',
+  });
 
   const handleYearChange = (e) => {
     const year = e.target.value;
@@ -76,8 +86,50 @@ const SummaryView = ({
     }
   }, [selectedYear]);
 
+  // Category label mapping
+  const categoryLabels = {
+    campus_orientation: 'Campus Orientation',
+    gender_sensitivity: 'Gender Sensitivity/VAWC',
+    anti_hazing: 'Anti-Hazing',
+    substance_abuse: 'Substance Abuse Campaigns',
+    sexual_health: 'Sexual/Reproductive Health',
+    mental_health: 'Mental Health/Wellness',
+    disaster_risk: 'Disaster Risk Management',
+  };
+  
+  // Handle activity cell clicks
+  const handleActivityClick = (category, heiId, heiName, activityCount) => {
+    if (!activityCount || activityCount === 0) return;
+    
+    setEvidenceModal({
+      isOpen: true,
+      heiId,
+      heiName,
+      category,
+      categoryLabel: categoryLabels[category] || category,
+    });
+  };
+  
+  // Close evidence modal
+  const closeEvidenceModal = () => {
+    setEvidenceModal({
+      isOpen: false,
+      heiId: null,
+      heiName: '',
+      category: '',
+      categoryLabel: '',
+    });
+  };
+  
   // Dynamic column definitions based on activeSection
   const columnDefs = useMemo(() => {
+    // For Info-Orientation section, pass the click handler
+    if (activeSection === '2-Info-Orientation') {
+      const config = summaryConfig.getSection(activeSection);
+      return config.getColumns(handleActivityClick);
+    }
+    
+    // For other sections, use default columns
     return summaryConfig.getSectionColumns(activeSection);
   }, [activeSection]);
 
@@ -146,6 +198,18 @@ const SummaryView = ({
           />
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {/* Info banner for Info-Orientation section */}
+            {activeSection === '2-Info-Orientation' && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <IoInformationCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-semibold">Tip:</span> Click on any blue activity count (with the → arrow) to view detailed program evidence.
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <AGGridViewer
               rowData={sectionData}
               columnDefs={columnDefs}
@@ -158,6 +222,17 @@ const SummaryView = ({
           </div>
         )}
       </div>
+      
+      {/* Evidence Modal */}
+      <InfoOrientationEvidenceModal
+        isOpen={evidenceModal.isOpen}
+        onClose={closeEvidenceModal}
+        heiId={evidenceModal.heiId}
+        heiName={evidenceModal.heiName}
+        category={evidenceModal.category}
+        categoryLabel={evidenceModal.categoryLabel}
+        academicYear={selectedYear}
+      />
     </AdminLayout>
   );
 };
