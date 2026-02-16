@@ -8,9 +8,12 @@ import { getAcademicYearFromUrl } from '../../../Utils/urlHelpers';
 import { IoSave } from 'react-icons/io5';
 import AcademicYearSelect from '../../../Components/Forms/AcademicYearSelect';
 import FormSelector from '../../../Components/Forms/FormSelector';
+import { buildFormOptionsGrouped } from '../../../Config/formConfig';
+import { getFormRoute } from '../../../Config/nonAnnexForms';
 
 const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEditing = false }) => {
   const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
+  const formOptions = buildFormOptionsGrouped();
   const [selectedYear, setSelectedYear] = useState(currentAcademicYear);
   const [processing, setProcessing] = useState(false);
   const [academicYear, setAcademicYear] = useState(currentAcademicYear);
@@ -173,7 +176,14 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
               availableYears={availableYears}
               required
             />
-            <FormSelector currentForm="D" />
+            <FormSelector 
+              currentForm="D"
+              options={formOptions}
+              mode="navigate"
+              getRoute={getFormRoute}
+              confirmBeforeChange={true}
+              label="Form Type"
+            />
           </div>
         )}
         {isEditing && (

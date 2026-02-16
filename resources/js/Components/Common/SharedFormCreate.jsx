@@ -15,6 +15,8 @@ import { getAcademicYearFromUrl } from '../../Utils/urlHelpers';
 import AcademicYearSelect from '../Forms/AcademicYearSelect';
 import { MER1_CONFIG } from '../../Config/mer1Config';
 import FormSelector from '../Forms/FormSelector';
+import { buildFormOptionsGrouped } from '../../Config/formConfig';
+import { getFormRoute } from '../../Config/nonAnnexForms';
 
 /**
  * SharedFormCreate - Universal form component for MER1 and similar multi-section forms
@@ -47,6 +49,7 @@ const SharedFormCreate = ({
   
   const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
   const { isDark } = useTheme();
+  const formOptions = buildFormOptionsGrouped();
   
   const [academicYear, setAcademicYear] = useState(currentAcademicYear);
   const [requestNotes, setRequestNotes] = useState('');
@@ -510,7 +513,14 @@ const SharedFormCreate = ({
               availableYears={availableYears}
               required
             />
-            <FormSelector currentForm={formType} />
+            <FormSelector 
+              currentForm={formType}
+              options={formOptions}
+              mode="navigate"
+              getRoute={getFormRoute}
+              confirmBeforeChange={true}
+              label="Form Type"
+            />
           </div>
         )}
         

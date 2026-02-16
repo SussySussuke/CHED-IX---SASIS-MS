@@ -1,0 +1,251 @@
+================================================================================
+SUMMARY TO PROFILE REFACTOR - COMPLETE REFERENCE GUIDE
+================================================================================
+Created: 2025-02-16
+Task: Rename all "Summary" references to "Profile" (A1-Profile/School Profile)
+Status: MAPPING COMPLETE - READY FOR MANUAL RENAMING
+
+================================================================================
+THE PROBLEM
+================================================================================
+The form currently called "Summary" should actually be called "Profile" or 
+"A1-Profile" or "School Profile". This requires:
+
+1. Renaming the database table: summary -> profile
+2. Renaming the Eloquent model: Summary -> Profile  
+3. Updating ALL references throughout the codebase
+4. Renaming migration files (yes, even old ones to avoid future confusion)
+
+The user wants to manually rename files first, then have code changes applied.
+
+================================================================================
+WHAT WE KNOW - COMPLETE FILE INVENTORY
+================================================================================
+
+### 1. DATABASE & MIGRATIONS
+Location: database/migrations/
+File: 2025_01_23_000001_rename_general_information_to_summary.php
+Action: Rename to something like: 2025_01_23_000001_rename_general_information_to_profile.php
+Inside: Change all "summary" table references to "profile"
+
+### 2. ELOQUENT MODEL
+Location: app/Models/
+File: Summary.php
+Action: Rename to Profile.php
+Inside Changes:
+- Class name: Summary -> Profile
+- Table name: protected $table = 'summary'; -> protected $table = 'profile';
+
+### 3. CONTROLLERS
+Location: app/Http/Controllers/HEI/
+File: SummaryController.php
+Action: Rename to ProfileController.php
+Inside: Class name SummaryController -> ProfileController
+Inside: All \App\Models\Summary -> \App\Models\Profile
+
+Location: app/Http/Controllers/Admin/
+File: SummaryViewController.php  
+Action: Rename to ProfileViewController.php
+Inside: Class name SummaryViewController -> ProfileViewController
+Inside: All \App\Models\Summary -> \App\Models\Profile
+
+### 4. REACT/INERTIA PAGES
+Location: resources/js/Pages/HEI/Forms/
+File: SummaryCreate.jsx
+Action: Rename to ProfileCreate.jsx
+Inside: Update component name and all references
+
+Location: resources/js/Pages/Admin/
+File: SummaryView.jsx
+Action: Rename to ProfileView.jsx
+Inside: Update component name and all references
+
+### 5. CONFIG FILES
+Location: resources/js/Config/
+Directory: summaryView/
+Action: Rename to profileView/
+
+File: resources/js/Config/summaryView/summaryConfig.js
+Action: Rename to resources/js/Config/profileView/profileConfig.js
+Inside: Update all variable names and exports
+
+### 6. SERVICE FILE (CRITICAL!)
+Location: app/Services/
+File: FormConfigService.php
+Lines to change:
+- Line ~35: 'SUMMARY' key might stay as 'SUMMARY' for backward compat, OR rename to 'PROFILE'
+- Line ~39: 'model' => \App\Models\Summary::class -> \App\Models\Profile::class
+- Line ~42: 'name' => 'Summary - School Details' -> 'name' => 'Profile - School Details' OR 'A1-Profile'
+
+DECISION NEEDED: Should the config KEY stay 'SUMMARY' or become 'PROFILE'?
+If changing key, this affects EVERY controller that checks for 'SUMMARY'
+
+### 7. ALL OTHER CONTROLLERS THAT REFERENCE Summary
+These files reference \App\Models\Summary and need updating:
+
+app/Http/Controllers/Admin/SubmissionController.php
+- Multiple lines: \App\Models\Summary -> \App\Models\Profile
+- String checks: 'SUMMARY' -> might stay or change to 'PROFILE'
+
+app/Http/Controllers/HEI/SubmissionController.php  
+- Multiple lines: \App\Models\Summary -> \App\Models\Profile
+- String checks: 'SUMMARY' -> might stay or change to 'PROFILE'
+
+app/Http/Controllers/Admin/DashboardController.php
+- References to summary table in DB queries
+- DB::table('summary') -> DB::table('profile')
+
+app/Http/Controllers/HEI/DashboardController.php
+- References to summary in queries
+
+### 8. ROUTES
+Location: routes/web.php (or wherever routes are defined)
+Need to find and update:
+- /summary routes -> /profile routes
+- Route names: summary.* -> profile.*
+
+### 9. DATABASE QUERIES (SEARCH NEEDED)
+Any raw SQL queries referencing 'summary' table:
+- DB::table('summary') -> DB::table('profile')
+- Raw SQL strings with 'summary' table name
+
+================================================================================
+SEARCH COMMANDS TO FIND ALL REFERENCES
+================================================================================
+
+### Find all PHP files with "Summary" class references:
+grep -r "\\\\Summary" app/ --include="*.php"
+grep -r "use App\\\\Models\\\\Summary" app/ --include="*.php"
+grep -r "Summary::" app/ --include="*.php"
+
+### Find all "summary" table references:
+grep -r "summary" app/ --include="*.php" | grep -i "table"
+grep -r "'summary'" app/ --include="*.php"
+grep -r "\"summary\"" app/ --include="*.php"
+
+### Find all 'SUMMARY' string constants:
+grep -r "'SUMMARY'" app/ --include="*.php"
+grep -r "\"SUMMARY\"" app/ --include="*.php"
+
+### Find JavaScript/React references:
+grep -r "Summary" resources/js/ --include="*.js" --include="*.jsx"
+grep -r "summary" resources/js/ --include="*.js" --include="*.jsx"
+
+### Find route references:
+grep -r "summary" routes/ --include="*.php"
+
+================================================================================
+RECOMMENDED RENAMING ORDER
+================================================================================
+
+PHASE 1 - FILES (User will do manually):
+1. Rename Migration: 2025_01_23_000001_rename_general_information_to_summary.php 
+   -> 2025_01_23_000001_rename_general_information_to_profile.php
+
+2. Rename Model: app/Models/Summary.php -> app/Models/Profile.php
+
+3. Rename Controllers:
+   - app/Http/Controllers/HEI/SummaryController.php -> ProfileController.php
+   - app/Http/Controllers/Admin/SummaryViewController.php -> ProfileViewController.php
+
+4. Rename React Pages:
+   - resources/js/Pages/HEI/Forms/SummaryCreate.jsx -> ProfileCreate.jsx
+   - resources/js/Pages/Admin/SummaryView.jsx -> ProfileView.jsx
+
+5. Rename Config Directory:
+   - resources/js/Config/summaryView/ -> profileView/
+   - resources/js/Config/profileView/summaryConfig.js -> profileConfig.js
+
+PHASE 2 - CODE CHANGES (AI will do):
+After user renames files, AI needs to update:
+1. All class names inside renamed files
+2. All import statements
+3. All table name references
+4. All route references
+5. FormConfigService configuration
+6. All controller references to the model
+7. All string constant checks ('SUMMARY' vs 'PROFILE' - DECIDE!)
+
+================================================================================
+KEY DECISION REQUIRED
+================================================================================
+
+Should the form KEY in configs remain 'SUMMARY' or change to 'PROFILE'?
+
+OPTION A - Keep 'SUMMARY' key:
+- Pros: Less breaking changes, backward compatible
+- Cons: Confusing (config says SUMMARY but everything else says Profile)
+
+OPTION B - Change to 'PROFILE' key:
+- Pros: Consistent naming throughout
+- Cons: More files to update, might break existing submissions
+
+RECOMMENDATION: Keep 'SUMMARY' as the internal key for backward compatibility,
+but update display names to "Profile" or "A1-Profile" everywhere.
+
+================================================================================
+POTENTIAL ISSUES & GOTCHAS
+================================================================================
+
+1. Database Migration:
+   - Need to create NEW migration to rename table: summary -> profile
+   - Can't just edit old migration if it's already run in production
+   - Migration command: php artisan make:migration rename_summary_to_profile
+
+2. Existing Data:
+   - Any existing submissions in 'summary' table need to move to 'profile'
+   - Foreign key constraints might need updating
+
+3. Cache Keys:
+   - CacheService might have keys with 'summary' in them
+   - Need to clear cache after rename
+
+4. Frontend Route Matching:
+   - If routes change from /summary to /profile, update frontend routing
+   - Check Inertia route helpers
+
+5. Validation Rules:
+   - Any validation that checks for 'SUMMARY' string needs updating
+
+6. API Responses:
+   - If API returns 'SUMMARY' in responses, frontend might expect it
+
+================================================================================
+CURRENT STATUS
+================================================================================
+
+✅ COMPLETED:
+- Fixed AnnexConfigService -> FormConfigService issue
+- Removed legacy methods from FormConfigService
+- Mapped all Summary references in codebase
+
+⏳ PENDING (User Action):
+- Manually rename all files listed above
+
+🔄 NEXT (AI Action After User Renames):
+- Update all code references inside files
+- Update FormConfigService
+- Update all controllers
+- Update all imports
+- Create database migration if needed
+
+================================================================================
+CONTACT FOR NEXT AI
+================================================================================
+
+When user says files are renamed, AI should:
+
+1. Read this document
+2. Ask user to confirm which files were renamed
+3. Systematically update each file's contents
+4. Test critical paths (FormConfigService, controllers)
+5. Remind user to:
+   - Create new migration: php artisan make:migration rename_summary_table_to_profile
+   - Run: php artisan migrate
+   - Clear cache: php artisan cache:clear
+
+DO NOT create test files or documentation files - user already has them.
+
+================================================================================
+END OF HANDOFF DOCUMENT
+================================================================================

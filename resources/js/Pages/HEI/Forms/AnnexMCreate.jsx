@@ -9,6 +9,8 @@ import { IoAddCircle, IoSave, IoTrash } from 'react-icons/io5';
 import AdditionalNotesSection from '../../../Components/Annex/AdditionalNotesSection';
 import AcademicYearSelect from '../../../Components/Forms/AcademicYearSelect';
 import FormSelector from '../../../Components/Forms/FormSelector';
+import { buildFormOptionsGrouped } from '../../../Config/formConfig';
+import { getFormRoute } from '../../../Config/nonAnnexForms';
 
 
 const SECTIONS = [
@@ -35,6 +37,7 @@ const CATEGORY_C_SUBCATEGORIES = [
 
 const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEditing = false }) => {
   const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
+  const formOptions = buildFormOptionsGrouped();
   const [selectedYear, setSelectedYear] = useState(currentAcademicYear);
   const [academicYear, setAcademicYear] = useState(currentAcademicYear);
 
@@ -663,7 +666,14 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
               availableYears={availableYears}
               required
             />
-            <FormSelector currentForm="M" />
+            <FormSelector 
+              currentForm="M"
+              options={formOptions}
+              mode="navigate"
+              getRoute={getFormRoute}
+              confirmBeforeChange={true}
+              label="Form Type"
+            />
           </div>
         )}
         {isEditing && (

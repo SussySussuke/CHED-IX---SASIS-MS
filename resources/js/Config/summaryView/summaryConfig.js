@@ -1,5 +1,6 @@
 import { profileConfig } from './profileConfig.jsx';
 import { personnelConfig } from './personnelConfig.jsx';
+import { infoOrientationConfig } from './infoOrientationConfig.jsx';
 
 /**
  * Summary View Master Configuration
@@ -10,6 +11,7 @@ import { personnelConfig } from './personnelConfig.jsx';
  * Available Sections:
  * - 1A-Profile: Basic institution information
  * - 1B-Personnel: Student population demographics
+ * - 2-Info-Orientation: Information and Orientation Services & Activities
  * 
  * Usage:
  * import { summaryConfig } from '@/config/summaryView/summaryConfig';
@@ -28,6 +30,7 @@ export const summaryConfig = {
   sections: {
     '1A-Profile': profileConfig,
     '1B-Personnel': personnelConfig,
+    '2-Info-Orientation': infoOrientationConfig,
   },
 
   // Grid default settings

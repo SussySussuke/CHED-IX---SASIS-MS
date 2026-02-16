@@ -7,6 +7,8 @@ import MultiTextInput from '../../../Components/Forms/MultiTextInput';
 import InfoBox from '../../../Components/Widgets/InfoBox';
 import AcademicYearSelect from '../../../Components/Forms/AcademicYearSelect';
 import FormSelector from '../../../Components/Forms/FormSelector';
+import { buildFormOptionsGrouped } from '../../../Config/formConfig';
+import { getFormRoute } from '../../../Config/nonAnnexForms';
 import { CURRENT_YEAR } from '../../../Utils/constants';
 import { getSubmissionStatusMessage } from '../../../Utils/submissionStatus';
 import { getAcademicYearFromUrl } from '../../../Utils/urlHelpers';
@@ -14,6 +16,7 @@ import { IoPeople, IoMale, IoFemale, IoMaleFemale, IoCalculator, IoDocumentText,
 
 const Create = ({ availableYears = [], existingSubmissions = {}, defaultYear, isEditing = false }) => {
   const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
+  const formOptions = buildFormOptionsGrouped();
   const [selectedYear, setSelectedYear] = useState(currentAcademicYear);
 
   const existingSubmission = existingSubmissions[selectedYear];
@@ -112,7 +115,14 @@ const Create = ({ availableYears = [], existingSubmissions = {}, defaultYear, is
               error={errors.academic_year}
               required
             />
-            <FormSelector currentForm="SUMMARY" />
+            <FormSelector 
+              currentForm="SUMMARY"
+              options={formOptions}
+              mode="navigate"
+              getRoute={getFormRoute}
+              confirmBeforeChange={true}
+              label="Form Type"
+            />
           </div>
         )}
         {isEditing && (

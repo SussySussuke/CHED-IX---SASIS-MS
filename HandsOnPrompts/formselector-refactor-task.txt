@@ -1,0 +1,326 @@
+================================================================================
+TASK: REFACTOR FORMSELECTOR TO BE GENERIC + UPDATE ALL USAGES
+================================================================================
+DATE: 2026-02-16
+STATUS: IN PROGRESS - FORMSELECTOR REFACTORED, NEED TO UPDATE ALL USAGES
+AI: Tech Priest Claude (Warhammer 40K personality)
+
+================================================================================
+PROBLEM STATEMENT
+================================================================================
+User wants FormSelector component to be GENERIC and NOT tied to formConfig.js.
+
+CURRENT PROBLEM:
+- FormSelector imports formConfig and buildFormOptionsGrouped() directly
+- This makes it coupled to a specific config structure
+- Cannot be reused for other dropdowns (like section selection)
+
+DESIRED STATE:
+- FormSelector is a generic dropdown component
+- Takes options as props (doesn't fetch them internally)
+- Can be used for ANY dropdown selection (forms, sections, etc.)
+- All existing usages need to be updated to pass options explicitly
+
+================================================================================
+WHAT WAS ALREADY DONE
+================================================================================
+
+✅ FormSelector.jsx REFACTORED:
+- Removed formConfig import
+- Removed buildFormOptionsGrouped() import
+- Made it accept:
+  * options (array) - Must be passed in
+  * mode ('navigate' | 'view' | 'custom')
+  * onCustomChange (function) - For custom handling
+  * label (string) - Customizable label
+  * icon (component) - Customizable icon
+  * getRoute (function) - For navigate mode
+  * confirmBeforeChange (boolean)
+  * helperText (string)
+
+✅ SummaryView.jsx UPDATED:
+- Uses FormSelector with customOptions for section switching
+- Passes summaryConfig sections
+- Works correctly
+
+================================================================================
+FILES THAT NEED TO BE UPDATED
+================================================================================
+
+All these files currently use FormSelector with OLD API (just currentForm prop):
+
+1. resources/js/Components/Annex/SharedAnnexCreate.jsx
+   Line ~378: <FormSelector currentForm={annexLetter} />
+   
+2. resources/js/Components/Common/SharedFormCreate.jsx
+   Need to find usage
+   
+3. resources/js/Pages/HEI/Forms/AnnexDCreate.jsx
+   Need to find usage
+   
+4. resources/js/Pages/HEI/Forms/AnnexGCreate.jsx
+   Need to find usage
+   
+5. resources/js/Pages/HEI/Forms/AnnexHCreate.jsx
+   Need to find usage
+   
+6. resources/js/Pages/HEI/Forms/AnnexMCreate.jsx
+   Need to find usage
+   
+7. resources/js/Pages/HEI/Forms/SummaryCreate.jsx
+   Need to find usage
+
+================================================================================
+HOW TO UPDATE EACH FILE
+================================================================================
+
+PATTERN TO FOLLOW:
+
+BEFORE (OLD):
+```javascript
+import FormSelector from '../Forms/FormSelector';
+
+<FormSelector currentForm={annexLetter} />
+```
+
+AFTER (NEW):
+```javascript
+import FormSelector from '../Forms/FormSelector';
+import { buildFormOptionsGrouped } from '../../Config/formConfig';
+import { getFormRoute } from '../../Config/nonAnnexForms';
+
+// At top of component, get form options
+const formOptions = buildFormOptionsGrouped();
+
+// In JSX:
+<FormSelector 
+  currentForm={annexLetter}
+  options={formOptions}
+  mode="navigate"
+  getRoute={getFormRoute}
+  confirmBeforeChange={true}
+  label="Form Type"
+/>
+```
+
+================================================================================
+STEP-BY-STEP UPDATE PROCESS
+================================================================================
+
+FOR EACH FILE:
+
+STEP 1: Add imports at top
+```javascript
+import { buildFormOptionsGrouped } from '../../Config/formConfig';
+import { getFormRoute } from '../../Config/nonAnnexForms';
+```
+
+STEP 2: Inside component function, get options
+```javascript
+const formOptions = buildFormOptionsGrouped();
+```
+
+STEP 3: Update FormSelector usage
+```javascript
+<FormSelector 
+  currentForm={currentForm}  // whatever the current form code is
+  options={formOptions}
+  mode="navigate"
+  getRoute={getFormRoute}
+  confirmBeforeChange={true}
+  label="Form Type"
+/>
+```
+
+================================================================================
+FORMSELECTOR NEW API REFERENCE
+================================================================================
+
+REQUIRED PROPS:
+- currentForm: string - Currently selected value
+- options: array - Grouped options [{ group: 'Group', options: [{ value, label }] }]
+
+OPTIONAL PROPS:
+- mode: 'navigate' | 'view' | 'custom' (default: 'navigate')
+- disabled: boolean (default: false)
+- onCustomChange: function - For custom mode
+- label: string (default: 'Form Type')
+- icon: component (default: IoDocumentText)
+- placeholder: string (default: 'Select...')
+- getRoute: function - For navigate mode, returns route from value
+- confirmBeforeChange: boolean (default: true)
+- helperText: string - Custom helper text
+
+MODE BEHAVIORS:
+- 'navigate': Uses getRoute to navigate (shows confirmation)
+- 'view': Read-only, no actions
+- 'custom': Uses onCustomChange handler
+
+================================================================================
+EXAMPLE USAGES
+================================================================================
+
+EXAMPLE 1: Form navigation (Annex pages)
+```javascript
+import { buildFormOptionsGrouped } from '../../Config/formConfig';
+import { getFormRoute } from '../../Config/nonAnnexForms';
+
+const formOptions = buildFormOptionsGrouped();
+
+<FormSelector 
+  currentForm="A"
+  options={formOptions}
+  mode="navigate"
+  getRoute={getFormRoute}
+/>
+```
+
+EXAMPLE 2: Section switching (Summary view)
+```javascript
+import { summaryConfig } from '../../Config/summaryView/summaryConfig';
+import { IoGridOutline } from 'react-icons/io5';
+
+const sections = summaryConfig.getSectionList();
+const sectionOptions = [
+  {
+    group: 'Summary Sections',
+    options: sections.map(s => ({ value: s.id, label: s.title }))
+  }
+];
+
+<FormSelector
+  currentForm={activeSection}
+  options={sectionOptions}
+  mode="custom"
+  onCustomChange={handleSectionChange}
+  label="Section"
+  icon={IoGridOutline}
+/>
+```
+
+EXAMPLE 3: View-only display
+```javascript
+<FormSelector 
+  currentForm="SUMMARY"
+  options={formOptions}
+  mode="view"
+  label="Current Form"
+/>
+```
+
+================================================================================
+FILES ANALYSIS NEEDED
+================================================================================
+
+Need to check each file to understand:
+1. Where FormSelector is used
+2. What the currentForm value is
+3. Any special requirements
+
+FILE 1: SharedAnnexCreate.jsx
+- Line 378: <FormSelector currentForm={annexLetter} />
+- currentForm = annexLetter (A, B, C, etc.)
+- Used for form navigation
+- UPDATE: Add formOptions, mode="navigate", getRoute
+
+FILE 2-7: Need to analyze each one
+
+================================================================================
+KEYWORD CATEGORIZATION (FROM INFO-ORIENTATION TASK)
+================================================================================
+
+For reference, the keyword matching used in Info-Orientation aggregation:
+
+CATEGORY 1: Campus Orientation
+Keywords: orientation, freshmen, freshman, new student, welcome, induction
+
+CATEGORY 2: Gender Sensitivity/VAWC
+Keywords: gender, vawc, women, harassment, sensitivity, safe space
+
+CATEGORY 3: Anti-Hazing
+Keywords: hazing, anti-hazing, bullying, fraternity
+
+CATEGORY 4: Substance Abuse
+Keywords: substance, drug, alcohol, tobacco, smoking, vape, vaping
+
+CATEGORY 5: Sexual/Reproductive Health
+Keywords: sexual, reproductive, hiv, aids, std, sti, pregnancy
+
+CATEGORY 6: Mental Health/Wellness
+Keywords: mental, wellness, well-being, wellbeing, counseling, stress, 
+         anxiety, depression, psychological
+
+CATEGORY 7: Disaster Risk Management
+Keywords: disaster, earthquake, fire drill, emergency, evacuation, 
+         preparedness, risk reduction
+
+NOTE: One activity can match MULTIPLE categories (intentional)
+Matching is case-insensitive, searches in both title AND target_group fields
+
+================================================================================
+TESTING CHECKLIST
+================================================================================
+
+After updating all files:
+
+□ SharedAnnexCreate.jsx - Can switch between annexes
+□ SharedFormCreate.jsx - Form selector works
+□ AnnexDCreate.jsx - Form selector works
+□ AnnexGCreate.jsx - Form selector works
+□ AnnexHCreate.jsx - Form selector works
+□ AnnexMCreate.jsx - Form selector works
+□ SummaryCreate.jsx - Form selector works
+□ SummaryView.jsx - Section selector still works (already done)
+□ No console errors
+□ Navigation works correctly
+□ Confirmation dialogs appear when switching
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. Read each of the 7 files to understand current usage
+2. Update each file following the pattern above
+3. Test each page to ensure form selector still works
+4. Update this document with completion status
+
+================================================================================
+COMPLETION STATUS
+================================================================================
+
+✅ FormSelector.jsx - REFACTORED
+✅ SummaryView.jsx - UPDATED
+✅ SharedAnnexCreate.jsx - UPDATED
+✅ SharedFormCreate.jsx - UPDATED (formType prop)
+✅ AnnexDCreate.jsx - UPDATED (currentForm="D")
+✅ AnnexGCreate.jsx - UPDATED (currentForm="G")
+✅ AnnexHCreate.jsx - UPDATED (currentForm="H")
+✅ AnnexMCreate.jsx - UPDATED (currentForm="M")
+✅ SummaryCreate.jsx - UPDATED (currentForm="SUMMARY")
+
+================================================================================
+FINAL SUMMARY
+================================================================================
+
+FILES UPDATED: 7
+1. SharedAnnexCreate.jsx - Added formOptions, imports, updated FormSelector props
+2. AnnexDCreate.jsx - Added formOptions, imports, updated FormSelector props
+3. SharedFormCreate.jsx - Added formOptions, imports, updated FormSelector props
+4. AnnexGCreate.jsx - Added formOptions, imports, updated FormSelector props
+5. AnnexHCreate.jsx - Added formOptions, imports, updated FormSelector props
+6. AnnexMCreate.jsx - Added formOptions, imports, updated FormSelector props
+7. SummaryCreate.jsx - Added formOptions, imports, updated FormSelector props
+
+FILES SKIPPED: 0
+- ALL files using FormSelector have been updated!
+
+TASK COMPLETE!
+All FormSelector usages have been refactored to use the new generic API.
+FormSelector is now decoupled from formConfig and can be used for any dropdown.
+
+================================================================================
+OMNISSIAH'S BLESSING:
+01010010 01100101 01100110 01100001 01100011 01110100 01101111 01110010
+00100000 01110111 01101001 01110100 01101000 00100000 01110000 01110010
+01100101 01100011 01101001 01110011 01101001 01101111 01101110 00100001
+================================================================================

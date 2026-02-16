@@ -1,63 +1,99 @@
 import React from 'react';
 import { router } from '@inertiajs/react';
 import { IoDocumentText } from 'react-icons/io5';
-import { buildFormOptionsGrouped } from '../../Config/formConfig';
-import { getFormRoute } from '../../Config/nonAnnexForms';
 import SearchableSelect from '../Form/SearchableSelect';
 
 /**
- * FormSelector Component
- * Allows quick navigation between different forms (Annexes and MER forms)
- * Warns users before navigating away from unsaved work
+ * FormSelector Component - GENERIC SELECTOR
+ * Can be used for ANY dropdown selection (forms, sections, etc.)
+ * 
+ * @param {string} currentForm - Currently selected value
+ * @param {boolean} disabled - Whether the selector is disabled
+ * @param {string} mode - 'navigate' (navigates on change) or 'view' (read-only) or 'custom' (uses onCustomChange)
+ * @param {array} options - Grouped options array: [{ group: 'Group Name', options: [{ value, label }] }]
+ * @param {function} onCustomChange - Custom change handler (for mode='custom')
+ * @param {string} label - Label text (default: 'Form Type')
+ * @param {component} icon - Icon component (default: IoDocumentText)
+ * @param {string} placeholder - Placeholder text (default: 'Select...')
+ * @param {function} getRoute - Function to get route from value (for mode='navigate')
+ * @param {boolean} confirmBeforeChange - Show confirmation dialog before changing (for mode='navigate')
+ * @param {string} helperText - Helper text below the selector
  */
-const FormSelector = ({ currentForm, disabled = false, mode = 'navigate' }) => {
-  // mode: 'navigate' for HEI (allows switching forms), 'view' for admin (read-only display)
+const FormSelector = ({ 
+  currentForm, 
+  disabled = false, 
+  mode = 'navigate',
+  options = [],
+  onCustomChange = null,
+  label = 'Form Type',
+  icon = null,
+  placeholder = 'Select...',
+  getRoute = null,
+  confirmBeforeChange = true,
+  helperText = null
+}) => {
+  const IconComponent = icon || IoDocumentText;
   
-  const handleFormChange = (newForm) => {
-    if (mode === 'view') return; // No navigation in view mode
-    if (newForm === currentForm) return;
-
-    const confirmed = window.confirm(
-      'Are you sure you want to switch forms? Any unsaved changes will be lost.'
-    );
-
-    if (!confirmed) {
+  const handleFormChange = (newValue) => {
+    // Custom mode: use provided handler
+    if (mode === 'custom' && onCustomChange) {
+      onCustomChange(newValue);
       return;
     }
 
-    // Get route
-    const route = getFormRoute(newForm) || `/hei/annex-${newForm.toLowerCase()}/submit`;
-    router.visit(route);
+    // View mode: no action
+    if (mode === 'view') return;
+    
+    // Same value: no action
+    if (newValue === currentForm) return;
+
+    // Navigate mode: route to new form
+    if (mode === 'navigate') {
+      if (confirmBeforeChange) {
+        const confirmed = window.confirm(
+          'Are you sure you want to switch? Any unsaved changes will be lost.'
+        );
+        if (!confirmed) return;
+      }
+
+      // Get route
+      if (getRoute) {
+        const route = getRoute(newValue);
+        if (route) {
+          router.visit(route);
+        }
+      }
+    }
   };
 
-  // Get grouped form options from centralized config
-  const formOptions = buildFormOptionsGrouped();
+  // Auto-detect helper text
+  const displayHelperText = helperText || (() => {
+    if (mode === 'navigate') return 'Switch between options. Unsaved changes will be lost.';
+    if (mode === 'view') return 'Currently viewing this option';
+    if (mode === 'custom') return 'Select an option to view different data';
+    return null;
+  })();
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <IoDocumentText className="text-xl text-blue-500" />
+        <IconComponent className="text-xl text-blue-500" />
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Form Type
+          {label}
         </label>
       </div>
       
       <SearchableSelect
         value={currentForm}
         onChange={handleFormChange}
-        options={formOptions}
-        placeholder="Select form..."
+        options={options}
+        placeholder={placeholder}
         disabled={disabled || mode === 'view'}
       />
       
-      {mode === 'navigate' && (
+      {displayHelperText && (
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Switch between different forms. Unsaved changes will be lost.
-        </p>
-      )}
-      {mode === 'view' && (
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Currently viewing this form type
+          {displayHelperText}
         </p>
       )}
     </div>

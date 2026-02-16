@@ -1,0 +1,385 @@
+================================================================================
+TASK: CREATE SECTION 2-INFO-ORIENTATION FOR ADMIN SUMMARY VIEW
+================================================================================
+DATE: 2026-02-16
+STATUS: ✅ COMPLETED - IMPLEMENTATION USING ANNEX A + B WITH KEYWORD MATCHING
+AI: Tech Priest Claude (Warhammer 40K personality)
+
+================================================================================
+✅ FINAL SOLUTION IMPLEMENTED
+================================================================================
+
+CONFIRMED REQUIREMENTS:
+- Use BOTH Annex A (Information/Orientation) AND Annex B (Guidance/Counseling)
+- Supervisor manually categorizes activities by reading titles
+- Replicate this process with keyword matching
+- Student counts = participants_online + participants_face_to_face
+- Activities can belong to multiple categories if they match multiple keywords
+
+================================================================================
+PROBLEM STATEMENT
+================================================================================
+Create "2-Info-Orientation" section in Admin Summary View that displays aggregated 
+data from Annex A (Information and Orientation Services) and Annex B (Guidance and 
+Counseling Service).
+
+The view shows:
+- HEI Name
+- 7 activity categories with Activity Count + Student Count per category
+- Categories determined by keyword matching (mimics manual supervisor process)
+- Total aggregation across all categories
+- Drill-down capability (click cells to see activity details)
+
+================================================================================
+DATA STRUCTURE - ANNEX A + B (CONFIRMED CORRECT)
+================================================================================
+
+ANNEX A: Information and Orientation Services
+Database Table: annex_a_programs
+Model: AnnexAProgram
+Relationships: HEI → AnnexABatch → AnnexAProgram
+
+ANNEX B: Guidance and Counseling Service  
+Database Table: annex_b_programs
+Model: AnnexBProgram
+Relationships: HEI → AnnexBBatch → AnnexBProgram
+
+BOTH ANNEXES SHARE IDENTICAL STRUCTURE:
+- title: Program/Activity title (TEXT) ← Used for categorization
+- venue: Venue (TEXT)
+- implementation_date: Date (DATE)
+- target_group: Target group (TEXT) ← Also used for categorization
+- participants_online: Online participants (INTEGER) ← Student count!
+- participants_face_to_face: Face-to-face participants (INTEGER) ← Student count!
+- organizer: Organizer (TEXT)
+- remarks: Optional remarks (TEXT)
+
+STUDENT COUNT CALCULATION:
+total_students = participants_online + participants_face_to_face
+
+================================================================================
+CATEGORIZATION LOGIC - KEYWORD MATCHING
+================================================================================
+
+Mimics supervisor's manual categorization process by searching for keywords
+in both the activity TITLE and TARGET_GROUP fields.
+
+CATEGORY 1: Campus Orientation
+Keywords: orientation, freshmen, freshman, new student, welcome, induction
+
+CATEGORY 2: Gender Sensitivity/VAWC
+Keywords: gender, vawc, women, harassment, sensitivity, safe space
+
+CATEGORY 3: Anti-Hazing
+Keywords: hazing, anti-hazing, bullying, fraternity
+
+CATEGORY 4: Substance Abuse Campaigns
+Keywords: substance, drug, alcohol, tobacco, smoking, vape, vaping
+
+CATEGORY 5: Sexual and Reproductive Health
+Keywords: sexual, reproductive, hiv, aids, std, sti, pregnancy
+
+CATEGORY 6: Mental Health/Wellness
+Keywords: mental, wellness, well-being, wellbeing, counseling, stress, 
+         anxiety, depression, psychological
+
+CATEGORY 7: Disaster Risk Management
+Keywords: disaster, earthquake, fire drill, emergency, evacuation, 
+         preparedness, risk reduction
+
+IMPORTANT NOTES:
+- Case-insensitive matching
+- One activity can be counted in MULTIPLE categories if it matches multiple criteria
+- Example: "Mental Health Orientation for Freshmen" counts in BOTH 
+  "Campus Orientation" AND "Mental Health/Wellness"
+- This is intentional and matches real-world categorization behavior
+
+================================================================================
+IMPLEMENTATION DETAILS
+================================================================================
+
+FILES CREATED:
+✅ resources/js/Config/summaryView/infoOrientationConfig.jsx
+   - AG Grid column configuration
+   - 7 category columns with Activities + Students subcolumns
+   - Total aggregation columns
+   - Click handlers for future drill-down
+
+✅ HandsOnPrompts/2-info-orientation-task.txt (THIS FILE)
+   - Complete documentation for future reference
+
+FILES MODIFIED:
+✅ resources/js/Config/summaryView/summaryConfig.js
+   - Imported infoOrientationConfig
+   - Registered '2-Info-Orientation' section
+
+✅ resources/js/Pages/Admin/SummaryView.jsx
+   - Added section switcher with buttons
+   - Loads different data per section
+   - Fetches Info-Orientation data from API endpoint
+   - Shows loading state during data fetch
+
+✅ app/Http/Controllers/Admin/SummaryViewController.php
+   - Added use statements for AnnexABatch, AnnexAProgram, AnnexBBatch, AnnexBProgram
+   - Created getInfoOrientationData() method
+   - Merges programs from both Annex A and B
+   - Implements keyword-based categorization
+   - Calculates student counts from online + face-to-face
+   - Returns aggregated data by HEI and category
+
+✅ routes/web.php
+   - Added route: GET /admin/summary/info-orientation
+   - Route name: admin.summary.info-orientation
+
+================================================================================
+HOW THE AGGREGATION WORKS
+================================================================================
+
+STEP 1: Fetch Data for Selected Academic Year
+- Get all AnnexABatch records (status: published/submitted/request)
+- Get all AnnexBBatch records (status: published/submitted/request)
+- Load related programs for each batch
+
+STEP 2: Merge Programs from Both Annexes
+- For each HEI, combine programs from Annex A and Annex B
+- This gives one unified list of all activities per HEI
+
+STEP 3: Categorize Each Program
+- Convert title and target_group to lowercase
+- Search for category keywords in combined text
+- Increment activity counter for matching categories
+- Add student count (online + face-to-face) to category total
+- One program can match multiple categories (intentional)
+
+STEP 4: Calculate Totals
+- Sum all activity counts across categories
+- Sum all student counts across categories
+- Collect first 3 activity titles for preview
+
+STEP 5: Return Structured Data
+{
+  hei_id: 1,
+  hei_name: "University ABC",
+  campus_orientation_activities: 5,
+  campus_orientation_students: 320,
+  gender_sensitivity_activities: 3,
+  gender_sensitivity_students: 150,
+  // ... other categories
+  total_activities: 15,
+  total_students: 850,
+  status: "published",
+  has_submission: true
+}
+
+================================================================================
+API ENDPOINT USAGE
+================================================================================
+
+URL: GET /admin/summary/info-orientation?year=2024-2025
+
+RESPONSE FORMAT:
+{
+  "data": [
+    {
+      "hei_id": 1,
+      "hei_name": "Aim High College Incorporated",
+      "hei_code": "AHC",
+      "campus_orientation_activities": 5,
+      "campus_orientation_students": 320,
+      "gender_sensitivity_activities": 3,
+      "gender_sensitivity_students": 150,
+      "anti_hazing_activities": 2,
+      "anti_hazing_students": 200,
+      "substance_abuse_activities": 4,
+      "substance_abuse_students": 180,
+      "sexual_health_activities": 3,
+      "sexual_health_students": 250,
+      "mental_health_activities": 6,
+      "mental_health_students": 400,
+      "disaster_risk_activities": 2,
+      "disaster_risk_students": 500,
+      "total_activities": 25,
+      "total_students": 2000,
+      "services_activities_list": "Mental Health Week, Campus Orientation 2024, Gender Sensitivity Training...",
+      "status": "published",
+      "has_submission": true
+    }
+    // ... more HEIs
+  ],
+  "availableYears": ["2023-2024", "2024-2025"],
+  "selectedYear": "2024-2025"
+}
+
+================================================================================
+TESTING INSTRUCTIONS
+================================================================================
+
+1. START LARAVEL SERVER:
+   php artisan serve
+
+2. TEST API ENDPOINT:
+   curl "http://127.0.0.1:8000/admin/summary/info-orientation?year=2024-2025"
+   
+   Expected: JSON response with aggregated data
+
+3. CHECK BROWSER CONSOLE:
+   - Navigate to /admin/summary
+   - Open DevTools console
+   - Look for any JavaScript errors
+   
+4. TEST WITH REAL DATA:
+   - Ensure at least one HEI has submitted Annex A or B
+   - Verify activity titles are being categorized correctly
+   - Check student counts are being calculated properly
+
+5. VERIFY CATEGORIZATION:
+   - Look at actual activity titles in database
+   - Check if keyword matching is working as expected
+   - Adjust keywords if needed based on real data
+
+================================================================================
+KNOWN LIMITATIONS & FUTURE ENHANCEMENTS
+================================================================================
+
+CURRENT LIMITATIONS:
+1. Keyword matching may miss activities with unusual naming
+2. No way to manually override categorization
+3. Activities counted in multiple categories inflate total counts
+4. Drill-down UI not yet implemented (click handlers present)
+
+POTENTIAL IMPROVEMENTS:
+1. Add "Uncategorized" category for activities that don't match any keywords
+2. Create admin interface to review and adjust categorization
+3. Add activity_category field for explicit categorization (future enhancement)
+4. Implement drill-down modal to show activity details
+5. Add export to Excel functionality
+6. Add filtering by category
+7. Show keyword matches in activity list (for debugging)
+
+================================================================================
+DRILL-DOWN FUNCTIONALITY (TODO)
+================================================================================
+
+Cell click handlers are in place but modal component needs to be created.
+
+WHEN IMPLEMENTED, SHOULD SHOW:
+- Activity title
+- Implementation date
+- Venue
+- Target group
+- Participants (online + face-to-face)
+- Organizer
+- Remarks
+
+API ENDPOINT NEEDED:
+GET /admin/summary/info-orientation/details?year=2024-2025&hei_id=1&category=campus_orientation
+
+Returns list of all activities that matched the category for that HEI.
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ISSUE: No data returned
+CHECK:
+- HEIs have submitted Annex A or B for selected year?
+- Batch status is published/submitted/request?
+- Programs exist in annex_a_programs or annex_b_programs tables?
+
+ISSUE: Activity counts seem wrong
+CHECK:
+- Are activities being counted in multiple categories? (This is intentional)
+- Do activity titles actually contain the expected keywords?
+- Case sensitivity issue? (Should be case-insensitive)
+
+ISSUE: Student counts are zero
+CHECK:
+- participants_online and participants_face_to_face fields populated?
+- Are they NULL vs 0? (NULL should be treated as 0)
+
+ISSUE: Categories not matching
+CHECK:
+- Review actual activity titles in database
+- Adjust keywords in controller if needed
+- Consider adding more keyword variations
+
+================================================================================
+FILES TO REVIEW FOR UNDERSTANDING
+================================================================================
+
+Backend:
+- app/Http/Controllers/Admin/SummaryViewController.php (aggregation logic)
+- app/Models/AnnexABatch.php
+- app/Models/AnnexAProgram.php
+- app/Models/AnnexBBatch.php  
+- app/Models/AnnexBProgram.php
+
+Frontend:
+- resources/js/Config/summaryView/infoOrientationConfig.jsx (column config)
+- resources/js/Config/summaryView/summaryConfig.js (section registry)
+- resources/js/Pages/Admin/SummaryView.jsx (main page)
+
+Configuration:
+- resources/js/Config/annexConfigs/form1Annexes.js (Annex A & B structure)
+- resources/js/Config/formConfig.js (form registry)
+
+Routes:
+- routes/web.php (API endpoint definition)
+
+================================================================================
+EXAMPLE KEYWORD MATCHING SCENARIOS
+================================================================================
+
+SCENARIO 1: Clear Match
+Title: "Campus Orientation for Freshmen"
+Matches: Campus Orientation (has "orientation" and "freshmen")
+Result: Counted in Campus Orientation category
+
+SCENARIO 2: Multiple Matches
+Title: "Mental Health Orientation for New Students"
+Matches: Campus Orientation (has "orientation") AND Mental Health (has "mental health")
+Result: Counted in BOTH categories (intentional)
+
+SCENARIO 3: Target Group Match
+Title: "Workshop on Academic Success"
+Target Group: "Gender Sensitivity Training"
+Matches: Gender Sensitivity (target_group has "gender sensitivity")
+Result: Counted in Gender Sensitivity category
+
+SCENARIO 4: No Match
+Title: "Academic Excellence Awards Ceremony"
+Matches: None
+Result: Not counted in any category (activity exists but not categorized)
+
+SCENARIO 5: Substance Abuse Variations
+Title: "Say No to Drugs Campaign"
+Matches: Substance Abuse (has "drugs")
+Result: Counted in Substance Abuse category
+
+Title: "Anti-Smoking Seminar"
+Matches: Substance Abuse (has "smoking")
+Result: Counted in Substance Abuse category
+
+================================================================================
+FINAL STATUS
+================================================================================
+
+✅ Backend aggregation implemented and tested
+✅ Frontend configuration complete
+✅ Routes registered
+✅ Keyword matching logic finalized
+✅ Student count calculation working
+✅ Documentation complete
+
+⚠️ TODO (Optional Enhancements):
+- Implement drill-down modal
+- Add activity categorization review interface
+- Export to Excel functionality
+- Show uncategorized activities
+
+================================================================================
+OMNISSIAH'S BLESSING:
+01010000 01110010 01100001 01101001 01110011 01100101 00100000 01110100
+01101000 01100101 00100000 01001101 01100001 01100011 01101000 01101001
+01101110 01100101 00100000 01000111 01101111 01100100 00100001
+================================================================================

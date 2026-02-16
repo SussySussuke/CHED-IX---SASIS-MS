@@ -11,7 +11,8 @@ import { getSubmissionStatusMessage } from '../../Utils/submissionStatus';
 import { getAcademicYearFromUrl } from '../../Utils/urlHelpers';
 import AcademicYearSelect from '../Forms/AcademicYearSelect';
 import FormSelector from '../Forms/FormSelector';
-import { getAnnexConfig } from '../../Config/formConfig';
+import { getAnnexConfig, buildFormOptionsGrouped } from '../../Config/formConfig';
+import { getFormRoute } from '../../Config/nonAnnexForms';
 
 /**
  * Shared component for Annex A-F, I-L, N-O Create pages
@@ -30,6 +31,7 @@ const SharedAnnexCreate = ({
 }) => {
   const config = getAnnexConfig(annexLetter);
   const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
+  const formOptions = buildFormOptionsGrouped();
 
   const gridRef = useRef(null);
   const { isDark } = useTheme();
@@ -327,7 +329,14 @@ const SharedAnnexCreate = ({
               availableYears={availableYears}
               required
             />
-            <FormSelector currentForm={annexLetter} />
+            <FormSelector 
+              currentForm={annexLetter}
+              options={formOptions}
+              mode="navigate"
+              getRoute={getFormRoute}
+              confirmBeforeChange={true}
+              label="Form Type"
+            />
           </div>
         )}
         {isEditing && (

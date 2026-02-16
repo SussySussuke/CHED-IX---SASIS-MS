@@ -88,6 +88,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/audit-logs', [App\Http\Controllers\Admin\AuditLogController::class, 'index'])->name('admin.audit-logs');
 
         Route::get('/summary', [SummaryViewController::class, 'index'])->name('admin.summary');
+        Route::get('/summary/info-orientation', [SummaryViewController::class, 'getInfoOrientationData'])->name('admin.summary.info-orientation');
 
         Route::get('/ched-contacts', [CHEDContactController::class, 'index'])->name('admin.ched-contacts');
         Route::post('/ched-contacts', [CHEDContactController::class, 'store'])->name('admin.ched-contacts.store');
