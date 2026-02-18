@@ -25,10 +25,28 @@ export const INFO_ORIENTATION_CATEGORY_LABELS = {
 
 // ─── Shared cell renderers ────────────────────────────────────────────────────
 
-/** Clickable activity count cell. Pass yellow=true for the Miscellaneous column. */
+/**
+ * Clickable activity count cell.
+ * - Non-zero: full colour, shows count + arrow
+ * - Zero: dimmed, shows "0 +" to hint you can open and assign records into this category
+ * Pass yellow=true for the Miscellaneous column.
+ */
 function ActivityCell({ value, onClick, yellow = false }) {
   if (value === null || value === undefined) return <span className="text-gray-400">—</span>;
-  if (value === 0) return <span className="text-gray-400">0</span>;
+
+  if (value === 0) {
+    return (
+      <button
+        className="text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400
+                   focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500
+                   rounded px-1.5 py-0.5 transition-all text-sm"
+        onClick={onClick}
+        title="No records yet — click to view all records for this HEI and assign some here"
+      >
+        0 +
+      </button>
+    );
+  }
 
   const colour = yellow
     ? 'text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-200 focus:ring-yellow-500'

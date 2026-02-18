@@ -11,15 +11,16 @@ class ProgramCategoryOverride extends Model
     protected $fillable = [
         'program_type',
         'program_id',
-        'manual_category',
+        'manual_categories',
         'overridden_by',
         'overridden_at',
     ];
 
     protected $casts = [
-        'program_id'   => 'integer',
-        'overridden_by'=> 'integer',
-        'overridden_at'=> 'datetime',
+        'program_id'         => 'integer',
+        'manual_categories'  => 'array',
+        'overridden_by'      => 'integer',
+        'overridden_at'      => 'datetime',
     ];
 
     public function admin()

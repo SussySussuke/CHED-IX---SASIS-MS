@@ -238,12 +238,13 @@ class SummaryViewController extends Controller
                     $totalActivities++;
                     $totalStudents += $students;
 
-                    if ($override && $override->manual_category) {
-                        // Admin override wins — single category only
-                        $cat = $override->manual_category;
-                        if (isset($counts[$cat])) {
-                            $counts[$cat]['activities']++;
-                            $counts[$cat]['students'] += $students;
+                    if ($override && !empty($override->manual_categories)) {
+                        // Admin override wins — one or more categories
+                        foreach ($override->manual_categories as $cat) {
+                            if (isset($counts[$cat])) {
+                                $counts[$cat]['activities']++;
+                                $counts[$cat]['students'] += $students;
+                            }
                         }
                     } else {
                         $searchText = strtolower($program->title . ' ' . ($program->target_group ?? ''));
@@ -293,7 +294,7 @@ class SummaryViewController extends Controller
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Evidence drilldown — programs for a specific category (or total)
+    // Evidence drilldown — programs for a specific HEI + category (or total)
     // ──────────────────────────────────────────────────────────────────────────
 
     public function getInfoOrientationEvidence(Request $request, $heiId, $category)
@@ -349,9 +350,9 @@ class SummaryViewController extends Controller
         $records = [];
 
         foreach ($allPrograms as [$program, $type]) {
-            $overrideKey     = "{$type}_{$program->id}";
-            $override        = $overrides->get($overrideKey);
-            $manualCategory  = $override?->manual_category;
+            $overrideKey      = "{$type}_{$program->id}";
+            $override         = $overrides->get($overrideKey);
+            $manualCategories = $override?->manual_categories ?? [];
 
             $searchText = strtolower($program->title . ' ' . ($program->target_group ?? ''));
 
@@ -359,8 +360,8 @@ class SummaryViewController extends Controller
 
             if ($category === 'total') {
                 $includeInCategory = true; // all programs, deduplicated (already unique per loop)
-            } elseif ($manualCategory) {
-                $includeInCategory = ($manualCategory === $category);
+            } elseif (!empty($manualCategories)) {
+                $includeInCategory = in_array($category, $manualCategories);
             } else {
                 $matched = $this->matchCategories($searchText);
 
@@ -373,8 +374,8 @@ class SummaryViewController extends Controller
 
             if ($includeInCategory) {
                 // Determine which categories this program actually belongs to (for display)
-                if ($manualCategory) {
-                    $assignedCategories = [$manualCategory];
+                if (!empty($manualCategories)) {
+                    $assignedCategories = $manualCategories;
                 } else {
                     $matched = $this->matchCategories($searchText);
                     $assignedCategories = empty($matched) ? ['uncategorized'] : $matched;
@@ -393,7 +394,7 @@ class SummaryViewController extends Controller
                         ($program->participants_online ?? 0) + ($program->participants_face_to_face ?? 0),
                     'organizer'                 => $program->organizer,
                     'remarks'                   => $program->remarks,
-                    'manual_category'           => $manualCategory,
+                    'manual_categories'         => $manualCategories,
                     'assigned_categories'       => $assignedCategories,
                 ];
             }
@@ -416,17 +417,20 @@ class SummaryViewController extends Controller
 
     public function updateProgramCategory(Request $request)
     {
+        $validCategories = implode(',', array_keys(self::CATEGORY_KEYWORDS));
+
         $request->validate([
-            'record_type' => ['required', 'in:annex_a,annex_b'],
-            'record_id'   => ['required', 'integer', 'min:1'],
-            'category'    => ['nullable', 'string', 'in:' . implode(',', array_keys(self::CATEGORY_KEYWORDS))],
+            'record_type'  => ['required', 'in:annex_a,annex_b'],
+            'record_id'    => ['required', 'integer', 'min:1'],
+            'categories'   => ['nullable', 'array'],
+            'categories.*' => ['string', 'in:' . $validCategories],
         ]);
 
-        $type     = $request->input('record_type');
-        $id       = $request->input('record_id');
-        $category = $request->input('category'); // null = reset override
+        $type       = $request->input('record_type');
+        $id         = $request->input('record_id');
+        $categories = $request->input('categories'); // null or empty array = reset override
 
-        if ($category === null) {
+        if (empty($categories)) {
             // Reset: delete the override row so keyword matching takes over again
             ProgramCategoryOverride::where('program_type', $type)
                 ->where('program_id', $id)
@@ -435,9 +439,9 @@ class SummaryViewController extends Controller
             ProgramCategoryOverride::updateOrCreate(
                 ['program_type' => $type, 'program_id' => $id],
                 [
-                    'manual_category' => $category,
-                    'overridden_by'   => $request->user()->id,
-                    'overridden_at'   => now(),
+                    'manual_categories' => $categories,
+                    'overridden_by'     => $request->user()->id,
+                    'overridden_at'     => now(),
                 ]
             );
         }

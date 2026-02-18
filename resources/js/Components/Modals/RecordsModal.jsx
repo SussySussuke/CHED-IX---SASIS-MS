@@ -1,35 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { IoClose, IoArrowForward, IoRefresh } from 'react-icons/io5';
+import { IoClose, IoRefresh, IoCheckmark, IoTrash, IoListOutline, IoArrowBack } from 'react-icons/io5';
 import AGGridViewer from '../Common/AGGridViewer';
 
-/**
- * RecordsModal — generic reusable modal for viewing and optionally recategorizing records.
- *
- * USE CASES:
- *   - View-only: pass fetchUrl + columnDefs, leave recategorizeUrl null
- *   - View + recategorize: also pass recategorizeUrl + categoryOptions
- *
- * Props:
- *   isOpen            {boolean}   visibility
- *   onClose           {function}  close handler
- *   onRecategorized   {function}  called after a successful recategorize (parent refreshes grid)
- *
- *   title             {string}    modal heading
- *   subtitle          {string}    secondary heading
- *   categoryLabel     {string}    badge label shown next to the title
- *   isMiscellaneous   {boolean}   yellow accent + hint text (uncategorized mode)
- *   isTotal           {boolean}   "all records" mode — hides recategorize column
- *
- *   fetchUrl          {string}    GET endpoint → { records: [...] }
- *   recategorizeUrl   {string}    PATCH endpoint → { record_type, record_id, category }
- *                                 Pass null to disable recategorization entirely.
- *
- *   columnDefs        {Array}     AG Grid column definitions for the records table
- *   categoryOptions   {Array}     [{ value, label }] used in the move-to dropdown
- *
- *   recordTypeField   {string}    field in each record holding its source type (default: 'record_type')
- *   recordIdField     {string}    field in each record holding its id (default: 'id')
- */
 const RecordsModal = ({
   isOpen,
   onClose,
@@ -42,6 +14,7 @@ const RecordsModal = ({
   isTotal = false,
 
   fetchUrl,
+  totalFetchUrl = null,
   recategorizeUrl = null,
 
   columnDefs = [],
@@ -50,25 +23,28 @@ const RecordsModal = ({
   recordTypeField = 'record_type',
   recordIdField = 'id',
 }) => {
-  const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [records, setRecords]     = useState([]);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState(null);
+  const [viewingAll, setViewingAll] = useState(false);
 
-  // Per-row state: { [rowKey]: { saving, selected, saved, error } }
+  // Per-row state: { [rowKey]: { saving, selected: string[], saved, error } }
   const [rowStates, setRowStates] = useState({});
 
   const canRecategorize = !!recategorizeUrl;
+  // The URL actually used for fetching — switches when viewingAll is toggled
+  const activeFetchUrl = viewingAll && totalFetchUrl ? totalFetchUrl : fetchUrl;
 
   // ── Fetch ────────────────────────────────────────────────────────────────
 
   const fetchRecords = useCallback(async () => {
-    if (!fetchUrl) return;
+    if (!activeFetchUrl) return;
     setLoading(true);
     setError(null);
     setRowStates({});
 
     try {
-      const res = await fetch(fetchUrl);
+      const res = await fetch(activeFetchUrl);
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const data = await res.json();
       setRecords(data.records ?? data.programs ?? []);
@@ -78,7 +54,7 @@ const RecordsModal = ({
     } finally {
       setLoading(false);
     }
-  }, [fetchUrl]);
+  }, [activeFetchUrl]);
 
   useEffect(() => {
     if (isOpen) fetchRecords();
@@ -86,17 +62,18 @@ const RecordsModal = ({
       setRecords([]);
       setError(null);
       setRowStates({});
+      setViewingAll(false);
     }
   }, [isOpen, fetchRecords]);
 
   // ── Recategorize ─────────────────────────────────────────────────────────
 
-  const handleRecategorize = async (record, newCategory) => {
+  const handleSave = async (record, selectedCategories) => {
     const rowKey = `${record[recordTypeField]}_${record[recordIdField]}`;
 
     setRowStates(prev => ({
       ...prev,
-      [rowKey]: { ...prev[rowKey], saving: true, selected: newCategory, error: null },
+      [rowKey]: { ...prev[rowKey], saving: true, error: null },
     }));
 
     try {
@@ -109,7 +86,8 @@ const RecordsModal = ({
         body: JSON.stringify({
           record_type: record[recordTypeField],
           record_id:   record[recordIdField],
-          category:    newCategory,
+          // empty array = reset override
+          categories:  selectedCategories.length > 0 ? selectedCategories : null,
         }),
       });
 
@@ -120,13 +98,13 @@ const RecordsModal = ({
 
       setRowStates(prev => ({
         ...prev,
-        [rowKey]: { saving: false, selected: newCategory, saved: true, error: null },
+        [rowKey]: { saving: false, selected: selectedCategories, saved: true, error: null },
       }));
 
       onRecategorized?.();
 
-      // Refresh list immediately when in misc mode so moved rows disappear
-      if (isMiscellaneous) await fetchRecords();
+      // In misc mode (and not viewing all), refresh so moved rows disappear
+      if (isMiscellaneous && !viewingAll) await fetchRecords();
 
     } catch (err) {
       setRowStates(prev => ({
@@ -136,53 +114,141 @@ const RecordsModal = ({
     }
   };
 
+  // ── Multi-checkbox cell renderer ──────────────────────────────────────────
+
+  const MultiCategoryCell = ({ record, rowKey, currentAssigned }) => {
+    const state = rowStates[rowKey] ?? {};
+
+    // Derive the initial checked state from what the server returned,
+    // but never include 'uncategorized' or 'total' — those aren't real override targets.
+    const validAssigned = (currentAssigned ?? []).filter(
+      c => categoryOptions.some(o => o.value === c)
+    );
+
+    const [checked, setChecked] = useState(() => new Set(validAssigned));
+
+    // Re-sync if a fresh fetch happened (rowStates reset → state.selected cleared)
+    useEffect(() => {
+      if (!state.saved) {
+        setChecked(new Set(validAssigned));
+      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rowStates]);
+
+    if (state.saved) {
+      const labels = state.selected?.length
+        ? state.selected.map(v => categoryOptions.find(o => o.value === v)?.label ?? v).join(', ')
+        : 'Reset to keyword matching';
+      return (
+        <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1 py-1">
+          <IoCheckmark className="w-3.5 h-3.5 flex-shrink-0" />
+          {labels}
+        </span>
+      );
+    }
+
+    const toggle = (value) => {
+      setChecked(prev => {
+        const next = new Set(prev);
+        next.has(value) ? next.delete(value) : next.add(value);
+        return next;
+      });
+    };
+
+    const isDirty = (() => {
+      const a = [...checked].sort().join(',');
+      const b = [...validAssigned].sort().join(',');
+      return a !== b;
+    })();
+
+    return (
+      <div className="py-1.5 space-y-1">
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+          {categoryOptions.map(opt => (
+            <label
+              key={opt.value}
+              className="flex items-center gap-1 cursor-pointer text-xs text-gray-700 dark:text-gray-300
+                         hover:text-gray-900 dark:hover:text-white select-none"
+            >
+              <input
+                type="checkbox"
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600
+                           focus:ring-blue-500 focus:ring-offset-0 h-3 w-3"
+                checked={checked.has(opt.value)}
+                onChange={() => toggle(opt.value)}
+                disabled={state.saving}
+              />
+              <span>{opt.label}</span>
+            </label>
+          ))}
+        </div>
+
+        {isDirty && (
+          <div className="flex items-center gap-2 pt-0.5">
+            <button
+              disabled={state.saving}
+              onClick={() => handleSave(record, [...checked])}
+              className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded
+                         bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors"
+            >
+              {state.saving
+                ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                : <IoCheckmark className="w-3 h-3" />}
+              Save
+            </button>
+            {checked.size === 0 && (
+              <span className="text-xs text-amber-600 dark:text-amber-400">
+                Saving with no selection resets to keyword matching.
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Reset to keyword matching button (only when record has an existing override) */}
+        {validAssigned.length > 0 && !isDirty && (
+          <button
+            disabled={state.saving}
+            onClick={() => handleSave(record, [])}
+            className="flex items-center gap-1 text-xs text-red-500 dark:text-red-400
+                       hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50 transition-colors"
+          >
+            <IoTrash className="w-3 h-3" />
+            Reset to keyword matching
+          </button>
+        )}
+
+        {state.error && (
+          <p className="text-xs text-red-600 dark:text-red-400">{state.error}</p>
+        )}
+      </div>
+    );
+  };
+
   // ── Column defs (append action column when recategorize is on) ────────────
 
   const gridColumns = React.useMemo(() => {
     if (!canRecategorize || categoryOptions.length === 0) return columnDefs;
 
     const actionCol = {
-      headerName: 'Move to Category',
+      headerName: 'Assign Categories',
       field:      '__action',
-      width:      230,
+      minWidth:   340,
+      flex:       1,
       sortable:   false,
       filter:     false,
-      resizable:  false,
+      resizable:  true,
       pinned:     'right',
+      autoHeight: true,
+      wrapText:   false,
       cellRenderer: (params) => {
-        const record = params.data;
-        const rowKey = `${record[recordTypeField]}_${record[recordIdField]}`;
-        const state  = rowStates[rowKey] ?? {};
-
-        if (state.saved) {
-          return (
-            <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
-              <IoArrowForward className="w-3 h-3" />
-              Moved to {categoryOptions.find(o => o.value === state.selected)?.label ?? state.selected}
-            </span>
-          );
-        }
-
+        const record  = params.data;
+        const rowKey  = `${record[recordTypeField]}_${record[recordIdField]}`;
         return (
-          <div className="flex items-center gap-2 h-full">
-            <select
-              disabled={state.saving}
-              defaultValue=""
-              onChange={(e) => { if (e.target.value) handleRecategorize(record, e.target.value); }}
-              className="flex-1 text-xs border border-gray-300 dark:border-gray-600 rounded
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                         py-1 px-2 focus:outline-none focus:ring-1 focus:ring-blue-500
-                         disabled:opacity-50"
-            >
-              <option value="" disabled>Select category…</option>
-              {categoryOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            {state.saving && (
-              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-            )}
-          </div>
+          <MultiCategoryCell
+            record={record}
+            rowKey={rowKey}
+            currentAssigned={record.assigned_categories}
+          />
         );
       },
     };
@@ -236,6 +302,23 @@ const RecordsModal = ({
               </div>
 
               <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                {/* View All / Back to Category toggle */}
+                {totalFetchUrl && (
+                  <button
+                    onClick={() => setViewingAll(v => !v)}
+                    title={viewingAll ? 'Back to category view' : 'View all records for this HEI'}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                               border transition-colors ${
+                      viewingAll
+                        ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {viewingAll
+                      ? <><IoArrowBack className="w-3.5 h-3.5" /> Back to Category</>
+                      : <><IoListOutline className="w-3.5 h-3.5" /> View All Records</>}
+                  </button>
+                )}
                 <button
                   onClick={fetchRecords}
                   title="Refresh"
@@ -259,8 +342,8 @@ const RecordsModal = ({
               <div className={`px-5 py-3 border-b ${accentBg}`}>
                 <p className={`text-sm ${accentText}`}>
                   {isMiscellaneous
-                    ? 'These activities did not match any keyword category. Use the "Move to Category" column to manually assign them.'
-                    : 'Use the "Move to Category" column to manually override keyword-matched categories.'}
+                    ? 'These activities did not match any keyword category. Check one or more categories in the "Assign Categories" column, then click Save.'
+                    : 'Check or uncheck categories in the "Assign Categories" column to override keyword matching. Save to apply. Reset to revert to automatic matching.'}
                 </p>
               </div>
             )}
@@ -296,14 +379,17 @@ const RecordsModal = ({
                     enableQuickFilter={true}
                     quickFilterPlaceholder="Search records…"
                     gridOptions={{
-                      // Override fixed rowHeight so category tags can wrap per-row.
-                      // Each tag is ~28px; base row is 40px. Falls back to 40 for rows
-                      // with 0-1 categories (single tag fits in default height).
                       rowHeight: undefined,
                       getRowHeight: (params) => {
                         const cats = params.data?.assigned_categories;
+                        // When recategorize is on, rows need more height for the checkbox list
+                        if (canRecategorize) {
+                          const optCount = categoryOptions.length;
+                          // checkboxes wrap into roughly 2 lines for 7 options at this width
+                          return optCount > 4 ? 80 : 60;
+                        }
                         if (!cats || cats.length <= 1) return 40;
-                        return cats.length * 28 + 12; // 28px per tag + padding
+                        return cats.length * 28 + 12;
                       },
                     }}
                   />

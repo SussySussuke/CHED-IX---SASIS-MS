@@ -136,6 +136,7 @@ const CLOSED_MODAL = {
   heiId: null,
   heiName: '',
   category: '',
+  zeroTargetCategory: null,
 };
 
 const SummaryView = ({
@@ -198,16 +199,20 @@ const SummaryView = ({
   }, [selectedYear]);
 
   // ── Activity cell click → open drilldown modal ────────────────────────────
+  // When count is 0, open the total view so the admin can see all records
+  // and assign some into the target category from there.
   const handleActivityClick = (category, heiId, heiName, count) => {
-    if (!count && count !== 0) return;
-    setDrilldown({ isOpen: true, heiId, heiName, category });
+    if (count === null || count === undefined) return;
+    if (count === 0 && category !== 'total') {
+      setDrilldown({ isOpen: true, heiId, heiName, category: 'total', zeroTargetCategory: category });
+    } else {
+      setDrilldown({ isOpen: true, heiId, heiName, category, zeroTargetCategory: null });
+    }
   };
 
   const closeDrilldown = () => setDrilldown(CLOSED_MODAL);
 
-  // Called by CategoryDrilldownModal after a successful recategorization
   const handleRecategorized = () => {
-    // Refresh the main grid data so counts update
     handleSectionChange('2-Info-Orientation');
   };
 
@@ -222,24 +227,33 @@ const SummaryView = ({
 
   // ── Derive modal props from drilldown state ────────────────────────────────
   const drilldownProps = useMemo(() => {
-    const { heiId, heiName, category } = drilldown;
+    const { heiId, heiName, category, zeroTargetCategory } = drilldown;
     const isTotal = category === 'total';
-    const isMisc = category === 'uncategorized';
+    const isMisc  = category === 'uncategorized';
 
     const fetchUrl = heiId && category && selectedYear
       ? `/admin/summary/info-orientation/${heiId}/${category}/evidence?year=${selectedYear}`
       : null;
 
-    const recategorizeUrl = isTotal ? null : '/admin/summary/info-orientation/programs/category';
+    // "View All Records" button inside the modal — total endpoint for this HEI.
+    // Null when already viewing total so the button doesn't appear.
+    const totalFetchUrl = (!isTotal && heiId && selectedYear)
+      ? `/admin/summary/info-orientation/${heiId}/total/evidence?year=${selectedYear}`
+      : null;
+
+    const subtitle = zeroTargetCategory
+      ? `Academic Year ${selectedYear} — Assign records into: ${INFO_ORIENTATION_CATEGORY_LABELS[zeroTargetCategory] ?? zeroTargetCategory}`
+      : `Academic Year ${selectedYear}`;
 
     return {
       title: heiName,
-      subtitle: `Academic Year ${selectedYear}`,
+      subtitle,
       categoryLabel: INFO_ORIENTATION_CATEGORY_LABELS[category] ?? category,
       isMiscellaneous: isMisc,
       isTotal,
       fetchUrl,
-      recategorizeUrl,
+      totalFetchUrl,
+      recategorizeUrl: '/admin/summary/info-orientation/programs/category',
       columnDefs: DRILLDOWN_COLUMNS,
       categoryOptions: RECATEGORIZE_OPTIONS,
       recordTypeField: 'program_type',
@@ -310,7 +324,7 @@ const SummaryView = ({
                   <IoInformationCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <span className="font-semibold">Tip:</span>{' '}
-                    Click any blue activity count to view program details.
+                    Click any activity count to view program details.
                     Yellow columns indicate activities that couldn't be automatically categorized.
                   </p>
                 </div>
