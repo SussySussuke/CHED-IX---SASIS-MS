@@ -5,155 +5,265 @@ import AGGridViewer from '../../Components/Common/AGGridViewer';
 import EmptyState from '../../Components/Common/EmptyState';
 import AcademicYearSelect from '../../Components/Forms/AcademicYearSelect';
 import FormSelector from '../../Components/Forms/FormSelector';
-import InfoOrientationEvidenceModal from '../../Components/Modals/InfoOrientationEvidenceModal';
+import RecordsModal from '../../Components/Modals/RecordsModal';
 import { IoDocumentText, IoInformationCircle, IoGridOutline } from 'react-icons/io5';
 import { summaryConfig } from '../../Config/summaryView/summaryConfig';
+import {
+  INFO_ORIENTATION_CATEGORY_LABELS,
+  INFO_ORIENTATION_CATEGORY_KEYS,
+} from '../../Config/summaryView/infoOrientationConfig';
 
-const SummaryView = ({ 
-  summaries = [], 
-  availableYears = [], 
+// ─── AG Grid column defs for the drilldown modal (shared for all categories) ──
+const DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Title',
+    field: 'title',
+    flex: 2,
+    minWidth: 250,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Venue',
+    field: 'venue',
+    flex: 1,
+    minWidth: 150,
+  },
+  {
+    headerName: 'Date',
+    field: 'implementation_date',
+    width: 130,
+    valueFormatter: (params) => {
+      if (!params.value) return '—';
+      return new Date(params.value).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      });
+    },
+  },
+  {
+    headerName: 'Target Group',
+    field: 'target_group',
+    flex: 1,
+    minWidth: 150,
+  },
+  {
+    headerName: 'Face-to-Face',
+    field: 'participants_face_to_face',
+    width: 120,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Online',
+    field: 'participants_online',
+    width: 100,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Total',
+    field: 'total_participants',
+    width: 100,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Organizer',
+    field: 'organizer',
+    flex: 1,
+    minWidth: 150,
+  },
+  {
+    headerName: 'Source',
+    field: 'program_type',
+    width: 110,
+    cellStyle: { textAlign: 'center' },
+    cellRenderer: (params) => {
+      if (!params.value) return <span className="text-gray-400">—</span>;
+      return (
+        <span className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400">
+          {params.value === 'annex_a' ? 'Annex A' : 'Annex B'}
+        </span>
+      );
+    },
+  },
+  {
+    headerName: 'Category',
+    field: 'assigned_categories',
+    minWidth: 220,
+    flex: 1,
+    sortable: false,
+    wrapText: true,
+    autoHeight: true,
+    cellRenderer: (params) => {
+      const cats = params.value;
+      if (!cats || cats.length === 0) return <span className="text-gray-400">—</span>;
+      return (
+        <div className="flex flex-wrap gap-1 py-1">
+          {cats.map((cat) => {
+            const isMisc = cat === 'uncategorized';
+            return (
+              <span
+                key={cat}
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  isMisc
+                    ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300'
+                    : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                }`}
+              >
+                {INFO_ORIENTATION_CATEGORY_LABELS[cat] ?? cat}
+              </span>
+            );
+          })}
+        </div>
+      );
+    },
+  },
+];
+
+// ─── Category options for the recategorize dropdown ───────────────────────────
+const RECATEGORIZE_OPTIONS = INFO_ORIENTATION_CATEGORY_KEYS.map((key) => ({
+  value: key,
+  label: INFO_ORIENTATION_CATEGORY_LABELS[key],
+}));
+
+// ─── Blank drilldown state ────────────────────────────────────────────────────
+const CLOSED_MODAL = {
+  isOpen: false,
+  heiId: null,
+  heiName: '',
+  category: '',
+};
+
+const SummaryView = ({
+  summaries = [],
+  availableYears = [],
   selectedYear = null,
 }) => {
   const [activeSection, setActiveSection] = useState('1A-Profile');
   const [sectionData, setSectionData] = useState(summaries);
   const [loading, setLoading] = useState(false);
-  
-  // Evidence modal state
-  const [evidenceModal, setEvidenceModal] = useState({
-    isOpen: false,
-    heiId: null,
-    heiName: '',
-    category: '',
-    categoryLabel: '',
-  });
 
+  const [drilldown, setDrilldown] = useState(CLOSED_MODAL);
+
+  // ── Year change ────────────────────────────────────────────────────────────
   const handleYearChange = (e) => {
-    const year = e.target.value;
-    router.get('/admin/summary', { year }, {
+    router.get('/admin/summary', { year: e.target.value }, {
       preserveState: true,
       preserveScroll: true,
     });
   };
 
-  // Get list of available sections from summaryConfig
+  // ── Section list ───────────────────────────────────────────────────────────
   const sections = summaryConfig.getSectionList();
-
-  // Format sections for FormSelector (needs grouped format)
   const sectionOptions = [
     {
       group: 'Summary Sections',
-      options: sections.map(section => ({
-        value: section.id,
-        label: section.title
-      }))
-    }
+      options: sections.map((s) => ({ value: s.id, label: s.title })),
+    },
   ];
 
-  // Handle section change
+  // ── Fetch data per section ─────────────────────────────────────────────────
   const handleSectionChange = async (sectionId) => {
     setActiveSection(sectionId);
-    
-    // If switching to Info-Orientation, fetch data from API
+
     if (sectionId === '2-Info-Orientation' && selectedYear) {
       setLoading(true);
       try {
-        const response = await fetch(`/admin/summary/info-orientation?year=${selectedYear}`);
-        const result = await response.json();
-        setSectionData(result.data || []);
-      } catch (error) {
-        console.error('Error fetching info-orientation data:', error);
+        const res = await fetch(`/admin/summary/info-orientation?year=${selectedYear}`);
+        const result = await res.json();
+        setSectionData(result.data ?? []);
+      } catch {
         setSectionData([]);
       } finally {
         setLoading(false);
       }
     } else {
-      // For Profile and Personnel sections, use the summaries data from props
       setSectionData(summaries);
     }
   };
 
-  // Update section data when summaries prop changes
   useEffect(() => {
-    if (activeSection !== '2-Info-Orientation') {
-      setSectionData(summaries);
-    }
+    if (activeSection !== '2-Info-Orientation') setSectionData(summaries);
   }, [summaries, activeSection]);
 
-  // Load Info-Orientation data when year changes
   useEffect(() => {
     if (activeSection === '2-Info-Orientation' && selectedYear) {
       handleSectionChange('2-Info-Orientation');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]);
 
-  // Category label mapping
-  const categoryLabels = {
-    campus_orientation: 'Campus Orientation',
-    gender_sensitivity: 'Gender Sensitivity/VAWC',
-    anti_hazing: 'Anti-Hazing',
-    substance_abuse: 'Substance Abuse Campaigns',
-    sexual_health: 'Sexual/Reproductive Health',
-    mental_health: 'Mental Health/Wellness',
-    disaster_risk: 'Disaster Risk Management',
+  // ── Activity cell click → open drilldown modal ────────────────────────────
+  const handleActivityClick = (category, heiId, heiName, count) => {
+    if (!count && count !== 0) return;
+    setDrilldown({ isOpen: true, heiId, heiName, category });
   };
-  
-  // Handle activity cell clicks
-  const handleActivityClick = (category, heiId, heiName, activityCount) => {
-    if (!activityCount || activityCount === 0) return;
-    
-    setEvidenceModal({
-      isOpen: true,
-      heiId,
-      heiName,
-      category,
-      categoryLabel: categoryLabels[category] || category,
-    });
+
+  const closeDrilldown = () => setDrilldown(CLOSED_MODAL);
+
+  // Called by CategoryDrilldownModal after a successful recategorization
+  const handleRecategorized = () => {
+    // Refresh the main grid data so counts update
+    handleSectionChange('2-Info-Orientation');
   };
-  
-  // Close evidence modal
-  const closeEvidenceModal = () => {
-    setEvidenceModal({
-      isOpen: false,
-      heiId: null,
-      heiName: '',
-      category: '',
-      categoryLabel: '',
-    });
-  };
-  
-  // Dynamic column definitions based on activeSection
+
+  // ── Column defs ────────────────────────────────────────────────────────────
   const columnDefs = useMemo(() => {
-    // For Info-Orientation section, pass the click handler
     if (activeSection === '2-Info-Orientation') {
-      const config = summaryConfig.getSection(activeSection);
-      return config.getColumns(handleActivityClick);
+      return summaryConfig.getSection(activeSection).getColumns(handleActivityClick);
     }
-    
-    // For other sections, use default columns
     return summaryConfig.getSectionColumns(activeSection);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection]);
 
-  // Get grid configuration
+  // ── Derive modal props from drilldown state ────────────────────────────────
+  const drilldownProps = useMemo(() => {
+    const { heiId, heiName, category } = drilldown;
+    const isTotal = category === 'total';
+    const isMisc = category === 'uncategorized';
+
+    const fetchUrl = heiId && category && selectedYear
+      ? `/admin/summary/info-orientation/${heiId}/${category}/evidence?year=${selectedYear}`
+      : null;
+
+    const recategorizeUrl = isTotal ? null : '/admin/summary/info-orientation/programs/category';
+
+    return {
+      title: heiName,
+      subtitle: `Academic Year ${selectedYear}`,
+      categoryLabel: INFO_ORIENTATION_CATEGORY_LABELS[category] ?? category,
+      isMiscellaneous: isMisc,
+      isTotal,
+      fetchUrl,
+      recategorizeUrl,
+      columnDefs: DRILLDOWN_COLUMNS,
+      categoryOptions: RECATEGORIZE_OPTIONS,
+      recordTypeField: 'program_type',
+      recordIdField: 'id',
+    };
+  }, [drilldown, selectedYear]);
+
   const gridConfig = summaryConfig.gridDefaults;
 
   return (
     <AdminLayout title="Summary View">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Summary Reports
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              View all HEI summary submissions by academic year
-            </p>
-          </div>
+        {/* ── Header ── */}
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Summary Reports
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            View all HEI summary submissions by academic year
+          </p>
         </div>
 
-        {/* Filters Section */}
+        {/* ── Filters ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Section Selector using FormSelector */}
           <FormSelector
             currentForm={activeSection}
             options={sectionOptions}
@@ -163,10 +273,8 @@ const SummaryView = ({
             icon={IoGridOutline}
             disabled={loading}
           />
-          
-          {/* Academic Year Filter */}
           <AcademicYearSelect
-            value={selectedYear || ''}
+            value={selectedYear ?? ''}
             onChange={handleYearChange}
             availableYears={availableYears}
             required={false}
@@ -174,14 +282,12 @@ const SummaryView = ({
           />
         </div>
 
-        {/* Data Display */}
+        {/* ── Data Display ── */}
         {loading ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
-            <div className="flex items-center justify-center space-x-2">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="text-gray-700 dark:text-gray-300">
-                Loading data...
-              </span>
+            <div className="flex items-center justify-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+              <span className="text-gray-700 dark:text-gray-300">Loading data…</span>
             </div>
           </div>
         ) : !selectedYear ? (
@@ -198,18 +304,19 @@ const SummaryView = ({
           />
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            {/* Info banner for Info-Orientation section */}
             {activeSection === '2-Info-Orientation' && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
                 <div className="flex items-start gap-3">
                   <IoInformationCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-blue-800 dark:text-blue-200">
-                    <span className="font-semibold">Tip:</span> Click on any blue activity count (with the → arrow) to view detailed program evidence.
-                  </div>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-semibold">Tip:</span>{' '}
+                    Click any blue activity count to view program details.
+                    Yellow columns indicate activities that couldn't be automatically categorized.
+                  </p>
                 </div>
               </div>
             )}
-            
+
             <AGGridViewer
               rowData={sectionData}
               columnDefs={columnDefs}
@@ -222,16 +329,13 @@ const SummaryView = ({
           </div>
         )}
       </div>
-      
-      {/* Evidence Modal */}
-      <InfoOrientationEvidenceModal
-        isOpen={evidenceModal.isOpen}
-        onClose={closeEvidenceModal}
-        heiId={evidenceModal.heiId}
-        heiName={evidenceModal.heiName}
-        category={evidenceModal.category}
-        categoryLabel={evidenceModal.categoryLabel}
-        academicYear={selectedYear}
+
+      {/* ── Category Drilldown / Recategorization Modal ── */}
+      <RecordsModal
+        {...drilldownProps}
+        isOpen={drilldown.isOpen}
+        onClose={closeDrilldown}
+        onRecategorized={handleRecategorized}
       />
     </AdminLayout>
   );

@@ -68,18 +68,6 @@ class AnnexJController extends BaseAnnexController
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
-    public function history()
-    {
-        $batches = AnnexJBatch::where('hei_id', $this->getHeiId())
-            ->withCount('programs')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return inertia('HEI/AnnexJ/History', [
-            'batches' => $batches
-        ]);
-    }
-
     public function getBatchPrograms($batchId)
     {
         $batch = AnnexJBatch::where('batch_id', $batchId)->first();

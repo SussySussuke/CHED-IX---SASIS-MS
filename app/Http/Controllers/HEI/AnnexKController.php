@@ -63,18 +63,6 @@ class AnnexKController extends BaseAnnexController
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
-    public function history()
-    {
-        $batches = AnnexKBatch::where('hei_id', $this->getHeiId())
-            ->withCount('committees')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return inertia('HEI/AnnexK/History', [
-            'batches' => $batches
-        ]);
-    }
-
     public function getBatchCommittees($batchId)
     {
         $batch = AnnexKBatch::where('batch_id', $batchId)->first();

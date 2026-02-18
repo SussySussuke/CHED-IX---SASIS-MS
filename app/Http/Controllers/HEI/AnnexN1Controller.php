@@ -65,18 +65,6 @@ class AnnexN1Controller extends BaseAnnexController
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
-    public function history()
-    {
-        $batches = AnnexN1Batch::where('hei_id', $this->getHeiId())
-            ->withCount('sportsPrograms')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return inertia('HEI/AnnexN1/History', [
-            'batches' => $batches
-        ]);
-    }
-
     public function getBatchSportsPrograms($batchId)
     {
         $batch = AnnexN1Batch::where('batch_id', $batchId)->first();

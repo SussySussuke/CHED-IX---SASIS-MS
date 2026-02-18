@@ -85,18 +85,6 @@ class AnnexFController extends BaseAnnexController
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
-    public function history()
-    {
-        $batches = AnnexFBatch::where('hei_id', $this->getHeiId())
-            ->withCount('activities')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return inertia('HEI/AnnexF/History', [
-            'batches' => $batches
-        ]);
-    }
-
     public function getBatchActivities($batchId)
     {
         $batch = AnnexFBatch::where('batch_id', $batchId)->first();

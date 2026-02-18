@@ -64,18 +64,6 @@ class AnnexI1Controller extends BaseAnnexController
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
-    public function history()
-    {
-        $batches = AnnexI1Batch::where('hei_id', $this->getHeiId())
-            ->withCount('foodServices')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return inertia('HEI/AnnexI1/History', [
-            'batches' => $batches
-        ]);
-    }
-
     public function getBatchFoodServices($batchId)
     {
         $batch = AnnexI1Batch::where('batch_id', $batchId)->first();

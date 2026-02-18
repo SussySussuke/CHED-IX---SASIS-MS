@@ -1,0 +1,148 @@
+================================================================================
+TASK: MISCELLANEOUS COLUMN + MANUAL RECATEGORIZATION — 2-INFO-ORIENTATION
+================================================================================
+DATE: 2026-02-18
+STATUS: ✅ COMPLETE — fully working
+AI: Spider-Murphy, Claude (Sonnet 4.6)
+
+================================================================================
+WHAT WAS BUILT
+================================================================================
+
+PROBLEM:
+  Admin > Summary View > "2-Info-Orientation" AG Grid:
+  - Activities matching no keyword were silently dropped (invisible)
+  - Total column was non-clickable
+  - No way to manually fix wrong/missing categorizations
+
+SOLUTION: Separate override table (program_category_overrides).
+  HEI-submitted annex tables stay untouched. Admin overrides live separately.
+
+================================================================================
+FILES CREATED
+================================================================================
+
+resources/js/Components/Modals/RecordsModal.jsx
+  Generic reusable modal. Works for view-only OR view+recategorize.
+  Props:
+    isOpen, onClose, onRecategorized  — control
+    title, subtitle, categoryLabel    — display text
+    isMiscellaneous {bool}            — yellow accent + hint text
+    isTotal {bool}                    — "all records" mode, hides recategorize col
+    fetchUrl {string}                 — GET → { records: [...] }
+    recategorizeUrl {string|null}     — PATCH → { record_type, record_id, category }
+                                        null = view-only, no recategorize column
+    columnDefs {Array}                — AG Grid column defs
+    categoryOptions {Array}           — [{ value, label }] for move-to dropdown
+    recordTypeField {string}          — field holding source type (default: 'record_type')
+    recordIdField {string}            — field holding id (default: 'id')
+  NOTE: Uses plain fetch(), NOT Axios. Manually reads CSRF from meta tag.
+
+app/Models/ProgramCategoryOverride.php
+  Fillable: program_type, program_id, manual_category, overridden_by, overridden_at
+  Unique: (program_type, program_id)
+
+database/migrations/2026_02_18_000001_create_program_category_overrides_table.php
+  ✅ Already migrated.
+
+================================================================================
+FILES MODIFIED
+================================================================================
+
+resources/views/app.blade.php
+  - Added <meta name="csrf-token" content="{{ csrf_token() }}"> to <head>
+  REASON: RecordsModal uses plain fetch() with manual CSRF header. Without this
+  meta tag, the token is undefined and Laravel returns 419 on all PATCH requests.
+  Inertia/Axios handle CSRF automatically but plain fetch() does NOT.
+
+resources/js/Config/summaryView/infoOrientationConfig.jsx
+  - Exports: INFO_ORIENTATION_CATEGORY_KEYS, INFO_ORIENTATION_CATEGORY_LABELS
+  - Miscellaneous column group (yellow cell style)
+  - Total > Activities cell is now clickable
+  - Extracted: ActivityCell, StudentCell, categoryColumnGroup helpers
+
+resources/js/Config/summaryView/summaryConfig.js
+  - getSectionColumns() handles both .columns and .getColumns() style configs
+
+resources/js/Config/summaryView/index.js
+  - Added exports for INFO_ORIENTATION_CATEGORY_KEYS, INFO_ORIENTATION_CATEGORY_LABELS
+
+resources/js/Pages/Admin/SummaryView.jsx
+  - Uses RecordsModal (replaced InfoOrientationEvidenceModal)
+  - handleActivityClick routes to correct modal mode (category / uncategorized / total)
+  - DRILLDOWN_COLUMNS at module level (includes program_type/Source column)
+  - RECATEGORIZE_OPTIONS from INFO_ORIENTATION_CATEGORY_KEYS
+  - onRecategorized triggers grid data refresh
+  - recategorizeUrl is null when isTotal=true (no move column on total view)
+
+app/Http/Controllers/Admin/SummaryViewController.php
+  - CATEGORY_KEYWORDS constant, matchCategories() helper
+  - getInfoOrientationData(): override logic, uncategorized bucket, deduplicated total
+  - getInfoOrientationEvidence(): supports 'uncategorized' + 'total', returns { records: [...] }
+  - updateProgramCategory(): PATCH — upserts or deletes override row
+  - emptyHeiRow(): extracted helper
+
+routes/web.php
+  - PATCH /admin/summary/info-orientation/programs/category
+    → SummaryViewController::updateProgramCategory
+    → name: admin.summary.program-category.update
+
+================================================================================
+FILES TO DELETE MANUALLY (not yet cleaned up)
+================================================================================
+
+resources/js/Components/Modals/CategoryDrilldownModal.jsx  ← renamed to RecordsModal
+resources/js/Components/Modals/EvidenceModal.jsx           ← orphaned, zero imports
+resources/js/Components/Modals/InfoOrientationEvidenceModal.jsx ← replaced by RecordsModal
+resources/js/Components/Form/SearchableSelect.jsx          ← orphaned duplicate
+
+================================================================================
+RUNTIME LOGIC
+================================================================================
+
+For each program (Annex A or B):
+  1. Check program_category_overrides for (program_type, program_id)
+  2. Override exists → assign ONLY to that one category
+  3. No override → keyword match title + target_group
+     - Can match MULTIPLE categories (intentional, per supervisor behavior)
+     - Zero matches → 'uncategorized' (Miscellaneous column, yellow)
+
+Total column: deduplicated — each unique program counted once.
+Category columns: keep multi-count behavior.
+
+================================================================================
+USING RecordsModal IN OTHER TABLES (future use)
+================================================================================
+
+View-only:
+  <RecordsModal fetchUrl="..." columnDefs={...} isOpen onClose title subtitle />
+
+View + recategorize:
+  <RecordsModal
+    ...
+    recategorizeUrl="/admin/summary/info-orientation/programs/category"
+    categoryOptions={[{ value: 'cat_a', label: 'Category A' }, ...]}
+    recordTypeField="program_type"
+    recordIdField="id"
+    onRecategorized={refreshGrid}
+    isMiscellaneous={true}
+  />
+
+PATCH body sent: { record_type, record_id, category }
+  record_type must be 'annex_a' or 'annex_b'
+  category null = reset override (reverts to keyword matching)
+
+================================================================================
+CATEGORY KEY CONSTANTS (reference)
+================================================================================
+
+INFO_ORIENTATION_CATEGORY_KEYS = [
+  'campus_orientation', 'gender_sensitivity', 'anti_hazing',
+  'substance_abuse', 'sexual_health', 'mental_health', 'disaster_risk'
+]
+
+Special non-keyword categories (UI only, not storable as overrides):
+  'uncategorized' → Miscellaneous column
+  'total'         → All programs deduplicated
+
+================================================================================

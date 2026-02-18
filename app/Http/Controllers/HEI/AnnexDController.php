@@ -133,17 +133,6 @@ class AnnexDController extends BaseAnnexController
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
-    public function history()
-    {
-        $submissions = AnnexDSubmission::where('hei_id', $this->getHeiId())
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return inertia('HEI/AnnexD/History', [
-            'submissions' => $submissions
-        ]);
-    }
-
     public function edit($submissionId)
     {
         $submission = AnnexDSubmission::where('submission_id', $submissionId)->first();

@@ -66,18 +66,6 @@ class AnnexLController extends BaseAnnexController
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
-    public function history()
-    {
-        $batches = AnnexLBatch::where('hei_id', $this->getHeiId())
-            ->withCount('housing')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return inertia('HEI/AnnexL/History', [
-            'batches' => $batches
-        ]);
-    }
-
     public function getBatchHousing($batchId)
     {
         $batch = AnnexLBatch::where('batch_id', $batchId)->first();

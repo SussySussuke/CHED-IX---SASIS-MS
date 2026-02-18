@@ -1,363 +1,221 @@
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 
+// ─── Category key constants ────────────────────────────────────────────────────
+export const INFO_ORIENTATION_CATEGORY_KEYS = [
+  'campus_orientation',
+  'gender_sensitivity',
+  'anti_hazing',
+  'substance_abuse',
+  'sexual_health',
+  'mental_health',
+  'disaster_risk',
+];
+
+export const INFO_ORIENTATION_CATEGORY_LABELS = {
+  campus_orientation:  'Campus Orientation',
+  gender_sensitivity:  'Gender-Sensitivity / VAWC',
+  anti_hazing:         'Anti-Hazing',
+  substance_abuse:     'Substance-Abuse Campaigns',
+  sexual_health:       'Sexual / Reproductive Health',
+  mental_health:       'Mental Health / Wellness',
+  disaster_risk:       'Disaster Risk Management',
+  uncategorized:       'Miscellaneous / Uncategorized',
+  total:               'All Activities (Total)',
+};
+
+// ─── Shared cell renderers ────────────────────────────────────────────────────
+
+/** Clickable activity count cell. Pass yellow=true for the Miscellaneous column. */
+function ActivityCell({ value, onClick, yellow = false }) {
+  if (value === null || value === undefined) return <span className="text-gray-400">—</span>;
+  if (value === 0) return <span className="text-gray-400">0</span>;
+
+  const colour = yellow
+    ? 'text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-200 focus:ring-yellow-500'
+    : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 focus:ring-blue-500';
+
+  return (
+    <button
+      className={`font-semibold hover:underline focus:outline-none focus:ring-2 focus:ring-offset-1 rounded px-1.5 py-0.5 transition-all ${colour}`}
+      onClick={onClick}
+      title="Click to view details"
+    >
+      {value} →
+    </button>
+  );
+}
+
+/** Formatted student count cell */
+function StudentCell({ value }) {
+  if (value === null || value === undefined) return <span className="text-gray-400">—</span>;
+  return <span className="font-medium">{value.toLocaleString()}</span>;
+}
+
+/** Builds a standard category column group (Activities + Students) */
+function categoryColumnGroup(headerName, fieldPrefix, onActivityClick) {
+  return {
+    headerName,
+    children: [
+      {
+        headerName: 'Activities',
+        field: `${fieldPrefix}_activities`,
+        width: 100,
+        filter: 'agNumberColumnFilter',
+        cellStyle: { textAlign: 'center' },
+        cellRenderer: (params) => (
+          <ActivityCell
+            value={params.value}
+            onClick={() =>
+              onActivityClick?.(fieldPrefix, params.data.hei_id, params.data.hei_name, params.value)
+            }
+          />
+        ),
+      },
+      {
+        headerName: 'Students',
+        field: `${fieldPrefix}_students`,
+        width: 100,
+        filter: 'agNumberColumnFilter',
+        cellStyle: { textAlign: 'center' },
+        cellRenderer: (params) => <StudentCell value={params.value} />,
+      },
+    ],
+  };
+}
+
+// ─── Section config ───────────────────────────────────────────────────────────
+
 /**
  * 2-Info-Orientation Section Configuration
- * Information and Orientation Services & Activities (Annex F)
- * 
- * Displays aggregated activity data by category:
- * - Campus Orientation
- * - Gender Sensitivity/VAWC
- * - Anti-Hazing
- * - Substance Abuse
- * - Sexual/Reproductive Health
- * - Mental Health/Wellness
- * - Disaster Risk Management
- * 
- * Note: The columns accept an onCellClick callback that can be passed dynamically
+ * Information and Orientation Services & Activities (Annex A + B)
+ *
+ * getColumns(onActivityClick):
+ *   onActivityClick(category, heiId, heiName, count) — fired when a count cell
+ *   is clicked. 'category' is one of INFO_ORIENTATION_CATEGORY_KEYS, 'uncategorized',
+ *   or 'total'.
  */
 export const infoOrientationConfig = {
   sectionId: '2-Info-Orientation',
-  sectionTitle: 'Information and Orientation Services & Activities',
-  
-  /**
-   * Generate columns with optional click handlers
-   * @param {Function} onActivityClick - Callback when activity count is clicked
-   *                                      Receives (category, heiId, heiName, activityCount)
-   */
+  sectionTitle: 'Information & Orientation Services',
+
   getColumns: (onActivityClick = null) => [
+    // ── HEI Name (pinned) ──────────────────────────────────────────────────
     {
       headerName: 'HEI Name',
       field: 'hei_name',
       flex: 1,
-      minWidth: 300,
+      minWidth: 280,
       filter: 'agTextColumnFilter',
       pinned: 'left',
       cellStyle: { fontWeight: '500' },
     },
-    
-    // Campus Orientation for Freshmen and new students
+
+    // ── 7 keyword-matched categories ───────────────────────────────────────
+    categoryColumnGroup('Campus Orientation',          'campus_orientation', onActivityClick),
+    categoryColumnGroup('Gender-Sensitivity / VAWC',   'gender_sensitivity', onActivityClick),
+    categoryColumnGroup('Anti-Hazing',                 'anti_hazing',        onActivityClick),
+    categoryColumnGroup('Substance-Abuse Campaigns',   'substance_abuse',    onActivityClick),
+    categoryColumnGroup('Sexual / Reproductive Health','sexual_health',       onActivityClick),
+    categoryColumnGroup('Mental Health / Wellness',    'mental_health',      onActivityClick),
+    categoryColumnGroup('Disaster Risk Management',    'disaster_risk',      onActivityClick),
+
+    // ── Miscellaneous (yellow) ─────────────────────────────────────────────
     {
-      headerName: 'Campus Orientation',
+      headerName: 'Miscellaneous',
       children: [
         {
           headerName: 'Activities',
-          field: 'campus_orientation_activities',
+          field: 'uncategorized_activities',
           width: 100,
           filter: 'agNumberColumnFilter',
           cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return (
-              <button 
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
-                onClick={() => onActivityClick && onActivityClick('campus_orientation', params.data.hei_id, params.data.hei_name, params.value)}
-                title="Click to view program details"
-              >
-                {params.value} →
-              </button>
-            );
-          },
+          cellRenderer: (params) => (
+            <ActivityCell
+              value={params.value}
+              yellow={true}
+              onClick={() =>
+                onActivityClick?.('uncategorized', params.data.hei_id, params.data.hei_name, params.value)
+              }
+            />
+          ),
         },
         {
           headerName: 'Students',
-          field: 'campus_orientation_students',
+          field: 'uncategorized_students',
           width: 100,
           filter: 'agNumberColumnFilter',
           cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return <span className="font-medium">{params.value.toLocaleString()}</span>;
-          },
+          cellRenderer: (params) => <StudentCell value={params.value} />,
         },
       ],
     },
-    
-    // Gender-Sensitivity/VAWC services
-    {
-      headerName: 'Gender-Sensitivity/VAWC',
-      children: [
-        {
-          headerName: 'Activities',
-          field: 'gender_sensitivity_activities',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return (
-              <button 
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
-                onClick={() => onActivityClick && onActivityClick('gender_sensitivity', params.data.hei_id, params.data.hei_name, params.value)}
-                title="Click to view program details"
-              >
-                {params.value} →
-              </button>
-            );
-          },
-        },
-        {
-          headerName: 'Students',
-          field: 'gender_sensitivity_students',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return <span className="font-medium">{params.value.toLocaleString()}</span>;
-          },
-        },
-      ],
-    },
-    
-    // Anti-Hazing
-    {
-      headerName: 'Anti-Hazing',
-      children: [
-        {
-          headerName: 'Activities',
-          field: 'anti_hazing_activities',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return (
-              <button 
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
-                onClick={() => onActivityClick && onActivityClick('anti_hazing', params.data.hei_id, params.data.hei_name, params.value)}
-                title="Click to view program details"
-              >
-                {params.value} →
-              </button>
-            );
-          },
-        },
-        {
-          headerName: 'Students',
-          field: 'anti_hazing_students',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return <span className="font-medium">{params.value.toLocaleString()}</span>;
-          },
-        },
-      ],
-    },
-    
-    // Substance-abuse campaigns
-    {
-      headerName: 'Substance-Abuse Campaigns',
-      children: [
-        {
-          headerName: 'Activities',
-          field: 'substance_abuse_activities',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return (
-              <button 
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
-                onClick={() => onActivityClick && onActivityClick('substance_abuse', params.data.hei_id, params.data.hei_name, params.value)}
-                title="Click to view program details"
-              >
-                {params.value} →
-              </button>
-            );
-          },
-        },
-        {
-          headerName: 'Students',
-          field: 'substance_abuse_students',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return <span className="font-medium">{params.value.toLocaleString()}</span>;
-          },
-        },
-      ],
-    },
-    
-    // Sexual and reproductive health (HIV/AIDS)
-    {
-      headerName: 'Sexual/Reproductive Health',
-      children: [
-        {
-          headerName: 'Activities',
-          field: 'sexual_health_activities',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return (
-              <button 
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
-                onClick={() => onActivityClick && onActivityClick('sexual_health', params.data.hei_id, params.data.hei_name, params.value)}
-                title="Click to view program details"
-              >
-                {params.value} →
-              </button>
-            );
-          },
-        },
-        {
-          headerName: 'Students',
-          field: 'sexual_health_students',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return <span className="font-medium">{params.value.toLocaleString()}</span>;
-          },
-        },
-      ],
-    },
-    
-    // Mental health / well-being/ wellness
-    {
-      headerName: 'Mental Health/Wellness',
-      children: [
-        {
-          headerName: 'Activities',
-          field: 'mental_health_activities',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return (
-              <button 
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
-                onClick={() => onActivityClick && onActivityClick('mental_health', params.data.hei_id, params.data.hei_name, params.value)}
-                title="Click to view program details"
-              >
-                {params.value} →
-              </button>
-            );
-          },
-        },
-        {
-          headerName: 'Students',
-          field: 'mental_health_students',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return <span className="font-medium">{params.value.toLocaleString()}</span>;
-          },
-        },
-      ],
-    },
-    
-    // Earthquake and Fire Drill & Philippine Disaster Risk Reduction
-    {
-      headerName: 'Disaster Risk Management',
-      children: [
-        {
-          headerName: 'Activities',
-          field: 'disaster_risk_activities',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return (
-              <button 
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-2 py-0.5 transition-all"
-                onClick={() => onActivityClick && onActivityClick('disaster_risk', params.data.hei_id, params.data.hei_name, params.value)}
-                title="Click to view program details"
-              >
-                {params.value} →
-              </button>
-            );
-          },
-        },
-        {
-          headerName: 'Students',
-          field: 'disaster_risk_students',
-          width: 100,
-          filter: 'agNumberColumnFilter',
-          cellStyle: { textAlign: 'center' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return <span className="font-medium">{params.value.toLocaleString()}</span>;
-          },
-        },
-      ],
-    },
-    
-    // Total column
+
+    // ── Total (deduplicated) ───────────────────────────────────────────────
     {
       headerName: 'Total',
       children: [
         {
           headerName: 'Activities',
           field: 'total_activities',
-          width: 100,
+          width: 110,
           filter: 'agNumberColumnFilter',
           cellStyle: { textAlign: 'center', fontWeight: 'bold' },
-          cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return <span className="font-bold text-gray-900 dark:text-white">{params.value}</span>;
-          },
+          cellRenderer: (params) => (
+            <ActivityCell
+              value={params.value}
+              onClick={() =>
+                onActivityClick?.('total', params.data.hei_id, params.data.hei_name, params.value)
+              }
+            />
+          ),
         },
         {
           headerName: 'Students',
           field: 'total_students',
-          width: 100,
+          width: 110,
           filter: 'agNumberColumnFilter',
           cellStyle: { textAlign: 'center', fontWeight: 'bold' },
           cellRenderer: (params) => {
-            if (!params.value && params.value !== 0) return <span className="text-gray-400">—</span>;
-            return <span className="font-bold text-gray-900 dark:text-white">{params.value.toLocaleString()}</span>;
+            if (params.value === null || params.value === undefined)
+              return <span className="text-gray-400">—</span>;
+            return (
+              <span className="font-bold text-gray-900 dark:text-white">
+                {params.value.toLocaleString()}
+              </span>
+            );
           },
         },
       ],
     },
-    
-    // Services/Activities Details
+
+    // ── Name preview ───────────────────────────────────────────────────────
     {
-      headerName: 'Name of Services/Activities',
+      headerName: 'Name of Services / Activities',
       field: 'services_activities_list',
-      width: 300,
+      width: 280,
       filter: 'agTextColumnFilter',
       cellRenderer: (params) => {
         if (!params.value) return <span className="text-gray-400">—</span>;
         return (
           <span className="text-sm" title={params.value}>
-            {params.value.length > 50 ? params.value.substring(0, 50) + '...' : params.value}
+            {params.value.length > 50 ? `${params.value.substring(0, 50)}…` : params.value}
           </span>
         );
       },
     },
-    
-    // Status column
+
+    // ── Status ─────────────────────────────────────────────────────────────
     {
       headerName: 'Status',
       field: 'status',
       width: 140,
       filter: 'agTextColumnFilter',
-      cellRenderer: (params) => {
-        return (
-          <div className="flex justify-center">
-            <StatusBadge status={params.value} />
-          </div>
-        );
-      },
       cellStyle: { textAlign: 'center' },
+      cellRenderer: (params) => (
+        <div className="flex justify-center">
+          <StatusBadge status={params.value} />
+        </div>
+      ),
     },
   ],
-  
-  // For backward compatibility, expose columns without handlers
-  get columns() {
-    return this.getColumns(null);
-  },
 };

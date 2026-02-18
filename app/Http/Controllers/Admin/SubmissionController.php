@@ -134,6 +134,25 @@ class SubmissionController extends Controller
 
         $submissions = array_merge($submissions, $mer3Submissions->toArray());
 
+        // Add MER4A submissions
+        $mer4aSubmissions = \App\Models\MER4ASubmission::where('hei_id', $heiId)
+            ->orderBy('academic_year', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($submission) {
+                return [
+                    'id' => $submission->id,
+                    'batch_id' => $submission->id,
+                    'annex' => 'MER4A',
+                    'academic_year' => $submission->academic_year,
+                    'status' => $submission->status,
+                    'submitted_at' => $submission->created_at,
+                    'request_notes' => $submission->request_notes ?? null,
+                ];
+            });
+
+        $submissions = array_merge($submissions, $mer4aSubmissions->toArray());
+
         foreach ($annexTypes as $code => $config) {
             $batches = $config['model']::where('hei_id', $heiId)
                 ->orderBy('academic_year', 'desc')
@@ -184,10 +203,61 @@ class SubmissionController extends Controller
     public function approve(Request $request, $id)
     {
         $validated = $request->validate([
-            'annex_type' => 'required|string|in:A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,SUMMARY',
+            'annex_type' => 'required|string|in:A,B,C,C-1,D,E,F,G,H,I,I-1,J,K,L,L-1,M,N,N-1,O,SUMMARY,MER1,MER2,MER3,MER4A',
         ]);
 
         $annexType = $validated['annex_type'];
+
+        // Handle MER forms (MER1, MER2, MER3, MER4A)
+        if (in_array($annexType, ['MER1', 'MER2', 'MER3', 'MER4A'])) {
+            $modelMap = [
+                'MER1' => \App\Models\MER1Submission::class,
+                'MER2' => \App\Models\MER2Submission::class,
+                'MER3' => \App\Models\MER3Submission::class,
+                'MER4A' => \App\Models\MER4ASubmission::class,
+            ];
+            $modelClass = $modelMap[$annexType];
+
+            DB::beginTransaction();
+            try {
+                $newSubmission = $modelClass::findOrFail($id);
+
+                if ($newSubmission->status !== 'request') {
+                    return back()->with('error', 'Only requests can be approved.');
+                }
+
+                $oldSubmission = $modelClass::where('hei_id', $newSubmission->hei_id)
+                    ->where('academic_year', $newSubmission->academic_year)
+                    ->where('status', 'published')
+                    ->first();
+
+                if ($oldSubmission) {
+                    $oldSubmission->update(['status' => 'overwritten']);
+                }
+
+                $newSubmission->update(['status' => 'published']);
+
+                CacheService::clearSubmissionCaches($newSubmission->hei_id);
+                CacheService::clearHeiCaches($newSubmission->hei_id, $newSubmission->academic_year);
+                Cache::forget('admin_dashboard_stats_' . $newSubmission->academic_year);
+
+                AuditLog::log(
+                    action: 'approved',
+                    entityType: 'Submission',
+                    entityId: $newSubmission->id,
+                    entityName: $annexType . ' - ' . $newSubmission->academic_year,
+                    description: 'Approved ' . $annexType . ' submission request for ' . $newSubmission->hei->name,
+                    oldValues: ['status' => 'request'],
+                    newValues: ['status' => 'published']
+                );
+
+                DB::commit();
+                return back()->with('success', 'Request approved successfully. Previous submission has been overwritten.');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return back()->with('error', 'Failed to approve request: ' . $e->getMessage());
+            }
+        }
 
         // Handle Summary
         if ($annexType === 'SUMMARY') {
@@ -299,11 +369,47 @@ class SubmissionController extends Controller
     public function reject(Request $request, $id)
     {
         $validated = $request->validate([
-            'annex_type' => 'required|string|in:A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,SUMMARY',
+            'annex_type' => 'required|string|in:A,B,C,C-1,D,E,F,G,H,I,I-1,J,K,L,L-1,M,N,N-1,O,SUMMARY,MER1,MER2,MER3,MER4A',
             'rejection_reason' => 'nullable|string|max:500',
         ]);
 
         $annexType = $validated['annex_type'];
+
+        // Handle MER forms (MER1, MER2, MER3, MER4A)
+        if (in_array($annexType, ['MER1', 'MER2', 'MER3', 'MER4A'])) {
+            $modelMap = [
+                'MER1' => \App\Models\MER1Submission::class,
+                'MER2' => \App\Models\MER2Submission::class,
+                'MER3' => \App\Models\MER3Submission::class,
+                'MER4A' => \App\Models\MER4ASubmission::class,
+            ];
+            $submission = $modelMap[$annexType]::findOrFail($id);
+
+            if ($submission->status !== 'request') {
+                return back()->with('error', 'Only requests can be rejected.');
+            }
+
+            $submission->update([
+                'status' => 'rejected',
+                'admin_notes' => $validated['rejection_reason'] ?? 'Rejected by admin',
+            ]);
+
+            CacheService::clearSubmissionCaches($submission->hei_id);
+            CacheService::clearHeiCaches($submission->hei_id, $submission->academic_year);
+            Cache::forget('admin_dashboard_stats_' . $submission->academic_year);
+
+            AuditLog::log(
+                action: 'rejected',
+                entityType: 'Submission',
+                entityId: $submission->id,
+                entityName: $annexType . ' - ' . $submission->academic_year,
+                description: 'Rejected ' . $annexType . ' submission request for ' . $submission->hei->name . '. Reason: ' . ($validated['rejection_reason'] ?? 'No reason provided'),
+                oldValues: ['status' => 'request'],
+                newValues: ['status' => 'rejected']
+            );
+
+            return back()->with('success', 'Request rejected successfully.');
+        }
 
         // Handle Summary
         if ($annexType === 'SUMMARY') {
@@ -430,6 +536,19 @@ class SubmissionController extends Controller
             ]);
         }
 
+        // Handle MER4A - SharedRenderer compatible format (custom-table)
+        if ($annexType === 'MER4A') {
+            $submission = \App\Models\MER4ASubmission::where('id', $batchId)
+                ->with(['sasManagementItems', 'guidanceCounselingItems'])
+                ->firstOrFail();
+
+            return response()->json([
+                'batch' => $submission,
+                'sas_management_items' => $submission->sasManagementItems,
+                'guidance_counseling_items' => $submission->guidanceCounselingItems,
+            ]);
+        }
+
         if (!FormConfigService::isValidFormType($annexType)) {
             return response()->json(['error' => 'Invalid annex type'], 400);
         }
@@ -548,6 +667,10 @@ class SubmissionController extends Controller
     {
         $models = [
             \App\Models\Summary::class,
+            \App\Models\MER1Submission::class,
+            \App\Models\MER2Submission::class,
+            \App\Models\MER3Submission::class,
+            \App\Models\MER4ASubmission::class,
             \App\Models\AnnexABatch::class,
             \App\Models\AnnexBBatch::class,
             \App\Models\AnnexCBatch::class,

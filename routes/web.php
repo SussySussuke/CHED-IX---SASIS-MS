@@ -90,6 +90,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/summary', [SummaryViewController::class, 'index'])->name('admin.summary');
         Route::get('/summary/info-orientation', [SummaryViewController::class, 'getInfoOrientationData'])->name('admin.summary.info-orientation');
         Route::get('/summary/info-orientation/{heiId}/{category}/evidence', [SummaryViewController::class, 'getInfoOrientationEvidence'])->name('admin.summary.info-orientation.evidence');
+        Route::patch('/summary/info-orientation/programs/category', [SummaryViewController::class, 'updateProgramCategory'])->name('admin.summary.program-category.update');
 
         Route::get('/ched-contacts', [CHEDContactController::class, 'index'])->name('admin.ched-contacts');
         Route::post('/ched-contacts', [CHEDContactController::class, 'store'])->name('admin.ched-contacts.store');
@@ -166,7 +167,6 @@ Route::middleware('auth')->group(function () {
         // Annex A routes
         Route::get('/annex-a/submit', [AnnexAController::class, 'create'])->name('hei.annex-a.submit');
         Route::post('/annex-a', [AnnexAController::class, 'store'])->name('hei.annex-a.store');
-        Route::get('/annex-a/history', [AnnexAController::class, 'history'])->name('hei.annex-a.history');
         Route::get('/annex-a/{batch_id}/programs', [AnnexAController::class, 'getBatchPrograms'])->name('hei.annex-a.programs');
         Route::get('/annex-a/{batch_id}/edit', [AnnexAController::class, 'edit'])->name('hei.annex-a.edit');
         Route::post('/annex-a/{batch_id}/cancel', [AnnexAController::class, 'cancel'])->name('hei.annex-a.cancel');
@@ -174,7 +174,6 @@ Route::middleware('auth')->group(function () {
         // Annex B routes
         Route::get('/annex-b/submit', [AnnexBController::class, 'create'])->name('hei.annex-b.submit');
         Route::post('/annex-b', [AnnexBController::class, 'store'])->name('hei.annex-b.store');
-        Route::get('/annex-b/history', [AnnexBController::class, 'history'])->name('hei.annex-b.history');
         Route::get('/annex-b/{batch_id}/programs', [AnnexBController::class, 'getBatchPrograms'])->name('hei.annex-b.programs');
         Route::get('/annex-b/{batch_id}/edit', [AnnexBController::class, 'edit'])->name('hei.annex-b.edit');
         Route::post('/annex-b/{batch_id}/cancel', [AnnexBController::class, 'cancel'])->name('hei.annex-b.cancel');
@@ -182,7 +181,6 @@ Route::middleware('auth')->group(function () {
         // Annex C routes
         Route::get('/annex-c/submit', [AnnexCController::class, 'create'])->name('hei.annex-c.submit');
         Route::post('/annex-c', [AnnexCController::class, 'store'])->name('hei.annex-c.store');
-        Route::get('/annex-c/history', [AnnexCController::class, 'history'])->name('hei.annex-c.history');
         Route::get('/annex-c/{batch_id}/programs', [AnnexCController::class, 'getBatchPrograms'])->name('hei.annex-c.programs');
         Route::get('/annex-c/{batch_id}/edit', [AnnexCController::class, 'edit'])->name('hei.annex-c.edit');
         Route::post('/annex-c/{batch_id}/cancel', [AnnexCController::class, 'cancel'])->name('hei.annex-c.cancel');
@@ -190,7 +188,6 @@ Route::middleware('auth')->group(function () {
         // Annex C-1 routes
         Route::get('/annex-c-1/submit', [AnnexC1Controller::class, 'create'])->name('hei.annex-c-1.submit');
         Route::post('/annex-c-1', [AnnexC1Controller::class, 'store'])->name('hei.annex-c-1.store');
-        Route::get('/annex-c-1/history', [AnnexC1Controller::class, 'history'])->name('hei.annex-c-1.history');
         Route::get('/annex-c-1/{batch_id}/programs', [AnnexC1Controller::class, 'getBatchPrograms'])->name('hei.annex-c-1.programs');
         Route::get('/annex-c-1/{batch_id}/edit', [AnnexC1Controller::class, 'edit'])->name('hei.annex-c-1.edit');
         Route::post('/annex-c-1/{batch_id}/cancel', [AnnexC1Controller::class, 'cancel'])->name('hei.annex-c-1.cancel');
@@ -198,14 +195,12 @@ Route::middleware('auth')->group(function () {
         // Annex D routes
         Route::get('/annex-d/submit', [AnnexDController::class, 'create'])->name('hei.annex-d.submit');
         Route::post('/annex-d', [AnnexDController::class, 'store'])->name('hei.annex-d.store');
-        Route::get('/annex-d/history', [AnnexDController::class, 'history'])->name('hei.annex-d.history');
         Route::get('/annex-d/{submission_id}/edit', [AnnexDController::class, 'edit'])->name('hei.annex-d.edit');
         Route::post('/annex-d/{submission_id}/cancel', [AnnexDController::class, 'cancel'])->name('hei.annex-d.cancel');
 
         // Annex E routes
         Route::get('/annex-e/submit', [AnnexEController::class, 'create'])->name('hei.annex-e.submit');
         Route::post('/annex-e', [AnnexEController::class, 'store'])->name('hei.annex-e.store');
-        Route::get('/annex-e/history', [AnnexEController::class, 'history'])->name('hei.annex-e.history');
         Route::get('/annex-e/{batch_id}/organizations', [AnnexEController::class, 'getBatchOrganizations'])->name('hei.annex-e.organizations');
         Route::get('/annex-e/{batch_id}/edit', [AnnexEController::class, 'edit'])->name('hei.annex-e.edit');
         Route::post('/annex-e/{batch_id}/cancel', [AnnexEController::class, 'cancel'])->name('hei.annex-e.cancel');
@@ -213,7 +208,6 @@ Route::middleware('auth')->group(function () {
         // Annex F routes
         Route::get('/annex-f/submit', [AnnexFController::class, 'create'])->name('hei.annex-f.submit');
         Route::post('/annex-f', [AnnexFController::class, 'store'])->name('hei.annex-f.store');
-        Route::get('/annex-f/history', [AnnexFController::class, 'history'])->name('hei.annex-f.history');
         Route::get('/annex-f/{batch_id}/activities', [AnnexFController::class, 'getBatchActivities'])->name('hei.annex-f.activities');
         Route::get('/annex-f/{batch_id}/edit', [AnnexFController::class, 'edit'])->name('hei.annex-f.edit');
         Route::post('/annex-f/{batch_id}/cancel', [AnnexFController::class, 'cancel'])->name('hei.annex-f.cancel');
@@ -221,7 +215,6 @@ Route::middleware('auth')->group(function () {
         // Annex G routes
         Route::get('/annex-g/submit', [AnnexGController::class, 'create'])->name('hei.annex-g.submit');
         Route::post('/annex-g', [AnnexGController::class, 'store'])->name('hei.annex-g.store');
-        Route::get('/annex-g/history', [AnnexGController::class, 'history'])->name('hei.annex-g.history');
         Route::get('/annex-g/{submission_id}/data', [AnnexGController::class, 'getSubmissionData'])->name('hei.annex-g.data');
         Route::get('/annex-g/{submission_id}/edit', [AnnexGController::class, 'edit'])->name('hei.annex-g.edit');
         Route::post('/annex-g/{submission_id}/cancel', [AnnexGController::class, 'cancel'])->name('hei.annex-g.cancel');
@@ -229,7 +222,6 @@ Route::middleware('auth')->group(function () {
         // Annex H routes
         Route::get('/annex-h/submit', [AnnexHController::class, 'create'])->name('hei.annex-h.submit');
         Route::post('/annex-h', [AnnexHController::class, 'store'])->name('hei.annex-h.store');
-        Route::get('/annex-h/history', [AnnexHController::class, 'history'])->name('hei.annex-h.history');
         Route::get('/annex-h/{batch_id}/data', [AnnexHController::class, 'getBatchData'])->name('hei.annex-h.data');
         Route::get('/annex-h/{batch_id}/edit', [AnnexHController::class, 'edit'])->name('hei.annex-h.edit');
         Route::post('/annex-h/{batch_id}/cancel', [AnnexHController::class, 'cancel'])->name('hei.annex-h.cancel');
@@ -237,7 +229,6 @@ Route::middleware('auth')->group(function () {
         // Annex I routes
         Route::get('/annex-i/submit', [AnnexIController::class, 'create'])->name('hei.annex-i.submit');
         Route::post('/annex-i', [AnnexIController::class, 'store'])->name('hei.annex-i.store');
-        Route::get('/annex-i/history', [AnnexIController::class, 'history'])->name('hei.annex-i.history');
         Route::get('/annex-i/{batch_id}/scholarships', [AnnexIController::class, 'getBatchScholarships'])->name('hei.annex-i.scholarships');
         Route::get('/annex-i/{batch_id}/edit', [AnnexIController::class, 'edit'])->name('hei.annex-i.edit');
         Route::post('/annex-i/{batch_id}/cancel', [AnnexIController::class, 'cancel'])->name('hei.annex-i.cancel');
@@ -245,7 +236,6 @@ Route::middleware('auth')->group(function () {
         // Annex I-1 routes
         Route::get('/annex-i-1/submit', [AnnexI1Controller::class, 'create'])->name('hei.annex-i-1.submit');
         Route::post('/annex-i-1', [AnnexI1Controller::class, 'store'])->name('hei.annex-i-1.store');
-        Route::get('/annex-i-1/history', [AnnexI1Controller::class, 'history'])->name('hei.annex-i-1.history');
         Route::get('/annex-i-1/{batch_id}/food-services', [AnnexI1Controller::class, 'getBatchFoodServices'])->name('hei.annex-i-1.food-services');
         Route::get('/annex-i-1/{batch_id}/edit', [AnnexI1Controller::class, 'edit'])->name('hei.annex-i-1.edit');
         Route::post('/annex-i-1/{batch_id}/cancel', [AnnexI1Controller::class, 'cancel'])->name('hei.annex-i-1.cancel');
@@ -253,7 +243,6 @@ Route::middleware('auth')->group(function () {
         // Annex J routes
         Route::get('/annex-j/submit', [AnnexJController::class, 'create'])->name('hei.annex-j.submit');
         Route::post('/annex-j', [AnnexJController::class, 'store'])->name('hei.annex-j.store');
-        Route::get('/annex-j/history', [AnnexJController::class, 'history'])->name('hei.annex-j.history');
         Route::get('/annex-j/{batch_id}/programs', [AnnexJController::class, 'getBatchPrograms'])->name('hei.annex-j.programs');
         Route::get('/annex-j/{batch_id}/edit', [AnnexJController::class, 'edit'])->name('hei.annex-j.edit');
         Route::post('/annex-j/{batch_id}/cancel', [AnnexJController::class, 'cancel'])->name('hei.annex-j.cancel');
@@ -261,7 +250,6 @@ Route::middleware('auth')->group(function () {
         // Annex K routes
         Route::get('/annex-k/submit', [AnnexKController::class, 'create'])->name('hei.annex-k.submit');
         Route::post('/annex-k', [AnnexKController::class, 'store'])->name('hei.annex-k.store');
-        Route::get('/annex-k/history', [AnnexKController::class, 'history'])->name('hei.annex-k.history');
         Route::get('/annex-k/{batch_id}/committees', [AnnexKController::class, 'getBatchCommittees'])->name('hei.annex-k.committees');
         Route::get('/annex-k/{batch_id}/edit', [AnnexKController::class, 'edit'])->name('hei.annex-k.edit');
         Route::post('/annex-k/{batch_id}/cancel', [AnnexKController::class, 'cancel'])->name('hei.annex-k.cancel');
@@ -269,7 +257,6 @@ Route::middleware('auth')->group(function () {
         // Annex L routes
         Route::get('/annex-l/submit', [AnnexLController::class, 'create'])->name('hei.annex-l.submit');
         Route::post('/annex-l', [AnnexLController::class, 'store'])->name('hei.annex-l.store');
-        Route::get('/annex-l/history', [AnnexLController::class, 'history'])->name('hei.annex-l.history');
         Route::get('/annex-l/{batch_id}/housing', [AnnexLController::class, 'getBatchHousing'])->name('hei.annex-l.housing');
         Route::get('/annex-l/{batch_id}/edit', [AnnexLController::class, 'edit'])->name('hei.annex-l.edit');
         Route::post('/annex-l/{batch_id}/cancel', [AnnexLController::class, 'cancel'])->name('hei.annex-l.cancel');
@@ -277,7 +264,6 @@ Route::middleware('auth')->group(function () {
         // Annex L-1 routes
         Route::get('/annex-l-1/submit', [AnnexL1Controller::class, 'create'])->name('hei.annex-l-1.submit');
         Route::post('/annex-l-1', [AnnexL1Controller::class, 'store'])->name('hei.annex-l-1.store');
-        Route::get('/annex-l-1/history', [AnnexL1Controller::class, 'history'])->name('hei.annex-l-1.history');
         Route::get('/annex-l-1/{batch_id}/international-services', [AnnexL1Controller::class, 'getBatchInternationalServices'])->name('hei.annex-l-1.international-services');
         Route::get('/annex-l-1/{batch_id}/edit', [AnnexL1Controller::class, 'edit'])->name('hei.annex-l-1.edit');
         Route::post('/annex-l-1/{batch_id}/cancel', [AnnexL1Controller::class, 'cancel'])->name('hei.annex-l-1.cancel');
@@ -285,7 +271,6 @@ Route::middleware('auth')->group(function () {
         // Annex M routes
         Route::get('/annex-m/submit', [AnnexMController::class, 'create'])->name('hei.annex-m.submit');
         Route::post('/annex-m', [AnnexMController::class, 'store'])->name('hei.annex-m.store');
-        Route::get('/annex-m/history', [AnnexMController::class, 'history'])->name('hei.annex-m.history');
         Route::get('/annex-m/{batch_id}/data', [AnnexMController::class, 'getBatchData'])->name('hei.annex-m.data');
         Route::get('/annex-m/{batch_id}/edit', [AnnexMController::class, 'edit'])->name('hei.annex-m.edit');
         Route::post('/annex-m/{batch_id}/cancel', [AnnexMController::class, 'cancel'])->name('hei.annex-m.cancel');
@@ -293,7 +278,6 @@ Route::middleware('auth')->group(function () {
         // Annex N routes
         Route::get('/annex-n/submit', [AnnexNController::class, 'create'])->name('hei.annex-n.submit');
         Route::post('/annex-n', [AnnexNController::class, 'store'])->name('hei.annex-n.store');
-        Route::get('/annex-n/history', [AnnexNController::class, 'history'])->name('hei.annex-n.history');
         Route::get('/annex-n/{batch_id}/activities', [AnnexNController::class, 'getBatchActivities'])->name('hei.annex-n.activities');
         Route::get('/annex-n/{batch_id}/edit', [AnnexNController::class, 'edit'])->name('hei.annex-n.edit');
         Route::post('/annex-n/{batch_id}/cancel', [AnnexNController::class, 'cancel'])->name('hei.annex-n.cancel');
@@ -301,7 +285,6 @@ Route::middleware('auth')->group(function () {
         // Annex N-1 routes
         Route::get('/annex-n-1/submit', [AnnexN1Controller::class, 'create'])->name('hei.annex-n-1.submit');
         Route::post('/annex-n-1', [AnnexN1Controller::class, 'store'])->name('hei.annex-n-1.store');
-        Route::get('/annex-n-1/history', [AnnexN1Controller::class, 'history'])->name('hei.annex-n-1.history');
         Route::get('/annex-n-1/{batch_id}/sports-programs', [AnnexN1Controller::class, 'getBatchSportsPrograms'])->name('hei.annex-n-1.sports-programs');
         Route::get('/annex-n-1/{batch_id}/edit', [AnnexN1Controller::class, 'edit'])->name('hei.annex-n-1.edit');
         Route::post('/annex-n-1/{batch_id}/cancel', [AnnexN1Controller::class, 'cancel'])->name('hei.annex-n-1.cancel');
@@ -309,7 +292,6 @@ Route::middleware('auth')->group(function () {
         // Annex O routes
         Route::get('/annex-o/submit', [AnnexOController::class, 'create'])->name('hei.annex-o.submit');
         Route::post('/annex-o', [AnnexOController::class, 'store'])->name('hei.annex-o.store');
-        Route::get('/annex-o/history', [AnnexOController::class, 'history'])->name('hei.annex-o.history');
         Route::get('/annex-o/{batch_id}/programs', [AnnexOController::class, 'getBatchPrograms'])->name('hei.annex-o.programs');
         Route::get('/annex-o/{batch_id}/edit', [AnnexOController::class, 'edit'])->name('hei.annex-o.edit');
         Route::post('/annex-o/{batch_id}/cancel', [AnnexOController::class, 'cancel'])->name('hei.annex-o.cancel');

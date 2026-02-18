@@ -116,18 +116,6 @@ class AnnexGController extends BaseAnnexController
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
-    public function history()
-    {
-        $submissions = AnnexGSubmission::where('hei_id', $this->getHeiId())
-            ->withCount(['editorialBoards', 'otherPublications', 'programs'])
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return inertia('HEI/AnnexG/History', [
-            'submissions' => $submissions
-        ]);
-    }
-
     public function getSubmissionData($submissionId)
     {
         $submission = AnnexGSubmission::where('submission_id', $submissionId)->first();

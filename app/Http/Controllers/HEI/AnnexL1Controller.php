@@ -64,18 +64,6 @@ class AnnexL1Controller extends BaseAnnexController
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
 
-    public function history()
-    {
-        $batches = AnnexL1Batch::where('hei_id', $this->getHeiId())
-            ->withCount('internationalServices')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return inertia('HEI/AnnexL1/History', [
-            'batches' => $batches
-        ]);
-    }
-
     public function getBatchInternationalServices($batchId)
     {
         $batch = AnnexL1Batch::where('batch_id', $batchId)->first();
