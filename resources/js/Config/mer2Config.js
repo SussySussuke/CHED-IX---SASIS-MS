@@ -16,6 +16,211 @@
  */
 
 /**
+ * Predefined Position/Designation Options for Student Affairs Personnel
+ * 
+ * Comprehensive list of common positions in Student Affairs offices across HEIs.
+ * Users can select from these options OR type custom values.
+ * 
+ * Organized by functional area for easier reference:
+ * - Guidance & Counseling
+ * - Career Services & Placement
+ * - Health & Medical Services
+ * - Student Development & Activities
+ * - Student Welfare & Support
+ * - Safety & Security
+ * - Administrative & Registrar
+ * - Special Services
+ */
+export const POSITION_DESIGNATION_OPTIONS = [
+  // === GUIDANCE & COUNSELING ===
+  'Registered Guidance Counselor',
+  'Guidance Counselor',
+  'School Counselor',
+  'Guidance & Counseling Personnel',
+  'Psychologist',
+  'Clinical Psychologist',
+  'Psychological Services Personnel',
+  'Mental Health Counselor',
+  'Academic Advisor',
+  'Student Success Advisor',
+  
+  // === CAREER SERVICES & PLACEMENT ===
+  'Career Guidance Officer',
+  'Career Counselor',
+  'Career Development Specialist',
+  'Placement Officer',
+  'Job Placement Coordinator',
+  'Alumni Relations Officer',
+  'Internship Coordinator',
+  'OJT Coordinator',
+  'Practicum Coordinator',
+  'Industry Linkages Officer',
+  'Tracer Study Coordinator',
+  
+  // === HEALTH & MEDICAL SERVICES ===
+  'Physician',
+  'School Physician',
+  'Medical Officer',
+  'Dentist',
+  'School Dentist',
+  'Dental Health Officer',
+  'Registered Nurse',
+  'School Nurse',
+  'Nursing Personnel',
+  'Medical Technologist',
+  'Pharmacist',
+  'Pharmacy Personnel',
+  'Nutritionist-Dietitian',
+  'Health Services Coordinator',
+  'Medical Records Officer',
+  'First Aid Officer',
+  'Health Education Officer',
+  'Sanitation Officer',
+  
+  // === STUDENT DEVELOPMENT & ACTIVITIES ===
+  'Student Activities Coordinator',
+  'Student Organizations Advisor',
+  'Student Leadership Development Officer',
+  'Campus Ministry Personnel',
+  'Chaplain',
+  'Multi-faith Services Personnel',
+  'Religious Affairs Coordinator',
+  'Cultural Affairs Officer',
+  'Cultural Activities Coordinator',
+  'Arts & Culture Personnel',
+  'Sports Development Officer',
+  'Athletics Coordinator',
+  'Sports & Recreation Personnel',
+  'Varsity Coach',
+  'Physical Education Instructor',
+  'Student Publication Advisor',
+  'Campus Journalism Adviser',
+  'Student Media Coordinator',
+  'Community Extension Officer',
+  'Community Service Coordinator',
+  'Civic Welfare Training Officer',
+  'National Service Training Program (NSTP) Coordinator',
+  'Reserve Officers Training Corps (ROTC) Coordinator',
+  
+  // === STUDENT WELFARE & SUPPORT ===
+  'Student Welfare Officer',
+  'Student Services Coordinator',
+  'Student Assistance Officer',
+  'Student Support Services Personnel',
+  'Scholarship Coordinator',
+  'Scholarship Officer',
+  'Financial Aid Officer',
+  'Student Grants Personnel',
+  'Student Discipline Officer',
+  'Discipline & Conduct Officer',
+  'Student Affairs Officer',
+  'Student Development Officer',
+  'Student Records Officer',
+  'Student Information Officer',
+  
+  // === HOUSING & RESIDENTIAL SERVICES ===
+  'Housing Officer',
+  'Dormitory Manager',
+  'Dormitory Supervisor',
+  'Residence Hall Director',
+  'Residential Life Coordinator',
+  'Dorm Personnel',
+  'Hostel Manager',
+  
+  // === SPECIAL SERVICES & INCLUSION ===
+  'Special Education (SPED) Coordinator',
+  'Persons with Disabilities (PWD) Services Coordinator',
+  'Disability Support Services Officer',
+  'Inclusive Education Specialist',
+  'Learning Support Specialist',
+  'Students with Special Needs Coordinator',
+  'Accessibility Services Officer',
+  'Gender & Development (GAD) Focal Person',
+  'Gender Sensitivity Officer',
+  'Anti-Sexual Harassment Officer',
+  'Safe Spaces Officer',
+  'Diversity & Inclusion Officer',
+  'International Students Coordinator',
+  'Foreign Students Services Officer',
+  'Indigenous Peoples (IP) Education Officer',
+  
+  // === CRISIS & EMERGENCY SERVICES ===
+  'Crisis Intervention Officer',
+  'Emergency Response Coordinator',
+  'Disaster Risk Reduction Management (DRRM) Officer',
+  'Student Safety Officer',
+  'Campus Security Officer',
+  'Security Personnel',
+  'Safety Officer',
+  'Traffic & Parking Enforcer',
+  
+  // === FOOD & NUTRITION SERVICES ===
+  'Food Service Manager',
+  'Cafeteria Manager',
+  'Canteen Manager',
+  'Food Service Personnel',
+  'Food Safety Officer',
+  'Nutrition Program Coordinator',
+  
+  // === ADMINISTRATIVE & REGISTRAR ===
+  'Registrar',
+  'Assistant Registrar',
+  'Registrar Personnel',
+  'Admission Officer',
+  'Admissions Coordinator',
+  'Admission Personnel',
+  'Enrollment Officer',
+  'Records Officer',
+  'Evaluation Officer',
+  'Credentials Evaluator',
+  'Student Records Custodian',
+  
+  // === PEER SUPPORT & STUDENT GOVERNANCE ===
+  'Student Government Adviser',
+  'Student Council Adviser',
+  'Student Governance Coordinator',
+  'Peer Counselor Coordinator',
+  'Peer Support Program Coordinator',
+  'Student Ambassador Coordinator',
+  'Student Volunteer Coordinator',
+  
+  // === TESTING & ASSESSMENT ===
+  'Testing Coordinator',
+  'Psychological Testing Officer',
+  'Assessment Specialist',
+  'Learning Assessment Officer',
+  
+  // === OUTREACH & PARTNERSHIPS ===
+  'Student Outreach Officer',
+  'Partnership & Linkages Officer',
+  'External Relations Officer',
+  'Student Recruitment Officer',
+  'Marketing & Promotions Officer',
+  
+  // === TECHNOLOGY & INNOVATION ===
+  'Student Portal Administrator',
+  'Student Systems Coordinator',
+  'E-Services Officer',
+  'Innovation & Entrepreneurship Officer',
+  'Startup Incubation Coordinator',
+  
+  // === GENERAL/OTHER ===
+  'Dean of Student Affairs',
+  'Associate Dean of Student Affairs',
+  'Assistant Dean of Student Affairs',
+  'Director of Student Services',
+  'Student Affairs Coordinator',
+  'Student Services Head',
+  'Student Development Head',
+  'Administrative Assistant',
+  'Administrative Staff',
+  'Office Staff',
+  'Support Staff',
+  'Utility Worker',
+  'Maintenance Personnel',
+];
+
+/**
  * Base column definition used by all 4 tables
  * This is the DRY approach - define once, reuse 4 times
  */
@@ -30,9 +235,12 @@ const BASE_PERSONNEL_COLUMNS = [
   {
     field: 'position_designation',
     headerName: 'Position/Designation',
+    type: 'select', // Custom select editor with autocomplete
+    selectOptions: POSITION_DESIGNATION_OPTIONS,
+    allowCustom: true, // Allow users to type custom positions
     editable: true,
-    minWidth: 180,
-    placeholder: 'e.g., Guidance Counselor'
+    minWidth: 250,
+    placeholder: 'Select or type position'
   },
   {
     field: 'tenure_nature_of_appointment',

@@ -17,6 +17,7 @@ import { MER1_CONFIG } from '../../Config/mer1Config';
 import FormSelector from '../Forms/FormSelector';
 import { buildFormOptionsGrouped } from '../../Config/formConfig';
 import { getFormRoute } from '../../Config/nonAnnexForms';
+import { SelectCellEditor } from '../AGGrid';
 
 /**
  * SharedFormCreate - Universal form component for MER1 and similar multi-section forms
@@ -306,7 +307,17 @@ const SharedFormCreate = ({
         baseCol.headerClass = 'ag-header-group-cell-with-group';
       }
 
-      if (col.type === 'numeric') {
+      if (col.type === 'select') {
+        // Custom select editor with autocomplete
+        baseCol.cellEditor = 'SelectCellEditor'; // Reference by string name
+        baseCol.cellEditorParams = {
+          selectOptions: col.selectOptions || [],
+          allowCustom: col.allowCustom !== false, // Default to true
+          placeholder: col.placeholder || 'Select or type...'
+        };
+        // Pass the column definition to the editor for access to config
+        baseCol.cellEditorParams.colDef = col;
+      } else if (col.type === 'numeric') {
         baseCol.valueParser = params => {
           let val = params.newValue;
           // If maxLength is specified in config, truncate the value
@@ -385,6 +396,11 @@ const SharedFormCreate = ({
           }}
           height="300px"
           autoHeightForSmallData={true}
+          gridOptions={{
+            components: {
+              SelectCellEditor: SelectCellEditor
+            }
+          }}
         />
         
         {/* Add Row Button + Summary Row (for MER2 tables) */}
