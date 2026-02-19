@@ -1,12 +1,14 @@
 import { profileConfig } from './profileConfig.jsx';
 import { personnelConfig } from './personnelConfig.jsx';
 import { infoOrientationConfig } from './infoOrientationConfig.jsx';
+import { guidanceCounsellingConfig } from './guidanceCounsellingConfig.jsx';
 
 export const summaryConfig = {
   sections: {
-    '1A-Profile':         profileConfig,
-    '1B-Personnel':       personnelConfig,
-    '2-Info-Orientation': infoOrientationConfig,
+    '1A-Profile':           profileConfig,
+    '1B-Personnel':         personnelConfig,
+    '2-Info-Orientation':   infoOrientationConfig,
+    '3-GuidanceCounselling': guidanceCounsellingConfig,
   },
 
   gridDefaults: {

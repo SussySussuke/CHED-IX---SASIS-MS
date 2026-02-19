@@ -16,6 +16,10 @@ import {
   PERSONNEL_CATEGORY_LABELS,
   PERSONNEL_CATEGORY_KEYS,
 } from '../../Config/summaryView/personnelConfig';
+import {
+  GUIDANCE_COUNSELLING_CATEGORY_LABELS,
+  GUIDANCE_COUNSELLING_CATEGORY_KEYS,
+} from '../../Config/summaryView/guidanceCounsellingConfig';
 
 // ─── Info-Orientation drilldown columns ───────────────────────────────────────
 const DRILLDOWN_COLUMNS = [
@@ -211,6 +215,109 @@ const PERSONNEL_RECATEGORIZE_OPTIONS = PERSONNEL_CATEGORY_KEYS.map((key) => ({
   label: PERSONNEL_CATEGORY_LABELS[key],
 }));
 
+// ─── Guidance Counselling drilldown columns ───────────────────────────────────
+const GUIDANCE_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Title',
+    field: 'title',
+    flex: 2,
+    minWidth: 250,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Venue',
+    field: 'venue',
+    flex: 1,
+    minWidth: 150,
+  },
+  {
+    headerName: 'Date',
+    field: 'implementation_date',
+    width: 130,
+    valueFormatter: (params) => {
+      if (!params.value) return '—';
+      return new Date(params.value).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      });
+    },
+  },
+  {
+    headerName: 'Target Group',
+    field: 'target_group',
+    flex: 1,
+    minWidth: 150,
+  },
+  {
+    headerName: 'Face-to-Face',
+    field: 'participants_face_to_face',
+    width: 120,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Online',
+    field: 'participants_online',
+    width: 100,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Total',
+    field: 'total_participants',
+    width: 100,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Organizer',
+    field: 'organizer',
+    flex: 1,
+    minWidth: 150,
+  },
+  {
+    headerName: 'Category',
+    field: 'assigned_categories',
+    minWidth: 220,
+    flex: 1,
+    sortable: false,
+    wrapText: true,
+    autoHeight: true,
+    cellRenderer: (params) => {
+      const cats = params.value;
+      if (!cats || cats.length === 0) return <span className="text-gray-400">—</span>;
+      return (
+        <div className="flex flex-wrap gap-1 py-1">
+          {cats.map((cat) => {
+            const isOther = cat === 'others';
+            return (
+              <span
+                key={cat}
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  isOther
+                    ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300'
+                    : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                }`}
+              >
+                {GUIDANCE_COUNSELLING_CATEGORY_LABELS[cat] ?? cat}
+              </span>
+            );
+          })}
+        </div>
+      );
+    },
+  },
+];
+
+// ─── Category options for Guidance Counselling recategorize dropdown ──────────
+const GUIDANCE_RECATEGORIZE_OPTIONS = GUIDANCE_COUNSELLING_CATEGORY_KEYS.map((key) => ({
+  value: key,
+  label: GUIDANCE_COUNSELLING_CATEGORY_LABELS[key],
+}));
+
 // ─── Blank modal state ────────────────────────────────────────────────────────
 const CLOSED_MODAL = {
   isOpen: false,
@@ -232,6 +339,7 @@ const SummaryView = ({
   // Separate drilldown state per section type
   const [infoDrilldown, setInfoDrilldown] = useState(CLOSED_MODAL);
   const [personnelDrilldown, setPersonnelDrilldown] = useState(CLOSED_MODAL);
+  const [guidanceDrilldown, setGuidanceDrilldown] = useState(CLOSED_MODAL);
 
   // ── Year change ────────────────────────────────────────────────────────────
   const handleYearChange = (e) => {
@@ -276,13 +384,25 @@ const SummaryView = ({
       } finally {
         setLoading(false);
       }
+    } else if (sectionId === '3-GuidanceCounselling' && selectedYear) {
+      setLoading(true);
+      try {
+        const res = await fetch(`/admin/summary/guidance-counselling?year=${selectedYear}`);
+        const result = await res.json();
+        setSectionData(result.data ?? []);
+      } catch {
+        setSectionData([]);
+      } finally {
+        setLoading(false);
+      }
     } else {
       setSectionData(summaries);
     }
   };
 
   useEffect(() => {
-    if (activeSection !== '2-Info-Orientation' && activeSection !== '1B-Personnel') {
+    const dynamicSections = ['2-Info-Orientation', '1B-Personnel', '3-GuidanceCounselling'];
+    if (!dynamicSections.includes(activeSection)) {
       setSectionData(summaries);
     }
   }, [summaries, activeSection]);
@@ -292,6 +412,8 @@ const SummaryView = ({
       handleSectionChange('2-Info-Orientation');
     } else if (activeSection === '1B-Personnel' && selectedYear) {
       handleSectionChange('1B-Personnel');
+    } else if (activeSection === '3-GuidanceCounselling' && selectedYear) {
+      handleSectionChange('3-GuidanceCounselling');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]);
@@ -310,6 +432,22 @@ const SummaryView = ({
 
   const handleRecategorized = () => {
     handleSectionChange('2-Info-Orientation');
+  };
+
+  // ── Guidance Counselling click handlers ─────────────────────────────────────
+  const handleGuidanceActivityClick = (category, heiId, heiName, count) => {
+    if (count === null || count === undefined) return;
+    if (count === 0 && category !== 'total') {
+      setGuidanceDrilldown({ isOpen: true, heiId, heiName, category: 'total', zeroTargetCategory: category });
+    } else {
+      setGuidanceDrilldown({ isOpen: true, heiId, heiName, category, zeroTargetCategory: null });
+    }
+  };
+
+  const closeGuidanceDrilldown = () => setGuidanceDrilldown(CLOSED_MODAL);
+
+  const handleGuidanceRecategorized = () => {
+    handleSectionChange('3-GuidanceCounselling');
   };
 
   // ── Personnel click handlers ───────────────────────────────────────────────
@@ -331,6 +469,9 @@ const SummaryView = ({
     }
     if (activeSection === '1B-Personnel') {
       return summaryConfig.getSection(activeSection).getColumns(handlePersonnelCountClick);
+    }
+    if (activeSection === '3-GuidanceCounselling') {
+      return summaryConfig.getSection(activeSection).getColumns(handleGuidanceActivityClick);
     }
     return summaryConfig.getSectionColumns(activeSection);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -369,6 +510,40 @@ const SummaryView = ({
       recordIdField: 'id',
     };
   }, [infoDrilldown, selectedYear]);
+
+  // ── Guidance Counselling modal props ─────────────────────────────────────────
+  const guidanceDrilldownProps = useMemo(() => {
+    const { heiId, heiName, category, zeroTargetCategory } = guidanceDrilldown;
+    const isTotal  = category === 'total';
+    const isOthers = category === 'others';
+
+    const fetchUrl = heiId && category && selectedYear
+      ? `/admin/summary/guidance-counselling/${heiId}/${category}/evidence?year=${selectedYear}`
+      : null;
+
+    const totalFetchUrl = (!isTotal && heiId && selectedYear)
+      ? `/admin/summary/guidance-counselling/${heiId}/total/evidence?year=${selectedYear}`
+      : null;
+
+    const subtitle = zeroTargetCategory
+      ? `Academic Year ${selectedYear} — Assign records into: ${GUIDANCE_COUNSELLING_CATEGORY_LABELS[zeroTargetCategory] ?? zeroTargetCategory}`
+      : `Academic Year ${selectedYear}`;
+
+    return {
+      title:           heiName,
+      subtitle,
+      categoryLabel:   GUIDANCE_COUNSELLING_CATEGORY_LABELS[category] ?? category,
+      isMiscellaneous: isOthers,
+      isTotal,
+      fetchUrl,
+      totalFetchUrl,
+      recategorizeUrl: isTotal ? null : '/admin/summary/guidance-counselling/category',
+      columnDefs:      GUIDANCE_DRILLDOWN_COLUMNS,
+      categoryOptions: GUIDANCE_RECATEGORIZE_OPTIONS,
+      recordTypeField: 'id',
+      recordIdField:   'id',
+    };
+  }, [guidanceDrilldown, selectedYear]);
 
   // ── Personnel modal props ─────────────────────────────────────────────────
   const personnelDrilldownProps = useMemo(() => {
@@ -471,6 +646,19 @@ const SummaryView = ({
               </div>
             )}
 
+            {activeSection === '3-GuidanceCounselling' && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <IoInformationCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-semibold">Tip:</span>{' '}
+                    Click any activity count to view program details from Annex B (Guidance and Counseling Service).
+                    Yellow column shows activities that couldn't be automatically matched to a service type.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {activeSection === '1B-Personnel' && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
                 <div className="flex items-start gap-3">
@@ -512,6 +700,14 @@ const SummaryView = ({
         isOpen={personnelDrilldown.isOpen}
         onClose={closePersonnelDrilldown}
         onRecategorized={handlePersonnelRecategorized}
+      />
+
+      {/* ── Guidance Counselling Drilldown Modal ── */}
+      <RecordsModal
+        {...guidanceDrilldownProps}
+        isOpen={guidanceDrilldown.isOpen}
+        onClose={closeGuidanceDrilldown}
+        onRecategorized={handleGuidanceRecategorized}
       />
     </AdminLayout>
   );

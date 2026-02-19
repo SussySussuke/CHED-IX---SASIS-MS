@@ -13,6 +13,7 @@ use App\Models\ProgramCategoryOverride;
 use App\Models\MER2Submission;
 use App\Models\MER1Submission;
 use App\Models\PersonnelCategoryOverride;
+use App\Models\GuidanceCounsellingCategoryOverride;
 use Illuminate\Http\Request;
 
 class SummaryViewController extends Controller
@@ -852,6 +853,305 @@ class SummaryViewController extends Controller
         ];
 
         foreach (array_keys(self::CATEGORY_KEYWORDS) as $cat) {
+            $row["{$cat}_activities"] = 0;
+            $row["{$cat}_students"]   = 0;
+        }
+
+        return $row;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Guidance Counselling — keyword map
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private const GUIDANCE_COUNSELLING_KEYWORDS = [
+        'individual_inventory' => [
+            'individual inventory', 'individual record', 'case study', 'intake form',
+            'personal data', 'student record', 'cumulative record',
+        ],
+        'counseling_service' => [
+            'counseling', 'counselling', 'individual counseling', 'group counseling',
+            'crisis counseling', 'crisis intervention', 'psychosocial',
+        ],
+        'referral' => [
+            'referral', 'refer', 'endorsement', 'case referral',
+        ],
+        'testing_appraisal' => [
+            'testing', 'appraisal', 'psychological test', 'aptitude', 'interest inventory',
+            'assessment', 'evaluation test', 'intelligence test', 'personality test',
+        ],
+        'follow_up' => [
+            'follow-up', 'follow up', 'followup', 'monitoring', 'progress check',
+        ],
+        'peer_facilitating' => [
+            'peer facilitat', 'peer helper', 'peer counselor', 'peer educator',
+            'peer support', 'peer program', 'peer activity',
+        ],
+    ];
+
+    private function matchGuidanceCounsellingCategories(string $searchText): array
+    {
+        $matched = [];
+        $lower   = strtolower($searchText);
+
+        foreach (self::GUIDANCE_COUNSELLING_KEYWORDS as $category => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($lower, $keyword)) {
+                    $matched[] = $category;
+                    break;
+                }
+            }
+        }
+
+        return $matched;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Guidance Counselling aggregated data  (Annex B only)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /admin/summary/guidance-counselling?year=XXXX
+     */
+    public function getGuidanceCounsellingData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexBBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $annexBBatches = AnnexBBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with('programs')
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($annexBBatches, $selectedYear) {
+                $batch = $annexBBatches->get($hei->id);
+
+                if (!$batch || $batch->programs->isEmpty()) {
+                    return $this->emptyGuidanceCounsellingRow($hei, $selectedYear);
+                }
+
+                // Fetch overrides for this batch's programs
+                $programIds = $batch->programs->pluck('id')->toArray();
+                $overrides  = GuidanceCounsellingCategoryOverride::whereIn('program_id', $programIds)
+                    ->get()->keyBy('program_id');
+
+                $counts = array_fill_keys(array_keys(self::GUIDANCE_COUNSELLING_KEYWORDS), [
+                    'activities' => 0,
+                    'students'   => 0,
+                ]);
+                $counts['others'] = ['activities' => 0, 'students' => 0];
+
+                $totalActivities = 0;
+                $totalStudents   = 0;
+                $otherTitles     = [];
+
+                foreach ($batch->programs as $program) {
+                    $override = $overrides->get($program->id);
+                    $students = ($program->participants_online ?? 0)
+                              + ($program->participants_face_to_face ?? 0);
+
+                    $totalActivities++;
+                    $totalStudents += $students;
+
+                    if ($override && !empty($override->manual_categories)) {
+                        foreach ($override->manual_categories as $cat) {
+                            if (isset($counts[$cat])) {
+                                $counts[$cat]['activities']++;
+                                $counts[$cat]['students'] += $students;
+                            }
+                        }
+                    } else {
+                        $searchText = strtolower($program->title . ' ' . ($program->target_group ?? ''));
+                        $matched    = $this->matchGuidanceCounsellingCategories($searchText);
+
+                        if (empty($matched)) {
+                            $counts['others']['activities']++;
+                            $counts['others']['students'] += $students;
+                            $otherTitles[] = $program->title;
+                        } else {
+                            foreach ($matched as $cat) {
+                                $counts[$cat]['activities']++;
+                                $counts[$cat]['students'] += $students;
+                            }
+                        }
+                    }
+                }
+
+                $row = [
+                    'hei_id'           => $hei->id,
+                    'hei_name'         => $hei->name,
+                    'hei_code'         => $hei->code,
+                    'status'           => $batch->status,
+                    'has_submission'   => true,
+                    'total_activities' => $totalActivities,
+                    'total_students'   => $totalStudents,
+                    'others_titles'    =>
+                        implode(', ', array_slice($otherTitles, 0, 3))
+                        . (count($otherTitles) > 3 ? '…' : ''),
+                ];
+
+                foreach ($counts as $cat => $data) {
+                    $row["{$cat}_activities"] = $data['activities'];
+                    $row["{$cat}_students"]   = $data['students'];
+                }
+
+                return $row;
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    /**
+     * GET /admin/summary/guidance-counselling/{heiId}/{category}/evidence?year=XXXX
+     */
+    public function getGuidanceCounsellingEvidence(Request $request, $heiId, $category)
+    {
+        $selectedYear = $request->query('year');
+
+        if (!$selectedYear) {
+            return response()->json(['error' => 'Academic year is required', 'records' => []], 400);
+        }
+
+        $hei = HEI::find($heiId);
+        if (!$hei) {
+            return response()->json(['error' => 'HEI not found', 'records' => []], 404);
+        }
+
+        $validCategories = array_merge(array_keys(self::GUIDANCE_COUNSELLING_KEYWORDS), ['others', 'total']);
+        if (!in_array($category, $validCategories)) {
+            return response()->json(['error' => 'Invalid category', 'records' => []], 422);
+        }
+
+        $programs = AnnexBProgram::whereHas('batch', fn($q) =>
+            $q->where('hei_id', $heiId)
+              ->where('academic_year', $selectedYear)
+              ->whereIn('status', ['published', 'submitted', 'request'])
+        )->get();
+
+        $programIds = $programs->pluck('id')->toArray();
+        $overrides  = GuidanceCounsellingCategoryOverride::whereIn('program_id', $programIds)
+            ->get()->keyBy('program_id');
+
+        $records = [];
+
+        foreach ($programs as $program) {
+            $override         = $overrides->get($program->id);
+            $manualCategories = $override?->manual_categories ?? [];
+
+            if (!empty($manualCategories)) {
+                $assignedCategories = $manualCategories;
+            } else {
+                $searchText = strtolower($program->title . ' ' . ($program->target_group ?? ''));
+                $matched    = $this->matchGuidanceCounsellingCategories($searchText);
+                $assignedCategories = empty($matched) ? ['others'] : $matched;
+            }
+
+            $include = false;
+            if ($category === 'total') {
+                $include = true;
+            } elseif ($category === 'others') {
+                $include = in_array('others', $assignedCategories);
+            } else {
+                $include = in_array($category, $assignedCategories);
+            }
+
+            if ($include) {
+                $records[] = [
+                    'id'                        => $program->id,
+                    'title'                     => $program->title,
+                    'venue'                     => $program->venue,
+                    'implementation_date'       => $program->implementation_date?->format('Y-m-d'),
+                    'target_group'              => $program->target_group,
+                    'participants_online'       => $program->participants_online ?? 0,
+                    'participants_face_to_face' => $program->participants_face_to_face ?? 0,
+                    'total_participants'        =>
+                        ($program->participants_online ?? 0) + ($program->participants_face_to_face ?? 0),
+                    'organizer'                 => $program->organizer,
+                    'remarks'                   => $program->remarks,
+                    'manual_categories'         => $manualCategories,
+                    'assigned_categories'       => $assignedCategories,
+                ];
+            }
+        }
+
+        usort($records, fn($a, $b) =>
+            strcmp($b['implementation_date'] ?? '', $a['implementation_date'] ?? '')
+        );
+
+        return response()->json([
+            'hei_name'    => $hei->name,
+            'category'    => $category,
+            'records'     => $records,
+            'total_count' => count($records),
+        ]);
+    }
+
+    /**
+     * PATCH /admin/summary/guidance-counselling/category
+     */
+    public function updateGuidanceCounsellingCategory(Request $request)
+    {
+        $validCategories = implode(',', array_keys(self::GUIDANCE_COUNSELLING_KEYWORDS));
+
+        $request->validate([
+            'record_id'    => ['required', 'integer', 'min:1'],
+            'categories'   => ['nullable', 'array'],
+            'categories.*' => ['string', 'in:' . $validCategories],
+        ]);
+
+        $programId  = $request->input('record_id');
+        $categories = $request->input('categories');
+
+        if (empty($categories)) {
+            GuidanceCounsellingCategoryOverride::where('program_id', $programId)->delete();
+        } else {
+            GuidanceCounsellingCategoryOverride::updateOrCreate(
+                ['program_id' => $programId],
+                [
+                    'manual_categories' => $categories,
+                    'overridden_by'     => $request->user()->id,
+                    'overridden_at'     => now(),
+                ]
+            );
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    private function emptyGuidanceCounsellingRow(HEI $hei, string $year): array
+    {
+        $row = [
+            'hei_id'           => $hei->id,
+            'hei_name'         => $hei->name,
+            'hei_code'         => $hei->code,
+            'status'           => 'not_submitted',
+            'has_submission'   => false,
+            'total_activities' => 0,
+            'total_students'   => 0,
+            'others_titles'    => '',
+            'others_activities'=> 0,
+            'others_students'  => 0,
+        ];
+
+        foreach (array_keys(self::GUIDANCE_COUNSELLING_KEYWORDS) as $cat) {
             $row["{$cat}_activities"] = 0;
             $row["{$cat}_students"]   = 0;
         }

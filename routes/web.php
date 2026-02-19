@@ -95,6 +95,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/summary/info-orientation/{heiId}/{category}/evidence', [SummaryViewController::class, 'getInfoOrientationEvidence'])->name('admin.summary.info-orientation.evidence');
         Route::patch('/summary/info-orientation/programs/category', [SummaryViewController::class, 'updateProgramCategory'])->name('admin.summary.program-category.update');
 
+        Route::get('/summary/guidance-counselling', [SummaryViewController::class, 'getGuidanceCounsellingData'])->name('admin.summary.guidance-counselling');
+        Route::get('/summary/guidance-counselling/{heiId}/{category}/evidence', [SummaryViewController::class, 'getGuidanceCounsellingEvidence'])->name('admin.summary.guidance-counselling.evidence');
+        Route::patch('/summary/guidance-counselling/category', [SummaryViewController::class, 'updateGuidanceCounsellingCategory'])->name('admin.summary.guidance-counselling-category.update');
+
         Route::get('/ched-contacts', [CHEDContactController::class, 'index'])->name('admin.ched-contacts');
         Route::post('/ched-contacts', [CHEDContactController::class, 'store'])->name('admin.ched-contacts.store');
         Route::put('/ched-contacts/{contact}', [CHEDContactController::class, 'update'])->name('admin.ched-contacts.update');

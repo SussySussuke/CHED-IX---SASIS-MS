@@ -1,0 +1,351 @@
+================================================================================
+TASK: CREATE SECTION 4-CareerJob FOR ADMIN SUMMARY VIEW
+================================================================================
+DATE: 2026-02-19
+STATUS: 🔲 NOT STARTED — analysis complete, no code written yet
+AI: Joshua Graham (Claude Sonnet 4.6)
+
+================================================================================
+SYSTEM OVERVIEW — READ THIS FIRST
+================================================================================
+
+This is a Laravel + Inertia + React system for CHED (Commission on Higher
+Education) to collect and summarize Student Affairs and Services (SAS) data
+from HEIs (Higher Education Institutions).
+
+The Admin Summary View (/admin/summary) is an AG Grid page where admins can
+select different "sections" to view aggregated data across all HEIs.
+
+Existing sections:
+  1A-Profile         — from Summary model (static Inertia props)
+  1B-Personnel       — from MER2 submissions, keyword-matched by position
+  2-Info-Orientation — from Annex A + B programs, keyword-matched by title
+  3-GuidanceCounselling — from Annex B programs only, keyword-matched by title
+  4-CareerJob        — TO BE BUILT (Annex C programs, keyword-matched by title)
+
+================================================================================
+ARCHITECTURE PATTERN — ALL SECTIONS FOLLOW THIS
+================================================================================
+
+Every dynamic section (not 1A-Profile) works identically:
+
+BACKEND (SummaryViewController.php):
+  1. Keyword constant map: private const CAREER_JOB_KEYWORDS = [...]
+  2. Matcher method: matchCareerJobCategories(string $text): array
+  3. Aggregation method: getCareerJobData(Request) → JSON { data: [...] }
+  4. Evidence method: getCareerJobEvidence(Request, $heiId, $category) → JSON { records: [...] }
+  5. Override PATCH method: updateCareerJobCategory(Request) → JSON { success: true }
+  6. Empty row helper: emptyCareerJobRow(HEI, string): array
+
+OVERRIDE TABLE: Dedicated table, one row per Annex C program ID
+  Model: CareerJobCategoryOverride (to be created)
+  Table: career_job_category_overrides
+  Columns: id, program_id (FK to annex_c_programs.id), manual_categories (JSON),
+           overridden_by (FK to users.id), overridden_at, timestamps
+
+FRONTEND:
+  1. Config file: resources/js/Config/summaryView/careerJobConfig.jsx
+     - Exports: CAREER_JOB_CATEGORY_KEYS, CAREER_JOB_CATEGORY_LABELS
+     - Exports: careerJobConfig object with sectionId, sectionTitle, getColumns()
+  2. summaryConfig.js — register '4-CareerJob': careerJobConfig
+  3. index.js — export CAREER_JOB_CATEGORY_KEYS, CAREER_JOB_CATEGORY_LABELS, careerJobConfig
+  4. SummaryView.jsx — wire up fetch, state, handlers, modal, tip banner
+
+ROUTES (web.php, inside admin middleware):
+  GET  /admin/summary/career-job
+  GET  /admin/summary/career-job/{heiId}/{category}/evidence
+  PATCH /admin/summary/career-job/category
+
+================================================================================
+DATA SOURCE — ANNEX C
+================================================================================
+
+Table: annex_c_programs
+Model: AnnexCProgram (app/Models/AnnexCProgram.php)
+Batch: AnnexCBatch (app/Models/AnnexCBatch.php)
+Relationship: HEI → AnnexCBatch (hei_id) → AnnexCProgram (batch_id)
+
+Fields on AnnexCProgram:
+  - batch_id (UUID FK to annex_c_batches.batch_id)
+  - title (TEXT) ← THE ONLY FIELD USED FOR KEYWORD MATCHING
+  - venue (TEXT)
+  - implementation_date (DATE)
+  - participants_online (INTEGER)
+  - participants_face_to_face (INTEGER)
+  - organizer (TEXT)
+  - remarks (TEXT, nullable)
+
+CRITICAL DIFFERENCE FROM ANNEX B:
+  Annex C has NO target_group field.
+  Keyword matching is title-ONLY (not title + target_group like Info-Orientation).
+
+Student count = participants_online + participants_face_to_face
+
+Batch statuses to include: 'published', 'submitted', 'request'
+
+================================================================================
+CATEGORIES — 4 SERVICE TYPES + OTHERS + TOTAL
+================================================================================
+
+The columns your supervisor wants correspond to these 4 government-mandated
+Career and Job Placement activity types:
+
+KEY                        DISPLAY NAME (exact column header)
+─────────────────────────  ────────────────────────────────────────────────────
+labor_empowerment          Labor Empowerment and Career Guidance Conference
+                           for All Graduating Students (per RA 11551)
+job_fairs                  Job Fairs in Coordination with DOLE Regional
+                           Offices and PESOs
+philJobNet                 Registration of Graduating Students in
+                           PhilJobNet Portal
+career_counseling          Career Vocational and Employment Counseling
+others                     Others (please specify)   ← uncategorized bucket
+total                      Total                     ← deduplicated count
+
+NOTE: The user listed "Others" TWICE in columns — this is a copy-paste error.
+There is only ONE others bucket (same as every other section).
+
+================================================================================
+KEYWORD MAPPING — SUGGESTED KEYWORDS PER CATEGORY
+================================================================================
+
+These are derived from the formal CHED/DOLE mandated activity names.
+Titles in Annex C will be shorter informal versions of these names.
+
+'labor_empowerment' => [
+    'labor empowerment', 'career guidance conference', 'graduating student',
+    'ra 11551', 'republic act 11551', 'career congress',
+    'career readiness', 'pre-employment', 'employment readiness',
+]
+
+'job_fairs' => [
+    'job fair', 'jobfair', 'job expo', 'career fair', 'career expo',
+    'dole', 'peso', 'employment fair', 'recruitment fair',
+    'hiring fair', 'job hunt', 'job market',
+]
+
+'philJobNet' => [
+    'philjobnet', 'phil job net', 'jobnet', 'job portal',
+    'job registration', 'online job', 'tesda', 'poea',
+    'career portal', 'employment portal', 'job matching',
+]
+
+'career_counseling' => [
+    'career counseling', 'career counselling', 'vocational counseling',
+    'vocational counselling', 'employment counseling', 'job counseling',
+    'career advising', 'career advice', 'career planning',
+    'career assessment', 'career coaching',
+]
+
+MATCHING LOGIC:
+  - strtolower($program->title) only (no target_group — Annex C doesn't have it)
+  - One title can match MULTIPLE categories (intentional, same as other sections)
+  - Zero matches → 'others' bucket (yellow column)
+  - Each program counted once in deduplicated 'total'
+
+================================================================================
+FRONTEND COLUMN STRUCTURE
+================================================================================
+
+For the AG Grid summary table:
+  - "Name of HEI" (pinned left, field: hei_name)
+  - For each of 4 categories: column GROUP with 2 children:
+      "No. of Activities Conducted" (field: {key}_activities)
+      "No. of Students Participated" (field: {key}_students)
+  - "Others (please specify)" GROUP with 3 children:
+      "Name of Services/Activities" (field: others_titles) ← text preview
+      "No. of Activities Conducted" (field: others_activities) ← yellow clickable
+      "No. of Students Participated" (field: others_students)
+  - "Total" GROUP with 2 children:
+      "No. of Activities" (field: total_activities)
+      "No. of Students" (field: total_students)
+  - "Status" column
+
+IMPORTANT: The "Others" group has a NAME column (others_titles) in addition to
+counts. This is the same as 3-GuidanceCounselling's others_titles field.
+The backend must collect uncategorized program titles and return them in the row.
+
+For the DRILLDOWN modal columns (RecordsModal):
+  Title, Venue, Date, Face-to-Face, Online, Total, Organizer, Category
+  NOTE: No "Target Group" column — Annex C doesn't have this field.
+  NOTE: No "Source" column — only one source (Annex C, no program_type field).
+
+================================================================================
+BACKEND AGGREGATION ROW STRUCTURE
+================================================================================
+
+Each row returned by getCareerJobData():
+{
+  hei_id, hei_name, hei_code, status, has_submission,
+  total_activities, total_students,
+  others_titles,         ← comma-joined first 3 uncategorized titles + "…" if more
+  labor_empowerment_activities, labor_empowerment_students,
+  job_fairs_activities,         job_fairs_students,
+  philJobNet_activities,        philJobNet_students,
+  career_counseling_activities, career_counseling_students,
+  others_activities,            others_students,
+}
+
+Evidence records returned by getCareerJobEvidence():
+{
+  id, title, venue, implementation_date (Y-m-d string),
+  participants_online, participants_face_to_face, total_participants,
+  organizer, remarks,
+  manual_categories (array), assigned_categories (array)
+}
+NOTE: No program_type field (single source). assigned_categories uses
+keys like 'labor_empowerment', 'job_fairs', etc. or ['others'].
+
+================================================================================
+RECORDSMODAL WIRING IN SUMMARYVIEW.JSX
+================================================================================
+
+The RecordsModal component is generic and reused across all sections.
+For Career/Job:
+
+  recordTypeField: 'id'   ← same as GuidanceCounselling and Personnel
+  recordIdField: 'id'
+
+  recategorizeUrl: '/admin/summary/career-job/category'
+    → backend reads: record_id (from record[recordIdField])
+    → does NOT need record_type (single source, always Annex C)
+
+  fetchUrl pattern:
+    /admin/summary/career-job/{heiId}/{category}/evidence?year={year}
+
+  totalFetchUrl pattern (View All button):
+    /admin/summary/career-job/{heiId}/total/evidence?year={year}
+
+Zero-count click behavior (same as GuidanceCounselling):
+  If count === 0 && category !== 'total':
+    Open modal with category='total', zeroTargetCategory=category
+    Subtitle shows: "Assign records into: {categoryLabel}"
+
+================================================================================
+REFERENCE IMPLEMENTATIONS (READ THESE FOR PATTERNS)
+================================================================================
+
+Backend reference: getGuidanceCounsellingData(), getGuidanceCounsellingEvidence(),
+  updateGuidanceCounsellingCategory(), emptyGuidanceCounsellingRow()
+  in: app/Http/Controllers/Admin/SummaryViewController.php
+
+Frontend reference:
+  resources/js/Config/summaryView/guidanceCounsellingConfig.jsx
+  ← Copy this almost verbatim, change keys/labels/fieldPrefixes
+
+SummaryView.jsx reference: Look at how '3-GuidanceCounselling' is wired:
+  - guidanceDrilldown state
+  - handleGuidanceActivityClick, closeGuidanceDrilldown, handleGuidanceRecategorized
+  - guidanceDrilldownProps useMemo
+  - GUIDANCE_DRILLDOWN_COLUMNS (note: NO target_group, NO program_type/Source col)
+  - GUIDANCE_RECATEGORIZE_OPTIONS
+  - RecordsModal JSX block for guidance
+
+RecordsModal: resources/js/Components/Modals/RecordsModal.jsx
+  Generic — no changes needed.
+
+================================================================================
+FILES TO CREATE
+================================================================================
+
+1. database/migrations/{timestamp}_create_career_job_category_overrides_table.php
+   Structure mirrors guidance_counselling_category_overrides:
+     id, program_id (unique, FK to annex_c_programs.id), manual_categories (JSON),
+     overridden_by (FK users.id, nullOnDelete), overridden_at, timestamps
+
+2. app/Models/CareerJobCategoryOverride.php
+   table: career_job_category_overrides
+   fillable: program_id, manual_categories, overridden_by, overridden_at
+   casts: manual_categories → array, overridden_at → datetime
+   relation: belongsTo(AnnexCProgram, 'program_id')
+
+3. resources/js/Config/summaryView/careerJobConfig.jsx
+   Pattern: copy guidanceCounsellingConfig.jsx exactly, change:
+   - CATEGORY_KEYS array (4 keys)
+   - CATEGORY_LABELS object (4 keys + others + total)
+   - sectionId: '4-CareerJob'
+   - sectionTitle: 'Career and Job Placement Services'
+   - categoryColumnGroup calls (4 categories)
+   - Others group (same 3-col structure: titles, activities, students)
+
+================================================================================
+FILES TO MODIFY
+================================================================================
+
+4. app/Http/Controllers/Admin/SummaryViewController.php
+   ADD at top: use App\Models\CareerJobCategoryOverride;
+               use App\Models\AnnexCBatch;   ← already imported
+               use App\Models\AnnexCProgram; ← CHECK if already imported
+   ADD constant: CAREER_JOB_KEYWORDS
+   ADD methods: matchCareerJobCategories(), getCareerJobData(),
+                getCareerJobEvidence(), updateCareerJobCategory(),
+                emptyCareerJobRow()
+
+5. routes/web.php (inside admin middleware, near other summary routes)
+   ADD:
+     Route::get('/summary/career-job', ...)
+     Route::get('/summary/career-job/{heiId}/{category}/evidence', ...)
+     Route::patch('/summary/career-job/category', ...)
+
+6. resources/js/Config/summaryView/summaryConfig.js
+   ADD import: import { careerJobConfig } from './careerJobConfig.jsx';
+   ADD to sections: '4-CareerJob': careerJobConfig,
+
+7. resources/js/Config/summaryView/index.js
+   ADD export: { careerJobConfig, CAREER_JOB_CATEGORY_KEYS, CAREER_JOB_CATEGORY_LABELS }
+
+8. resources/js/Pages/Admin/SummaryView.jsx
+   ADD import: CAREER_JOB_CATEGORY_LABELS, CAREER_JOB_CATEGORY_KEYS
+   ADD const: CAREER_JOB_DRILLDOWN_COLUMNS (no target_group col, no Source col)
+   ADD const: CAREER_JOB_RECATEGORIZE_OPTIONS
+   ADD state: const [careerJobDrilldown, setCareerJobDrilldown] = useState(CLOSED_MODAL)
+   ADD handlers: handleCareerJobActivityClick, closeCareerJobDrilldown,
+                 handleCareerJobRecategorized
+   ADD fetch case in handleSectionChange: '4-CareerJob' → /admin/summary/career-job
+   ADD to useEffect (summaries sync): include '4-CareerJob' in dynamicSections array
+   ADD to useEffect (year change): else if '4-CareerJob' → handleSectionChange
+   ADD to columnDefs useMemo: if '4-CareerJob' → getColumns(handleCareerJobActivityClick)
+   ADD const: careerJobDrilldownProps useMemo
+   ADD tip banner JSX: {activeSection === '4-CareerJob' && (...)}
+   ADD RecordsModal JSX: for careerJobDrilldown
+
+================================================================================
+MIGRATION COMMAND
+================================================================================
+
+After creating the migration file, run:
+  php artisan migrate
+
+Then build frontend:
+  npm run dev
+
+================================================================================
+KNOWN GOTCHAS
+================================================================================
+
+1. Annex C has no target_group — match title ONLY (not title + target_group)
+
+2. The drilldown columns for Career/Job should NOT include:
+   - "Target Group" (field doesn't exist in Annex C)
+   - "Source" / "program_type" (single source, no multi-annex like Info-Orientation)
+
+3. PATCH endpoint reads record_id (program_id in annex_c_programs).
+   The updateCareerJobCategory method signature is identical to
+   updateGuidanceCounsellingCategory — no record_type needed.
+
+4. Check if AnnexCProgram is already imported in SummaryViewController.
+   If not, add: use App\Models\AnnexCProgram;
+   AnnexCBatch is likely already imported.
+
+5. The "Others" group in the grid has 3 columns (titles text + activities + students).
+   The titles field (others_titles) is built by joining first 3 uncategorized
+   program titles in the aggregation loop, same as GuidanceCounselling.
+
+6. Route conflict check: /summary/career-job/{heiId}/{category}/evidence
+   The {category} segment could theoretically conflict with named routes if
+   you had a route like /summary/career-job/category. Laravel resolves this
+   top-to-bottom, so put the PATCH /category route BEFORE the GET /{heiId}/...
+   route, or use explicit route naming. Actually Laravel handles this fine
+   since PATCH vs GET are different methods — no conflict.
+
+================================================================================
