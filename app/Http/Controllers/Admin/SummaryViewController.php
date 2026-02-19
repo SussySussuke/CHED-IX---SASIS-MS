@@ -10,6 +10,9 @@ use App\Models\AnnexAProgram;
 use App\Models\AnnexBBatch;
 use App\Models\AnnexBProgram;
 use App\Models\ProgramCategoryOverride;
+use App\Models\MER2Submission;
+use App\Models\MER1Submission;
+use App\Models\PersonnelCategoryOverride;
 use Illuminate\Http\Request;
 
 class SummaryViewController extends Controller
@@ -450,8 +453,388 @@ class SummaryViewController extends Controller
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Personnel aggregated data  (MER2 + MER1)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Keyword map for position_designation → role category.
+     * Works identically to CATEGORY_KEYWORDS for Info-Orientation.
+     */
+    private const PERSONNEL_ROLE_KEYWORDS = [
+        'registered_guidance_counselors' => [
+            'registered guidance counselor',
+        ],
+        'guidance_counseling' => [
+            'guidance counselor', 'guidance & counseling', 'guidance and counseling',
+            'school counselor', 'guidance counseling', 'mental health counselor',
+            'psychological services', 'psychologist',
+        ],
+        'career_guidance_placement' => [
+            'career guidance', 'career counselor', 'career development',
+            'placement officer', 'job placement', 'ojt coordinator',
+            'internship coordinator', 'practicum coordinator', 'industry linkages',
+            'tracer study', 'alumni relations',
+        ],
+        'registrars' => [
+            'registrar',
+        ],
+        'admission_personnel' => [
+            'admission officer', 'admissions coordinator', 'admission personnel',
+            'enrollment officer', 'admissions officer',
+        ],
+        'physician' => [
+            'physician', 'medical officer', 'school physician', 'doctor',
+        ],
+        'dentist' => [
+            'dentist', 'dental health', 'school dentist',
+        ],
+        'nurse' => [
+            'nurse', 'nursing personnel', 'school nurse',
+        ],
+        'other_medical_health' => [
+            'medical technologist', 'pharmacist', 'pharmacy', 'nutritionist',
+            'dietitian', 'sanitation officer', 'health services coordinator',
+            'medical records', 'first aid', 'health education',
+        ],
+        'security_personnel' => [
+            'security personnel', 'security officer', 'campus security',
+            'safety officer', 'traffic',
+        ],
+        'food_service_personnel' => [
+            'food service', 'cafeteria', 'canteen manager', 'food safety',
+            'nutrition program',
+        ],
+        'cultural_affairs' => [
+            'cultural affairs', 'cultural activities', 'arts & culture',
+            'arts and culture', 'campus ministry', 'chaplain',
+        ],
+        'sports_development' => [
+            'sports development', 'athletics coordinator', 'sports & recreation',
+            'sports and recreation', 'varsity coach', 'physical education',
+        ],
+        'student_discipline' => [
+            'discipline', 'conduct officer', 'student discipline',
+        ],
+        'scholarship_personnel' => [
+            'scholarship coordinator', 'scholarship officer', 'financial aid',
+            'student grants',
+        ],
+        'housing_residential' => [
+            'housing officer', 'dormitory manager', 'dormitory supervisor',
+            'residence hall', 'residential life', 'dorm personnel',
+            'hostel manager',
+        ],
+        'pwd_special_needs' => [
+            'pwd', 'disability support', 'special needs', 'sped coordinator',
+            'inclusive education', 'learning support', 'accessibility services',
+            'persons with disabilities',
+        ],
+        'student_governance' => [
+            'student government', 'student council', 'student governance',
+        ],
+        'student_publication' => [
+            'student publication', 'campus journalism', 'student media',
+        ],
+        'multi_faith' => [
+            'multi-faith', 'multifaith', 'religious affairs', 'chaplain',
+            'campus ministry',
+        ],
+    ];
+
+    /**
+     * Match position_designation text against role category keywords.
+     * Returns array of matching category keys (can be multiple).
+     */
+    private function matchPersonnelCategories(string $positionText): array
+    {
+        $matched = [];
+        $lower = strtolower($positionText);
+
+        foreach (self::PERSONNEL_ROLE_KEYWORDS as $category => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($lower, $keyword)) {
+                    $matched[] = $category;
+                    break;
+                }
+            }
+        }
+
+        return $matched;
+    }
+
+    /**
+     * GET /admin/summary/personnel?year=XXXX
+     *
+     * Returns per-HEI personnel counts per role category,
+     * derived from mer2_personnel.position_designation via keyword matching.
+     * SAS Head name comes from mer1_submissions.
+     */
+    public function getPersonnelData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = MER2Submission::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()
+            ->pluck('academic_year')
+            ->sort()
+            ->values()
+            ->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            // MER2 submissions with eager-loaded personnel
+            $mer2Submissions = MER2Submission::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with('personnel')
+                ->get()
+                ->keyBy('hei_id');
+
+            // MER1 submissions — just need sas_head_name + sas_head_position
+            $mer1Submissions = MER1Submission::where('academic_year', $selectedYear)
+                ->whereIn('status', ['approved', 'published', 'submitted', 'request'])
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($mer2Submissions, $mer1Submissions, $selectedYear) {
+                $submission = $mer2Submissions->get($hei->id);
+                $mer1       = $mer1Submissions->get($hei->id);
+
+                $sasHeadName = $mer1?->sas_head_name ?? null;
+
+                if (!$submission) {
+                    return $this->emptyPersonnelRow($hei, $selectedYear, $sasHeadName);
+                }
+
+                // Fetch overrides for all personnel in this submission
+                $personnelIds = $submission->personnel->pluck('id')->toArray();
+                $overrides = PersonnelCategoryOverride::whereIn('personnel_id', $personnelIds)
+                    ->get()
+                    ->keyBy('personnel_id');
+
+                // Count buckets — one per category + uncategorized
+                $counts = array_fill_keys(array_keys(self::PERSONNEL_ROLE_KEYWORDS), 0);
+                $counts['uncategorized'] = 0;
+                $totalPersonnel = 0;
+
+                foreach ($submission->personnel as $person) {
+                    $override = $overrides->get($person->id);
+                    $totalPersonnel++;
+
+                    if ($override && !empty($override->manual_categories)) {
+                        // Admin override wins
+                        foreach ($override->manual_categories as $cat) {
+                            if (isset($counts[$cat])) {
+                                $counts[$cat]++;
+                            }
+                        }
+                    } else {
+                        if (empty($person->position_designation)) {
+                            $counts['uncategorized']++;
+                            continue;
+                        }
+
+                        $matched = $this->matchPersonnelCategories($person->position_designation);
+
+                        if (empty($matched)) {
+                            $counts['uncategorized']++;
+                        } else {
+                            foreach ($matched as $cat) {
+                                $counts[$cat]++;
+                            }
+                        }
+                    }
+                }
+
+                $row = [
+                    'hei_id'          => $hei->id,
+                    'hei_code'        => $hei->code,
+                    'hei_name'        => $hei->name,
+                    'hei_type'        => $hei->type,
+                    'status'          => $submission->status,
+                    'has_submission'  => true,
+                    'sas_head_name'   => $sasHeadName,
+                    'total_personnel' => $totalPersonnel,
+                ];
+
+                foreach ($counts as $cat => $count) {
+                    $row[$cat] = $count;
+                }
+
+                return $row;
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    /**
+     * GET /admin/summary/personnel/{heiId}/{category}/evidence?year=XXXX
+     *
+     * Drilldown — returns the actual personnel records for a specific HEI + category.
+     * Category 'total' returns all personnel.
+     */
+    public function getPersonnelEvidence(Request $request, $heiId, $category)
+    {
+        $selectedYear = $request->query('year');
+
+        if (!$selectedYear) {
+            return response()->json(['error' => 'Academic year is required', 'records' => []], 400);
+        }
+
+        $hei = HEI::find($heiId);
+        if (!$hei) {
+            return response()->json(['error' => 'HEI not found', 'records' => []], 404);
+        }
+
+        $validCategories = array_merge(array_keys(self::PERSONNEL_ROLE_KEYWORDS), ['uncategorized', 'total']);
+        if (!in_array($category, $validCategories)) {
+            return response()->json(['error' => 'Invalid category', 'records' => []], 422);
+        }
+
+        $submission = MER2Submission::where('hei_id', $heiId)
+            ->where('academic_year', $selectedYear)
+            ->whereIn('status', ['published', 'submitted', 'request'])
+            ->with('personnel')
+            ->first();
+
+        if (!$submission) {
+            return response()->json([
+                'hei_name'    => $hei->name,
+                'category'    => $category,
+                'records'     => [],
+                'total_count' => 0,
+            ]);
+        }
+
+        // Fetch overrides for all personnel in this submission
+        $personnelIds = $submission->personnel->pluck('id')->toArray();
+        $overrides = PersonnelCategoryOverride::whereIn('personnel_id', $personnelIds)
+            ->get()
+            ->keyBy('personnel_id');
+
+        $records = [];
+
+        foreach ($submission->personnel as $person) {
+            $override         = $overrides->get($person->id);
+            $manualCategories = $override?->manual_categories ?? [];
+
+            // Determine effective categories for filtering and display
+            if (!empty($manualCategories)) {
+                $assignedCategories = $manualCategories;
+            } else {
+                $matched = empty($person->position_designation)
+                    ? []
+                    : $this->matchPersonnelCategories($person->position_designation);
+                $assignedCategories = empty($matched) ? ['uncategorized'] : $matched;
+            }
+
+            // Filter: should this record appear in the requested category?
+            $include = false;
+            if ($category === 'total') {
+                $include = true;
+            } elseif ($category === 'uncategorized') {
+                $include = in_array('uncategorized', $assignedCategories);
+            } else {
+                $include = in_array($category, $assignedCategories);
+            }
+
+            if ($include) {
+                $records[] = [
+                    'id'                           => $person->id,
+                    'office_type'                  => $person->office_type_label,
+                    'name_of_personnel'            => $person->name_of_personnel,
+                    'position_designation'         => $person->position_designation,
+                    'tenure_nature_of_appointment' => $person->tenure_nature_of_appointment,
+                    'years_in_office'              => $person->years_in_office,
+                    'qualification_highest_degree' => $person->qualification_highest_degree,
+                    'license_no_type'              => $person->license_no_type,
+                    'license_expiry_date'          => $person->license_expiry_date
+                        ? $person->license_expiry_date->format('Y-m-d')
+                        : null,
+                    'manual_categories'            => $manualCategories,
+                    'assigned_categories'          => $assignedCategories,
+                ];
+            }
+        }
+
+        return response()->json([
+            'hei_name'    => $hei->name,
+            'category'    => $category,
+            'records'     => $records,
+            'total_count' => count($records),
+        ]);
+    }
+
+    /**
+     * PATCH /admin/summary/personnel/category
+     *
+     * Upsert or delete a personnel category override.
+     * Empty categories array = reset override (reverts to keyword matching).
+     */
+    public function updatePersonnelCategory(Request $request)
+    {
+        $validCategories = implode(',', array_keys(self::PERSONNEL_ROLE_KEYWORDS));
+
+        $request->validate([
+            'record_id'    => ['required', 'integer', 'min:1'],
+            'categories'   => ['nullable', 'array'],
+            'categories.*' => ['string', 'in:' . $validCategories],
+        ]);
+
+        $personnelId = $request->input('record_id'); // RecordsModal sends record_id
+        $categories  = $request->input('categories'); // null or empty = reset
+
+        if (empty($categories)) {
+            PersonnelCategoryOverride::where('personnel_id', $personnelId)->delete();
+        } else {
+            PersonnelCategoryOverride::updateOrCreate(
+                ['personnel_id' => $personnelId],
+                [
+                    'manual_categories' => $categories,
+                    'overridden_by'     => $request->user()->id,
+                    'overridden_at'     => now(),
+                ]
+            );
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────────────────
+
+    private function emptyPersonnelRow(HEI $hei, string $year, ?string $sasHeadName): array
+    {
+        $row = [
+            'hei_id'          => $hei->id,
+            'hei_code'        => $hei->code,
+            'hei_name'        => $hei->name,
+            'hei_type'        => $hei->type,
+            'status'          => 'not_submitted',
+            'has_submission'  => false,
+            'sas_head_name'   => $sasHeadName,
+            'total_personnel' => 0,
+            'uncategorized'   => 0,
+        ];
+
+        foreach (array_keys(self::PERSONNEL_ROLE_KEYWORDS) as $cat) {
+            $row[$cat] = 0;
+        }
+
+        return $row;
+    }
 
     private function emptyHeiRow(HEI $hei, string $year): array
     {

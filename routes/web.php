@@ -89,6 +89,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/summary', [SummaryViewController::class, 'index'])->name('admin.summary');
         Route::get('/summary/info-orientation', [SummaryViewController::class, 'getInfoOrientationData'])->name('admin.summary.info-orientation');
+        Route::get('/summary/personnel', [SummaryViewController::class, 'getPersonnelData'])->name('admin.summary.personnel');
+        Route::get('/summary/personnel/{heiId}/{category}/evidence', [SummaryViewController::class, 'getPersonnelEvidence'])->name('admin.summary.personnel.evidence');
+        Route::patch('/summary/personnel/category', [SummaryViewController::class, 'updatePersonnelCategory'])->name('admin.summary.personnel-category.update');
         Route::get('/summary/info-orientation/{heiId}/{category}/evidence', [SummaryViewController::class, 'getInfoOrientationEvidence'])->name('admin.summary.info-orientation.evidence');
         Route::patch('/summary/info-orientation/programs/category', [SummaryViewController::class, 'updateProgramCategory'])->name('admin.summary.program-category.update');
 

@@ -4,8 +4,8 @@ import { infoOrientationConfig } from './infoOrientationConfig.jsx';
 
 export const summaryConfig = {
   sections: {
-    '1A-Profile':        profileConfig,
-    '1B-Personnel':      personnelConfig,
+    '1A-Profile':         profileConfig,
+    '1B-Personnel':       personnelConfig,
     '2-Info-Orientation': infoOrientationConfig,
   },
 
@@ -24,7 +24,7 @@ export const summaryConfig = {
 
   /**
    * Get columns for a section.
-   * Sections that expose getColumns() (e.g. 2-Info-Orientation) use that;
+   * Sections that expose getColumns() use that;
    * sections with a static .columns array use that directly.
    */
   getSectionColumns(sectionId) {

@@ -12,8 +12,12 @@ import {
   INFO_ORIENTATION_CATEGORY_LABELS,
   INFO_ORIENTATION_CATEGORY_KEYS,
 } from '../../Config/summaryView/infoOrientationConfig';
+import {
+  PERSONNEL_CATEGORY_LABELS,
+  PERSONNEL_CATEGORY_KEYS,
+} from '../../Config/summaryView/personnelConfig';
 
-// ─── AG Grid column defs for the drilldown modal (shared for all categories) ──
+// ─── Info-Orientation drilldown columns ───────────────────────────────────────
 const DRILLDOWN_COLUMNS = [
   {
     headerName: 'Title',
@@ -124,13 +128,90 @@ const DRILLDOWN_COLUMNS = [
   },
 ];
 
-// ─── Category options for the recategorize dropdown ───────────────────────────
+// ─── Personnel drilldown columns ─────────────────────────────────────────────
+const PERSONNEL_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Name',
+    field: 'name_of_personnel',
+    flex: 1,
+    minWidth: 200,
+    cellRenderer: (params) =>
+      params.value
+        ? <span className="font-medium">{params.value}</span>
+        : <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Position / Designation',
+    field: 'position_designation',
+    flex: 1,
+    minWidth: 220,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Office',
+    field: 'office_type',
+    width: 220,
+    filter: 'agTextColumnFilter',
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Tenure / Appointment',
+    field: 'tenure_nature_of_appointment',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Yrs in Office',
+    field: 'years_in_office',
+    width: 110,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right' },
+    valueFormatter: (params) => params.value ?? '—',
+  },
+  {
+    headerName: 'Highest Degree',
+    field: 'qualification_highest_degree',
+    flex: 1,
+    minWidth: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'License Type',
+    field: 'license_no_type',
+    width: 140,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'License Expiry',
+    field: 'license_expiry_date',
+    width: 130,
+    valueFormatter: (params) => {
+      if (!params.value) return '—';
+      return new Date(params.value).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      });
+    },
+  },
+];
+
+// ─── Category options for Info-Orientation recategorize dropdown ───────────────
 const RECATEGORIZE_OPTIONS = INFO_ORIENTATION_CATEGORY_KEYS.map((key) => ({
   value: key,
   label: INFO_ORIENTATION_CATEGORY_LABELS[key],
 }));
 
-// ─── Blank drilldown state ────────────────────────────────────────────────────
+// ─── Category options for Personnel recategorize dropdown ────────────────────
+const PERSONNEL_RECATEGORIZE_OPTIONS = PERSONNEL_CATEGORY_KEYS.map((key) => ({
+  value: key,
+  label: PERSONNEL_CATEGORY_LABELS[key],
+}));
+
+// ─── Blank modal state ────────────────────────────────────────────────────────
 const CLOSED_MODAL = {
   isOpen: false,
   heiId: null,
@@ -148,7 +229,9 @@ const SummaryView = ({
   const [sectionData, setSectionData] = useState(summaries);
   const [loading, setLoading] = useState(false);
 
-  const [drilldown, setDrilldown] = useState(CLOSED_MODAL);
+  // Separate drilldown state per section type
+  const [infoDrilldown, setInfoDrilldown] = useState(CLOSED_MODAL);
+  const [personnelDrilldown, setPersonnelDrilldown] = useState(CLOSED_MODAL);
 
   // ── Year change ────────────────────────────────────────────────────────────
   const handleYearChange = (e) => {
@@ -182,38 +265,63 @@ const SummaryView = ({
       } finally {
         setLoading(false);
       }
+    } else if (sectionId === '1B-Personnel' && selectedYear) {
+      setLoading(true);
+      try {
+        const res = await fetch(`/admin/summary/personnel?year=${selectedYear}`);
+        const result = await res.json();
+        setSectionData(result.data ?? []);
+      } catch {
+        setSectionData([]);
+      } finally {
+        setLoading(false);
+      }
     } else {
       setSectionData(summaries);
     }
   };
 
   useEffect(() => {
-    if (activeSection !== '2-Info-Orientation') setSectionData(summaries);
+    if (activeSection !== '2-Info-Orientation' && activeSection !== '1B-Personnel') {
+      setSectionData(summaries);
+    }
   }, [summaries, activeSection]);
 
   useEffect(() => {
     if (activeSection === '2-Info-Orientation' && selectedYear) {
       handleSectionChange('2-Info-Orientation');
+    } else if (activeSection === '1B-Personnel' && selectedYear) {
+      handleSectionChange('1B-Personnel');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]);
 
-  // ── Activity cell click → open drilldown modal ────────────────────────────
-  // When count is 0, open the total view so the admin can see all records
-  // and assign some into the target category from there.
+  // ── Info-Orientation click handlers ───────────────────────────────────────
   const handleActivityClick = (category, heiId, heiName, count) => {
     if (count === null || count === undefined) return;
     if (count === 0 && category !== 'total') {
-      setDrilldown({ isOpen: true, heiId, heiName, category: 'total', zeroTargetCategory: category });
+      setInfoDrilldown({ isOpen: true, heiId, heiName, category: 'total', zeroTargetCategory: category });
     } else {
-      setDrilldown({ isOpen: true, heiId, heiName, category, zeroTargetCategory: null });
+      setInfoDrilldown({ isOpen: true, heiId, heiName, category, zeroTargetCategory: null });
     }
   };
 
-  const closeDrilldown = () => setDrilldown(CLOSED_MODAL);
+  const closeInfoDrilldown = () => setInfoDrilldown(CLOSED_MODAL);
 
   const handleRecategorized = () => {
     handleSectionChange('2-Info-Orientation');
+  };
+
+  // ── Personnel click handlers ───────────────────────────────────────────────
+  const handlePersonnelCountClick = (category, heiId, heiName, count) => {
+    if (count === null || count === undefined) return;
+    setPersonnelDrilldown({ isOpen: true, heiId, heiName, category, zeroTargetCategory: null });
+  };
+
+  const closePersonnelDrilldown = () => setPersonnelDrilldown(CLOSED_MODAL);
+
+  const handlePersonnelRecategorized = () => {
+    handleSectionChange('1B-Personnel');
   };
 
   // ── Column defs ────────────────────────────────────────────────────────────
@@ -221,13 +329,16 @@ const SummaryView = ({
     if (activeSection === '2-Info-Orientation') {
       return summaryConfig.getSection(activeSection).getColumns(handleActivityClick);
     }
+    if (activeSection === '1B-Personnel') {
+      return summaryConfig.getSection(activeSection).getColumns(handlePersonnelCountClick);
+    }
     return summaryConfig.getSectionColumns(activeSection);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection]);
 
-  // ── Derive modal props from drilldown state ────────────────────────────────
-  const drilldownProps = useMemo(() => {
-    const { heiId, heiName, category, zeroTargetCategory } = drilldown;
+  // ── Info-Orientation modal props ──────────────────────────────────────────
+  const infoDrilldownProps = useMemo(() => {
+    const { heiId, heiName, category, zeroTargetCategory } = infoDrilldown;
     const isTotal = category === 'total';
     const isMisc  = category === 'uncategorized';
 
@@ -235,8 +346,6 @@ const SummaryView = ({
       ? `/admin/summary/info-orientation/${heiId}/${category}/evidence?year=${selectedYear}`
       : null;
 
-    // "View All Records" button inside the modal — total endpoint for this HEI.
-    // Null when already viewing total so the button doesn't appear.
     const totalFetchUrl = (!isTotal && heiId && selectedYear)
       ? `/admin/summary/info-orientation/${heiId}/total/evidence?year=${selectedYear}`
       : null;
@@ -259,7 +368,38 @@ const SummaryView = ({
       recordTypeField: 'program_type',
       recordIdField: 'id',
     };
-  }, [drilldown, selectedYear]);
+  }, [infoDrilldown, selectedYear]);
+
+  // ── Personnel modal props ─────────────────────────────────────────────────
+  const personnelDrilldownProps = useMemo(() => {
+    const { heiId, heiName, category } = personnelDrilldown;
+    const isTotal = category === 'total';
+    const isMisc  = category === 'uncategorized';
+
+    const fetchUrl = heiId && category && selectedYear
+      ? `/admin/summary/personnel/${heiId}/${category}/evidence?year=${selectedYear}`
+      : null;
+
+    // "View All" button — show when not already on total
+    const totalFetchUrl = (!isTotal && heiId && selectedYear)
+      ? `/admin/summary/personnel/${heiId}/total/evidence?year=${selectedYear}`
+      : null;
+
+    return {
+      title: heiName,
+      subtitle: `Academic Year ${selectedYear}`,
+      categoryLabel: PERSONNEL_CATEGORY_LABELS[category] ?? category,
+      isMiscellaneous: isMisc,
+      isTotal,
+      fetchUrl,
+      totalFetchUrl,
+      recategorizeUrl: isTotal ? null : '/admin/summary/personnel/category',
+      columnDefs: PERSONNEL_DRILLDOWN_COLUMNS,
+      categoryOptions: PERSONNEL_RECATEGORIZE_OPTIONS,
+      recordTypeField: 'id',
+      recordIdField: 'id',
+    };
+  }, [personnelDrilldown, selectedYear]);
 
   const gridConfig = summaryConfig.gridDefaults;
 
@@ -331,6 +471,20 @@ const SummaryView = ({
               </div>
             )}
 
+            {activeSection === '1B-Personnel' && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <IoInformationCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-semibold">Tip:</span>{' '}
+                    Counts are derived from <strong>position/designation</strong> keyword matching on MER2 submissions.
+                    Yellow column shows personnel whose position didn't match any category.
+                    Click any count to view the individual personnel records.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <AGGridViewer
               rowData={sectionData}
               columnDefs={columnDefs}
@@ -344,12 +498,20 @@ const SummaryView = ({
         )}
       </div>
 
-      {/* ── Category Drilldown / Recategorization Modal ── */}
+      {/* ── Info-Orientation Drilldown Modal ── */}
       <RecordsModal
-        {...drilldownProps}
-        isOpen={drilldown.isOpen}
-        onClose={closeDrilldown}
+        {...infoDrilldownProps}
+        isOpen={infoDrilldown.isOpen}
+        onClose={closeInfoDrilldown}
         onRecategorized={handleRecategorized}
+      />
+
+      {/* ── Personnel Drilldown Modal ── */}
+      <RecordsModal
+        {...personnelDrilldownProps}
+        isOpen={personnelDrilldown.isOpen}
+        onClose={closePersonnelDrilldown}
+        onRecategorized={handlePersonnelRecategorized}
       />
     </AdminLayout>
   );
