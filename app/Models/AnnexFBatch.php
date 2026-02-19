@@ -17,6 +17,7 @@ class AnnexFBatch extends Model
         'status',
         'procedure_mechanism',
         'complaint_desk',
+        'student_discipline_committee',
         'request_notes',
         'cancelled_notes',
     ];

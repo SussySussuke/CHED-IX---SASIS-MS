@@ -362,6 +362,7 @@ CREATE TABLE annex_f_batches (
     status VARCHAR(50) NOT NULL DEFAULT 'submitted',
     procedure_mechanism VARCHAR(255) NULL,
     complaint_desk VARCHAR(255) NULL,
+    student_discipline_committee VARCHAR(255) NULL,
     request_notes TEXT NULL,
     cancelled_notes TEXT NULL,
     created_at TIMESTAMP NULL,

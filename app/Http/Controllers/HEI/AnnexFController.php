@@ -24,6 +24,7 @@ class AnnexFController extends BaseAnnexController
                     'formData' => [
                         'procedure_mechanism' => $batch->procedure_mechanism,
                         'complaint_desk' => $batch->complaint_desk,
+                        'student_discipline_committee' => $batch->student_discipline_committee,
                     ],
                     'created_at' => $batch->created_at,
                     'updated_at' => $batch->updated_at,
@@ -46,6 +47,7 @@ class AnnexFController extends BaseAnnexController
             'academic_year' => 'required|string|regex:/^\d{4}-\d{4}$/',
             'procedure_mechanism' => 'nullable|string|max:255',
             'complaint_desk' => 'nullable|string|max:255',
+            'student_discipline_committee' => 'nullable|string|max:255',
             'activities' => 'required|array|min:1',
             'activities.*.activity' => 'required|string|max:255',
             'activities.*.date' => 'required|date',
@@ -73,6 +75,7 @@ class AnnexFController extends BaseAnnexController
             'status' => $newStatus,
             'procedure_mechanism' => $validated['procedure_mechanism'] ?? null,
             'complaint_desk' => $validated['complaint_desk'] ?? null,
+            'student_discipline_committee' => $validated['student_discipline_committee'] ?? null,
             'request_notes' => $validated['request_notes'] ?? null,
         ]);
 
@@ -97,6 +100,7 @@ class AnnexFController extends BaseAnnexController
             'activities' => $batch->activities,
             'procedure_mechanism' => $batch->procedure_mechanism,
             'complaint_desk' => $batch->complaint_desk,
+            'student_discipline_committee' => $batch->student_discipline_committee,
         ]);
     }
 
@@ -123,6 +127,7 @@ class AnnexFController extends BaseAnnexController
                     'formData' => [
                         'procedure_mechanism' => $b->procedure_mechanism,
                         'complaint_desk' => $b->complaint_desk,
+                        'student_discipline_committee' => $b->student_discipline_committee,
                     ],
                     'created_at' => $b->created_at,
                     'updated_at' => $b->updated_at,

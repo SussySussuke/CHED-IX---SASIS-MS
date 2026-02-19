@@ -111,6 +111,13 @@ export const FORM2_ANNEXES = {
     hasFormFields: true,  // Flag to indicate additional form fields
     formFields: [
       {
+        key: 'student_discipline_committee',
+        label: 'Student Discipline Committee',
+        type: 'text',
+        placeholder: 'e.g., Yes / Name of committee / Office in charge',
+        maxLength: 255
+      },
+      {
         key: 'procedure_mechanism',
         label: 'Procedure/mechanism to address student grievance',
         type: 'text',

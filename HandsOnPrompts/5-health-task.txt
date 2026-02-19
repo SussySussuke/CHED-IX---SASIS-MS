@@ -1,0 +1,403 @@
+================================================================================
+TASK: CREATE SECTION 5-Health FOR ADMIN SUMMARY VIEW
+================================================================================
+DATE: 2026-02-19
+STATUS: 🔲 NOT STARTED — analysis complete, no code written yet
+AI: Joshua Graham (Claude Sonnet 4.6)
+
+================================================================================
+⚠️  CORRECTION: COLUMN DEFINITION WAS WRONG — READ THIS FIRST
+================================================================================
+
+The original column list provided had columns 9–12 labeled as
+"Regional Pre-Teachers Conference 2023" — that is NOT a Health Services column.
+That belongs to a Teacher Education-related annex and was clearly copy-pasted
+from the wrong form. There is zero evidence of that in the codebase.
+It has been dropped. The correct Health section has exactly 4 service types
+(columns 1–8) + Others + Total.
+
+CORRECT COLUMNS (derived from CHED Annex J form):
+  1. Annual Medical Check-up/Consultation – No. of Activities Conducted
+  2. Annual Medical Check-up/Consultation – No. of Students Participated
+  3. Annual Dental Check-up/Consultation – No. of Activities Conducted
+  4. Annual Dental Check-up/Consultation – No. of Students Participated
+  5. Seminar and Educational Tours – No. of Activities Conducted
+  6. Seminar and Educational Tours – No. of Students Participated
+  7. Others – No. of Activities Conducted
+  8. Others – No. of Students Participated
+  + Total (No. of Activities + No. of Students)
+  + Status
+
+================================================================================
+SYSTEM OVERVIEW — READ THIS FIRST
+================================================================================
+
+This is a Laravel + Inertia + React system for CHED (Commission on Higher
+Education) to collect and summarize Student Affairs and Services (SAS) data
+from HEIs (Higher Education Institutions).
+
+The Admin Summary View (/admin/summary) is an AG Grid page where admins can
+select different "sections" to view aggregated data across all HEIs.
+
+Existing sections:
+  1A-Profile              — from Summary model (static Inertia props)
+  1B-Personnel            — from MER2 submissions, keyword-matched by position
+  2-Info-Orientation      — from Annex A + B programs, keyword-matched by title
+  3-GuidanceCounselling   — from Annex B programs only, keyword-matched by title
+  4-CareerJob             — from Annex C programs, keyword-matched by title
+  5-Health                — TO BE BUILT (Annex J programs, keyword-matched by title_of_program)
+
+================================================================================
+ARCHITECTURE PATTERN — ALL SECTIONS FOLLOW THIS
+================================================================================
+
+Every dynamic section (not 1A-Profile) works identically:
+
+BACKEND (SummaryViewController.php):
+  1. Keyword constant map:  private const HEALTH_KEYWORDS = [...]
+  2. Matcher method:        matchHealthCategories(string $text): array
+  3. Aggregation method:    getHealthData(Request) → JSON { data: [...] }
+  4. Evidence method:       getHealthEvidence(Request, $heiId, $category) → JSON { records: [...] }
+  5. Override PATCH method: updateHealthCategory(Request) → JSON { success: true }
+  6. Empty row helper:      emptyHealthRow(HEI, string): array
+
+OVERRIDE TABLE: Dedicated table, one row per Annex J program ID
+  Model: HealthCategoryOverride (to be created)
+  Table: health_category_overrides
+  Columns: id, program_id (FK to annex_j_programs.id), manual_categories (JSON),
+           overridden_by (FK to users.id nullOnDelete), overridden_at, timestamps
+
+FRONTEND:
+  1. Config file: resources/js/Config/summaryView/healthConfig.jsx
+     - Exports: HEALTH_CATEGORY_KEYS, HEALTH_CATEGORY_LABELS
+     - Exports: healthConfig object with sectionId, sectionTitle, getColumns()
+  2. summaryConfig.js — register '5-Health': healthConfig
+  3. index.js — export HEALTH_CATEGORY_KEYS, HEALTH_CATEGORY_LABELS, healthConfig
+  4. SummaryView.jsx — wire up fetch, state, handlers, modal, tip banner
+
+ROUTES (web.php, inside admin middleware):
+  GET   /admin/summary/health
+  GET   /admin/summary/health/{heiId}/{category}/evidence
+  PATCH /admin/summary/health/category
+
+================================================================================
+DATA SOURCE — ANNEX J
+================================================================================
+
+Table: annex_j_programs
+Model: AnnexJProgram (app/Models/AnnexJProgram.php)
+Batch: AnnexJBatch (app/Models/AnnexJBatch.php)
+Relationship: HEI → AnnexJBatch (hei_id) → AnnexJProgram (batch_id)
+
+Fields on AnnexJProgram:
+  - batch_id              (UUID FK to annex_j_batches.batch_id)
+  - title_of_program      (STRING) ← USED FOR KEYWORD MATCHING (NOTE: NOT "title"!)
+  - organizer             (STRING)
+  - number_of_participants(INTEGER) ← ALREADY COMBINED, no online/face-to-face split
+  - remarks               (TEXT, nullable)
+
+⚠️  CRITICAL DIFFERENCES FROM ANNEX B / C:
+  1. The title field is called `title_of_program` — NOT `title`. Do not mix these up.
+  2. There is NO participants_online / participants_face_to_face split.
+     Student count = $program->number_of_participants directly (no addition needed).
+  3. There is NO venue field on AnnexJProgram.
+  4. There is NO implementation_date field on AnnexJProgram.
+  5. There is NO target_group field — keyword match on title_of_program only.
+
+Batch statuses to include: 'published', 'submitted', 'request'
+
+================================================================================
+CATEGORIES — 3 SERVICE TYPES + OTHERS + TOTAL
+================================================================================
+
+KEY                   DISPLAY NAME (exact column header)
+────────────────────  ──────────────────────────────────────────────────────────
+medical_checkup       Annual Medical Check-up/Consultation
+dental_checkup        Annual Dental Check-up/Consultation
+seminar_educational   Seminar and Educational Tours
+others                Others (please specify)    ← uncategorized bucket
+total                 Total                      ← deduplicated count
+
+================================================================================
+KEYWORD MAPPING — SUGGESTED KEYWORDS PER CATEGORY
+================================================================================
+
+These are derived from the formal CHED form column names.
+Titles in Annex J are short informal strings HEIs typed in.
+
+'medical_checkup' => [
+    'medical', 'medical check', 'check-up', 'checkup', 'check up',
+    'consultation', 'physician', 'clinic', 'annual physical',
+    'physical exam', 'health exam', 'health check', 'medical exam',
+    'general check', 'medical consultation',
+]
+
+'dental_checkup' => [
+    'dental', 'dentist', 'oral health', 'oral exam', 'dental check',
+    'dental exam', 'teeth', 'tooth', 'dental consultation',
+    'dental clinic', 'oral checkup',
+]
+
+'seminar_educational' => [
+    'seminar', 'educational tour', 'tour', 'field trip', 'webinar',
+    'lecture', 'forum', 'symposium', 'health seminar', 'health forum',
+    'health education', 'wellness seminar', 'talk', 'orientation',
+    'health awareness', 'first aid', 'training',
+]
+
+MATCHING LOGIC:
+  - strtolower($program->title_of_program) — title field only, no target_group
+  - One title can match MULTIPLE categories (same as all other sections)
+  - Zero matches → 'others' bucket (yellow column)
+  - Each program counted once in deduplicated 'total'
+
+================================================================================
+FRONTEND COLUMN STRUCTURE
+================================================================================
+
+For the AG Grid summary table:
+  - "Name of HEI" (pinned left, field: hei_name)
+  - For each of 3 categories: column GROUP with 2 children:
+      "No. of Activities Conducted" (field: {key}_activities)
+      "No. of Students Participated" (field: {key}_students)
+  - "Others (please specify)" GROUP with 3 children:
+      "Name of Services/Activities" (field: others_titles)  ← text preview
+      "No. of Activities Conducted" (field: others_activities) ← yellow clickable
+      "No. of Students Participated" (field: others_students)
+  - "Total" GROUP with 2 children:
+      "No. of Activities" (field: total_activities)
+      "No. of Students"   (field: total_students)
+  - "Status" column
+
+For the DRILLDOWN modal columns (RecordsModal):
+  Title, Organizer, Total Participants, Remarks, Category
+  NOTE: No "Venue" — Annex J has no venue field.
+  NOTE: No "Date" — Annex J has no implementation_date field.
+  NOTE: No "Face-to-Face / Online" split — only number_of_participants.
+  NOTE: No "Target Group" — Annex J has no target_group field.
+  NOTE: No "Source" — single source (Annex J only), no multi-annex like Info-Orientation.
+
+================================================================================
+BACKEND AGGREGATION ROW STRUCTURE
+================================================================================
+
+Each row returned by getHealthData():
+{
+  hei_id, hei_name, hei_code, status, has_submission,
+  total_activities, total_students,
+  others_titles,               ← comma-joined first 3 uncategorized titles + "…" if more
+  medical_checkup_activities,  medical_checkup_students,
+  dental_checkup_activities,   dental_checkup_students,
+  seminar_educational_activities, seminar_educational_students,
+  others_activities,           others_students,
+}
+
+Evidence records returned by getHealthEvidence():
+{
+  id, title_of_program, organizer, number_of_participants,
+  remarks,
+  manual_categories (array), assigned_categories (array)
+}
+NOTE: No venue, no implementation_date, no program_type (single source).
+NOTE: No online/face-to-face — only number_of_participants.
+      assigned_categories uses keys like 'medical_checkup', 'dental_checkup', etc. or ['others'].
+
+================================================================================
+RECORDSMODAL WIRING IN SUMMARYVIEW.JSX
+================================================================================
+
+The RecordsModal component is generic and reused across all sections.
+For Health:
+
+  recordTypeField: 'id'
+  recordIdField:   'id'
+
+  recategorizeUrl: '/admin/summary/health/category'
+    → backend reads: record_id (from record[recordIdField])
+    → does NOT need record_type (single source, always Annex J)
+
+  fetchUrl pattern:
+    /admin/summary/health/{heiId}/{category}/evidence?year={year}
+
+  totalFetchUrl pattern (View All button):
+    /admin/summary/health/{heiId}/total/evidence?year={year}
+
+Zero-count click behavior (same as GuidanceCounselling / CareerJob):
+  If count === 0 && category !== 'total':
+    Open modal with category='total', zeroTargetCategory=category
+    Subtitle shows: "Assign records into: {categoryLabel}"
+
+================================================================================
+REFERENCE IMPLEMENTATIONS (READ THESE FOR PATTERNS)
+================================================================================
+
+Backend reference: getCareerJobData(), getCareerJobEvidence(),
+  updateCareerJobCategory(), emptyCareerJobRow()
+  in: app/Http/Controllers/Admin/SummaryViewController.php
+  ← Best direct reference since it's also single-source, no target_group, no multi-annex.
+
+Frontend reference:
+  resources/js/Config/summaryView/guidanceCounsellingConfig.jsx
+  ← Copy this almost verbatim, change keys/labels/fieldPrefixes.
+  ← For Health the others group has the same 3-col structure (titles, activities, students).
+
+SummaryView.jsx reference: Look at how '4-CareerJob' is wired:
+  - careerJobDrilldown state
+  - handleCareerJobActivityClick, closeCareerJobDrilldown, handleCareerJobRecategorized
+  - careerJobDrilldownProps useMemo
+  - CAREER_JOB_DRILLDOWN_COLUMNS (no target_group, no Source col)
+  - CAREER_JOB_RECATEGORIZE_OPTIONS
+  - RecordsModal JSX block for career job
+  ← HEALTH is even simpler than CareerJob because Annex J has fewer fields.
+
+RecordsModal: resources/js/Components/Modals/RecordsModal.jsx
+  Generic — no changes needed.
+
+================================================================================
+FILES TO CREATE
+================================================================================
+
+1. database/migrations/{timestamp}_create_health_category_overrides_table.php
+   Structure mirrors career_job_category_overrides / guidance_counselling_category_overrides:
+     id, program_id (unique, FK to annex_j_programs.id onDelete cascade),
+     manual_categories (JSON), overridden_by (FK users.id nullOnDelete),
+     overridden_at (timestamp nullable), timestamps
+
+2. app/Models/HealthCategoryOverride.php
+   table: health_category_overrides
+   fillable: program_id, manual_categories, overridden_by, overridden_at
+   casts: manual_categories → array, overridden_at → datetime
+   relation: belongsTo(AnnexJProgram, 'program_id', 'id')
+
+3. resources/js/Config/summaryView/healthConfig.jsx
+   Pattern: copy guidanceCounsellingConfig.jsx exactly, change:
+   - CATEGORY_KEYS array: ['medical_checkup', 'dental_checkup', 'seminar_educational']
+   - CATEGORY_LABELS object (3 keys + others + total)
+   - sectionId: '5-Health'
+   - sectionTitle: 'Health Services'
+   - categoryColumnGroup calls (3 categories)
+   - Others group (same 3-col structure: titles, activities, students)
+
+================================================================================
+FILES TO MODIFY
+================================================================================
+
+4. app/Http/Controllers/Admin/SummaryViewController.php
+   ADD at top:
+     use App\Models\HealthCategoryOverride;
+     use App\Models\AnnexJBatch;
+     use App\Models\AnnexJProgram;
+   ADD constant: HEALTH_KEYWORDS (3 keys)
+   ADD methods: matchHealthCategories(), getHealthData(),
+                getHealthEvidence(), updateHealthCategory(),
+                emptyHealthRow()
+
+5. routes/web.php (inside admin middleware, near other summary routes)
+   ADD (put PATCH before GET /{heiId}/... to avoid route ambiguity — same as CareerJob):
+     Route::patch('/summary/health/category',                          [...])
+     Route::get('/summary/health',                                      [...])
+     Route::get('/summary/health/{heiId}/{category}/evidence',          [...])
+
+6. resources/js/Config/summaryView/summaryConfig.js
+   ADD import: import { healthConfig } from './healthConfig.jsx';
+   ADD to sections: '5-Health': healthConfig,
+
+7. resources/js/Config/summaryView/index.js
+   ADD export: { healthConfig, HEALTH_CATEGORY_KEYS, HEALTH_CATEGORY_LABELS }
+
+8. resources/js/Pages/Admin/SummaryView.jsx
+   ADD import: HEALTH_CATEGORY_LABELS, HEALTH_CATEGORY_KEYS
+   ADD const: HEALTH_DRILLDOWN_COLUMNS (see below)
+   ADD const: HEALTH_RECATEGORIZE_OPTIONS
+   ADD state: const [healthDrilldown, setHealthDrilldown] = useState(CLOSED_MODAL)
+   ADD handlers: handleHealthActivityClick, closeHealthDrilldown, handleHealthRecategorized
+   ADD fetch case in handleSectionChange: '5-Health' → /admin/summary/health
+   ADD to useEffect (summaries sync): include '5-Health' in dynamicSections array
+   ADD to useEffect (year change): else if '5-Health' → handleSectionChange
+   ADD to columnDefs useMemo: if '5-Health' → getColumns(handleHealthActivityClick)
+   ADD const: healthDrilldownProps useMemo
+   ADD tip banner JSX: {activeSection === '5-Health' && (...)}
+   ADD RecordsModal JSX: for healthDrilldown
+
+================================================================================
+HEALTH_DRILLDOWN_COLUMNS DEFINITION
+================================================================================
+
+This is the columns array passed to RecordsModal for Health.
+Annex J is the SIMPLEST drilldown — fewer fields than any other annex.
+
+Columns to include:
+  { field: 'title_of_program', headerName: 'Program/Activity Title', flex: 1, minWidth: 220 }
+  { field: 'organizer',        headerName: 'Organizer',              width: 180 }
+  { field: 'number_of_participants', headerName: 'No. of Participants', width: 130, type: 'numericColumn' }
+  { field: 'remarks',          headerName: 'Remarks',                width: 180, cellRenderer: nullable dash }
+  { field: 'assigned_categories', headerName: 'Category', width: 160,
+    cellRenderer: renders badge(s) using HEALTH_CATEGORY_LABELS lookup }
+
+Columns to OMIT (not present in Annex J):
+  ✗ Venue            — no venue field
+  ✗ Date             — no implementation_date field
+  ✗ Face-to-Face     — no participants_face_to_face
+  ✗ Online           — no participants_online
+  ✗ Target Group     — no target_group
+  ✗ Source           — single source (always Annex J)
+
+================================================================================
+BACKEND AGGREGATION LOGIC — KEY DIFFERENCES FROM ANNEX B/C
+================================================================================
+
+In getHealthData() and getHealthEvidence(), the student count line is:
+
+  ✅ $students = $program->number_of_participants ?? 0;
+  ❌ NOT: ($program->participants_online ?? 0) + ($program->participants_face_to_face ?? 0)
+
+The keyword matching targets title_of_program, not title:
+
+  ✅ $this->matchHealthCategories(strtolower($program->title_of_program))
+  ❌ NOT: strtolower($program->title)
+
+Everything else follows the same CareerJob/GuidanceCounselling pattern exactly.
+
+================================================================================
+MIGRATION COMMAND
+================================================================================
+
+After creating the migration file, run:
+  php artisan migrate
+
+Then build frontend:
+  npm run dev
+
+================================================================================
+KNOWN GOTCHAS
+================================================================================
+
+1. Annex J field name is title_of_program — NOT title.
+   This will cause silent nulls if you copy-paste from CareerJob without changing it.
+   Triple-check every occurrence in: getHealthData(), getHealthEvidence(),
+   matchHealthCategories() call site, evidence record array, RecordsModal columns.
+
+2. Student count is number_of_participants (single integer, already summed).
+   No online/face-to-face split. The controller store() already adds them on save,
+   so the aggregation side never needs to split.
+
+3. Annex J has NO venue and NO implementation_date.
+   The RecordsModal drilldown columns must NOT include these.
+   Do not sort evidence records by date (no date field). Sort by id or
+   title_of_program alphabetically instead.
+
+4. The "Others" group in the grid has 3 columns (titles text + activities + students).
+   The others_titles field is built by joining first 3 uncategorized
+   program titles (title_of_program) in the aggregation loop — same as CareerJob.
+
+5. Route order: put PATCH /summary/health/category BEFORE GET /summary/health/{heiId}/...
+   to avoid Laravel trying to match the string "category" as a heiId wildcard.
+   In practice Laravel differentiates by HTTP verb (PATCH vs GET), but still good habit.
+
+6. SummaryViewController — CHECK if AnnexJBatch and AnnexJProgram are already imported
+   before adding duplicate use statements at the top. If not present, add them.
+
+7. The override table FK is to annex_j_programs.id (bigint autoincrement), NOT batch_id.
+   Same pattern as career_job_category_overrides → annex_c_programs.id.
+
+================================================================================

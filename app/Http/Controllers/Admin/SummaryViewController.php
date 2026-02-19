@@ -14,6 +14,17 @@ use App\Models\MER2Submission;
 use App\Models\MER1Submission;
 use App\Models\PersonnelCategoryOverride;
 use App\Models\GuidanceCounsellingCategoryOverride;
+use App\Models\CareerJobCategoryOverride;
+use App\Models\AnnexCBatch;
+use App\Models\AnnexCProgram;
+use App\Models\HealthCategoryOverride;
+use App\Models\AnnexJBatch;
+use App\Models\AnnexJProgram;
+use App\Models\AnnexHBatch;
+use App\Models\AnnexHAdmissionService;
+use App\Models\AnnexFBatch;
+use App\Models\AnnexOBatch;
+use App\Models\AnnexOProgram;
 use Illuminate\Http\Request;
 
 class SummaryViewController extends Controller
@@ -1157,5 +1168,838 @@ class SummaryViewController extends Controller
         }
 
         return $row;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Career / Job Placement — keyword map
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private const CAREER_JOB_KEYWORDS = [
+        'labor_empowerment' => [
+            'labor empowerment', 'career guidance conference', 'graduating student',
+            'ra 11551', 'republic act 11551', 'career congress', 'career readiness',
+            'pre-employment', 'employment readiness', 'career conference',
+        ],
+        'job_fairs' => [
+            'job fair', 'jobfair', 'job expo', 'career fair', 'career expo',
+            'dole', 'peso', 'employment fair', 'recruitment fair',
+            'hiring fair', 'job hunt', 'job market',
+        ],
+        'phil_job_net' => [
+            'philjobnet', 'phil job net', 'jobnet', 'job portal',
+            'job registration', 'online job registration', 'career portal',
+            'employment portal', 'job matching',
+        ],
+        'career_counseling' => [
+            'career counseling', 'career counselling', 'vocational counseling',
+            'vocational counselling', 'employment counseling', 'job counseling',
+            'career advising', 'career advice', 'career planning',
+            'career assessment', 'career coaching',
+        ],
+    ];
+
+    private function matchCareerJobCategories(string $searchText): array
+    {
+        $matched = [];
+        $lower   = strtolower($searchText);
+
+        foreach (self::CAREER_JOB_KEYWORDS as $category => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($lower, $keyword)) {
+                    $matched[] = $category;
+                    break;
+                }
+            }
+        }
+
+        return $matched;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Career / Job Placement — aggregated data  (Annex C only)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /admin/summary/career-job?year=XXXX
+     */
+    public function getCareerJobData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexCBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $annexCBatches = AnnexCBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with('programs')
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($annexCBatches, $selectedYear) {
+                $batch = $annexCBatches->get($hei->id);
+
+                if (!$batch || $batch->programs->isEmpty()) {
+                    return $this->emptyCareerJobRow($hei, $selectedYear);
+                }
+
+                $programIds = $batch->programs->pluck('id')->toArray();
+                $overrides  = CareerJobCategoryOverride::whereIn('program_id', $programIds)
+                    ->get()->keyBy('program_id');
+
+                $counts = array_fill_keys(array_keys(self::CAREER_JOB_KEYWORDS), [
+                    'activities' => 0,
+                    'students'   => 0,
+                ]);
+                $counts['others'] = ['activities' => 0, 'students' => 0];
+
+                $totalActivities = 0;
+                $totalStudents   = 0;
+                $otherTitles     = [];
+
+                foreach ($batch->programs as $program) {
+                    $override = $overrides->get($program->id);
+                    $students = ($program->participants_online ?? 0)
+                              + ($program->participants_face_to_face ?? 0);
+
+                    $totalActivities++;
+                    $totalStudents += $students;
+
+                    if ($override && !empty($override->manual_categories)) {
+                        foreach ($override->manual_categories as $cat) {
+                            if (isset($counts[$cat])) {
+                                $counts[$cat]['activities']++;
+                                $counts[$cat]['students'] += $students;
+                            }
+                        }
+                    } else {
+                        $matched = $this->matchCareerJobCategories(strtolower($program->title));
+
+                        if (empty($matched)) {
+                            $counts['others']['activities']++;
+                            $counts['others']['students'] += $students;
+                            $otherTitles[] = $program->title;
+                        } else {
+                            foreach ($matched as $cat) {
+                                $counts[$cat]['activities']++;
+                                $counts[$cat]['students'] += $students;
+                            }
+                        }
+                    }
+                }
+
+                $row = [
+                    'hei_id'           => $hei->id,
+                    'hei_name'         => $hei->name,
+                    'hei_code'         => $hei->code,
+                    'status'           => $batch->status,
+                    'has_submission'   => true,
+                    'total_activities' => $totalActivities,
+                    'total_students'   => $totalStudents,
+                    'others_titles'    =>
+                        implode(', ', array_slice($otherTitles, 0, 3))
+                        . (count($otherTitles) > 3 ? '…' : ''),
+                ];
+
+                foreach ($counts as $cat => $data) {
+                    $row["{$cat}_activities"] = $data['activities'];
+                    $row["{$cat}_students"]   = $data['students'];
+                }
+
+                return $row;
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    /**
+     * GET /admin/summary/career-job/{heiId}/{category}/evidence?year=XXXX
+     */
+    public function getCareerJobEvidence(Request $request, $heiId, $category)
+    {
+        $selectedYear = $request->query('year');
+
+        if (!$selectedYear) {
+            return response()->json(['error' => 'Academic year is required', 'records' => []], 400);
+        }
+
+        $hei = HEI::find($heiId);
+        if (!$hei) {
+            return response()->json(['error' => 'HEI not found', 'records' => []], 404);
+        }
+
+        $validCategories = array_merge(array_keys(self::CAREER_JOB_KEYWORDS), ['others', 'total']);
+        if (!in_array($category, $validCategories)) {
+            return response()->json(['error' => 'Invalid category', 'records' => []], 422);
+        }
+
+        $programs = AnnexCProgram::whereHas('batch', fn($q) =>
+            $q->where('hei_id', $heiId)
+              ->where('academic_year', $selectedYear)
+              ->whereIn('status', ['published', 'submitted', 'request'])
+        )->get();
+
+        $programIds = $programs->pluck('id')->toArray();
+        $overrides  = CareerJobCategoryOverride::whereIn('program_id', $programIds)
+            ->get()->keyBy('program_id');
+
+        $records = [];
+
+        foreach ($programs as $program) {
+            $override         = $overrides->get($program->id);
+            $manualCategories = $override?->manual_categories ?? [];
+
+            if (!empty($manualCategories)) {
+                $assignedCategories = $manualCategories;
+            } else {
+                $matched            = $this->matchCareerJobCategories(strtolower($program->title));
+                $assignedCategories = empty($matched) ? ['others'] : $matched;
+            }
+
+            $include = match($category) {
+                'total'  => true,
+                'others' => in_array('others', $assignedCategories),
+                default  => in_array($category, $assignedCategories),
+            };
+
+            if ($include) {
+                $records[] = [
+                    'id'                        => $program->id,
+                    'title'                     => $program->title,
+                    'venue'                     => $program->venue,
+                    'implementation_date'       => $program->implementation_date?->format('Y-m-d'),
+                    'participants_online'       => $program->participants_online ?? 0,
+                    'participants_face_to_face' => $program->participants_face_to_face ?? 0,
+                    'total_participants'        =>
+                        ($program->participants_online ?? 0) + ($program->participants_face_to_face ?? 0),
+                    'organizer'                 => $program->organizer,
+                    'remarks'                   => $program->remarks,
+                    'manual_categories'         => $manualCategories,
+                    'assigned_categories'       => $assignedCategories,
+                ];
+            }
+        }
+
+        usort($records, fn($a, $b) =>
+            strcmp($b['implementation_date'] ?? '', $a['implementation_date'] ?? '')
+        );
+
+        return response()->json([
+            'hei_name'    => $hei->name,
+            'category'    => $category,
+            'records'     => $records,
+            'total_count' => count($records),
+        ]);
+    }
+
+    /**
+     * PATCH /admin/summary/career-job/category
+     */
+    public function updateCareerJobCategory(Request $request)
+    {
+        $validCategories = implode(',', array_keys(self::CAREER_JOB_KEYWORDS));
+
+        $request->validate([
+            'record_id'    => ['required', 'integer', 'min:1'],
+            'categories'   => ['nullable', 'array'],
+            'categories.*' => ['string', 'in:' . $validCategories],
+        ]);
+
+        $programId  = $request->input('record_id');
+        $categories = $request->input('categories');
+
+        if (empty($categories)) {
+            CareerJobCategoryOverride::where('program_id', $programId)->delete();
+        } else {
+            CareerJobCategoryOverride::updateOrCreate(
+                ['program_id' => $programId],
+                [
+                    'manual_categories' => $categories,
+                    'overridden_by'     => $request->user()->id,
+                    'overridden_at'     => now(),
+                ]
+            );
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    private function emptyCareerJobRow(HEI $hei, string $year): array
+    {
+        $row = [
+            'hei_id'            => $hei->id,
+            'hei_name'          => $hei->name,
+            'hei_code'          => $hei->code,
+            'status'            => 'not_submitted',
+            'has_submission'    => false,
+            'total_activities'  => 0,
+            'total_students'    => 0,
+            'others_titles'     => '',
+            'others_activities' => 0,
+            'others_students'   => 0,
+        ];
+
+        foreach (array_keys(self::CAREER_JOB_KEYWORDS) as $cat) {
+            $row["{$cat}_activities"] = 0;
+            $row["{$cat}_students"]   = 0;
+        }
+
+        return $row;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Health Services — keyword map
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private const HEALTH_KEYWORDS = [
+        'medical_checkup' => [
+            'medical', 'medical check', 'check-up', 'checkup', 'check up',
+            'consultation', 'physician', 'clinic', 'annual physical',
+            'physical exam', 'health exam', 'health check', 'medical exam',
+            'general check', 'medical consultation',
+        ],
+        'dental_checkup' => [
+            'dental', 'dentist', 'oral health', 'oral exam', 'dental check',
+            'dental exam', 'teeth', 'tooth', 'dental consultation',
+            'dental clinic', 'oral checkup',
+        ],
+        'seminar_educational' => [
+            'seminar', 'educational tour', 'tour', 'field trip', 'webinar',
+            'lecture', 'forum', 'symposium', 'health seminar', 'health forum',
+            'health education', 'wellness seminar', 'talk', 'orientation',
+            'health awareness', 'first aid', 'training',
+        ],
+    ];
+
+    private function matchHealthCategories(string $searchText): array
+    {
+        $matched = [];
+        $lower   = strtolower($searchText);
+
+        foreach (self::HEALTH_KEYWORDS as $category => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($lower, $keyword)) {
+                    $matched[] = $category;
+                    break;
+                }
+            }
+        }
+
+        return $matched;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Health Services — aggregated data  (Annex J only)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /admin/summary/health?year=XXXX
+     */
+    public function getHealthData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexJBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $annexJBatches = AnnexJBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with('programs')
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($annexJBatches, $selectedYear) {
+                $batch = $annexJBatches->get($hei->id);
+
+                if (!$batch || $batch->programs->isEmpty()) {
+                    return $this->emptyHealthRow($hei, $selectedYear);
+                }
+
+                $programIds = $batch->programs->pluck('id')->toArray();
+                $overrides  = HealthCategoryOverride::whereIn('program_id', $programIds)
+                    ->get()->keyBy('program_id');
+
+                $counts = array_fill_keys(array_keys(self::HEALTH_KEYWORDS), [
+                    'activities' => 0,
+                    'students'   => 0,
+                ]);
+                $counts['others'] = ['activities' => 0, 'students' => 0];
+
+                $totalActivities = 0;
+                $totalStudents   = 0;
+                $otherTitles     = [];
+
+                foreach ($batch->programs as $program) {
+                    $override = $overrides->get($program->id);
+                    $students = $program->number_of_participants ?? 0;
+
+                    $totalActivities++;
+                    $totalStudents += $students;
+
+                    if ($override && !empty($override->manual_categories)) {
+                        foreach ($override->manual_categories as $cat) {
+                            if (isset($counts[$cat])) {
+                                $counts[$cat]['activities']++;
+                                $counts[$cat]['students'] += $students;
+                            }
+                        }
+                    } else {
+                        $matched = $this->matchHealthCategories($program->title_of_program ?? '');
+
+                        if (empty($matched)) {
+                            $counts['others']['activities']++;
+                            $counts['others']['students'] += $students;
+                            $otherTitles[] = $program->title_of_program;
+                        } else {
+                            foreach ($matched as $cat) {
+                                $counts[$cat]['activities']++;
+                                $counts[$cat]['students'] += $students;
+                            }
+                        }
+                    }
+                }
+
+                $row = [
+                    'hei_id'           => $hei->id,
+                    'hei_name'         => $hei->name,
+                    'hei_code'         => $hei->code,
+                    'status'           => $batch->status,
+                    'has_submission'   => true,
+                    'total_activities' => $totalActivities,
+                    'total_students'   => $totalStudents,
+                    'others_titles'    =>
+                        implode(', ', array_slice($otherTitles, 0, 3))
+                        . (count($otherTitles) > 3 ? '…' : ''),
+                ];
+
+                foreach ($counts as $cat => $data) {
+                    $row["{$cat}_activities"] = $data['activities'];
+                    $row["{$cat}_students"]   = $data['students'];
+                }
+
+                return $row;
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    /**
+     * GET /admin/summary/health/{heiId}/{category}/evidence?year=XXXX
+     */
+    public function getHealthEvidence(Request $request, $heiId, $category)
+    {
+        $selectedYear = $request->query('year');
+
+        if (!$selectedYear) {
+            return response()->json(['error' => 'Academic year is required', 'records' => []], 400);
+        }
+
+        $hei = HEI::find($heiId);
+        if (!$hei) {
+            return response()->json(['error' => 'HEI not found', 'records' => []], 404);
+        }
+
+        $validCategories = array_merge(array_keys(self::HEALTH_KEYWORDS), ['others', 'total']);
+        if (!in_array($category, $validCategories)) {
+            return response()->json(['error' => 'Invalid category', 'records' => []], 422);
+        }
+
+        $programs = AnnexJProgram::whereHas('batch', fn($q) =>
+            $q->where('hei_id', $heiId)
+              ->where('academic_year', $selectedYear)
+              ->whereIn('status', ['published', 'submitted', 'request'])
+        )->get();
+
+        $programIds = $programs->pluck('id')->toArray();
+        $overrides  = HealthCategoryOverride::whereIn('program_id', $programIds)
+            ->get()->keyBy('program_id');
+
+        $records = [];
+
+        foreach ($programs as $program) {
+            $override         = $overrides->get($program->id);
+            $manualCategories = $override?->manual_categories ?? [];
+
+            if (!empty($manualCategories)) {
+                $assignedCategories = $manualCategories;
+            } else {
+                $matched            = $this->matchHealthCategories($program->title_of_program ?? '');
+                $assignedCategories = empty($matched) ? ['others'] : $matched;
+            }
+
+            $include = match($category) {
+                'total'  => true,
+                'others' => in_array('others', $assignedCategories),
+                default  => in_array($category, $assignedCategories),
+            };
+
+            if ($include) {
+                $records[] = [
+                    'id'                     => $program->id,
+                    'title_of_program'       => $program->title_of_program,
+                    'organizer'              => $program->organizer,
+                    'number_of_participants' => $program->number_of_participants ?? 0,
+                    'remarks'                => $program->remarks,
+                    'manual_categories'      => $manualCategories,
+                    'assigned_categories'    => $assignedCategories,
+                ];
+            }
+        }
+
+        usort($records, fn($a, $b) =>
+            strcmp($a['title_of_program'] ?? '', $b['title_of_program'] ?? '')
+        );
+
+        return response()->json([
+            'hei_name'    => $hei->name,
+            'category'    => $category,
+            'records'     => $records,
+            'total_count' => count($records),
+        ]);
+    }
+
+    /**
+     * PATCH /admin/summary/health/category
+     */
+    public function updateHealthCategory(Request $request)
+    {
+        $validCategories = implode(',', array_keys(self::HEALTH_KEYWORDS));
+
+        $request->validate([
+            'record_id'    => ['required', 'integer', 'min:1'],
+            'categories'   => ['nullable', 'array'],
+            'categories.*' => ['string', 'in:' . $validCategories],
+        ]);
+
+        $programId  = $request->input('record_id');
+        $categories = $request->input('categories');
+
+        if (empty($categories)) {
+            HealthCategoryOverride::where('program_id', $programId)->delete();
+        } else {
+            HealthCategoryOverride::updateOrCreate(
+                ['program_id' => $programId],
+                [
+                    'manual_categories' => $categories,
+                    'overridden_by'     => $request->user()->id,
+                    'overridden_at'     => now(),
+                ]
+            );
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    private function emptyHealthRow(HEI $hei, string $year): array
+    {
+        $row = [
+            'hei_id'            => $hei->id,
+            'hei_name'          => $hei->name,
+            'hei_code'          => $hei->code,
+            'status'            => 'not_submitted',
+            'has_submission'    => false,
+            'total_activities'  => 0,
+            'total_students'    => 0,
+            'others_titles'     => '',
+            'others_activities' => 0,
+            'others_students'   => 0,
+        ];
+
+        foreach (array_keys(self::HEALTH_KEYWORDS) as $cat) {
+            $row["{$cat}_activities"] = 0;
+            $row["{$cat}_students"]   = 0;
+        }
+
+        return $row;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Admission Services (Annex H)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Maps service_type string to flat field key via substring match.
+     * Returns null for services we don't display (e.g. Assessment).
+     */
+    private function admissionServiceKey(string $serviceType): ?string
+    {
+        $map = [
+            'admission_policy'   => 'General admission',
+            'pwd_guidelines'     => 'disabilities',
+            'foreign_guidelines' => 'foreign',
+            'drug_testing'       => 'Drug testing',
+            'medical_cert'       => 'Medical Certificate',
+            'online_enrollment'  => 'Online enrolment',
+            'entrance_exam'      => 'Entrance examination',
+        ];
+
+        foreach ($map as $key => $needle) {
+            if (str_contains($serviceType, $needle)) {
+                return $key;
+            }
+        }
+
+        return null; // 'Assessment' and anything unrecognised
+    }
+
+    /**
+     * GET /admin/summary/admission?year=XXXX
+     *
+     * Returns one row per HEI with 7 boolean fields derived from
+     * annex_h_admission_services.with (yes/no per service type).
+     */
+    public function getAdmissionData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexHBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $batches = AnnexHBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with('admissionServices')
+                ->get()
+                ->keyBy('hei_id');
+
+            $fields = [
+                'admission_policy', 'pwd_guidelines', 'foreign_guidelines',
+                'drug_testing', 'medical_cert', 'online_enrollment', 'entrance_exam',
+            ];
+
+            $result = $heis->map(function ($hei) use ($batches, $fields) {
+                $batch = $batches->get($hei->id);
+
+                $row = [
+                    'hei_id'         => $hei->id,
+                    'hei_code'       => $hei->code,
+                    'hei_name'       => $hei->name,
+                    'status'         => $batch?->status ?? 'not_submitted',
+                    'has_submission' => (bool) $batch,
+                ];
+
+                // Default all fields to null (not submitted)
+                foreach ($fields as $f) {
+                    $row[$f] = null;
+                }
+
+                if ($batch) {
+                    foreach ($batch->admissionServices as $service) {
+                        $key = $this->admissionServiceKey($service->service_type);
+                        if ($key) {
+                            $row[$key] = (bool) $service->with;
+                        }
+                    }
+                }
+
+                return $row;
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Social Community / Outreach (Annex O)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /admin/summary/social-community?year=XXXX
+     *
+     * Returns one row per HEI with total activities and total beneficiaries
+     * aggregated from annex_o_programs via annex_o_batches.
+     */
+    public function getAnnexOData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexOBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $batches = AnnexOBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with('programs')
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($batches) {
+                $batch = $batches->get($hei->id);
+
+                if (!$batch || $batch->programs->isEmpty()) {
+                    return [
+                        'hei_id'            => $hei->id,
+                        'hei_code'          => $hei->code,
+                        'hei_name'          => $hei->name,
+                        'status'            => $batch?->status ?? 'not_submitted',
+                        'has_submission'    => (bool) $batch,
+                        'total_activities'  => $batch ? 0 : null,
+                        'total_participants'=> $batch ? 0 : null,
+                    ];
+                }
+
+                return [
+                    'hei_id'            => $hei->id,
+                    'hei_code'          => $hei->code,
+                    'hei_name'          => $hei->name,
+                    'status'            => $batch->status,
+                    'has_submission'    => true,
+                    'total_activities'  => $batch->programs->count(),
+                    'total_participants'=> $batch->programs->sum('number_of_beneficiaries'),
+                ];
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    /**
+     * GET /admin/summary/social-community/{heiId}/evidence?year=XXXX
+     *
+     * Returns the individual Annex O programs for a specific HEI.
+     */
+    public function getAnnexOEvidence(Request $request, $heiId)
+    {
+        $selectedYear = $request->query('year');
+
+        if (!$selectedYear) {
+            return response()->json(['error' => 'Academic year is required', 'records' => []], 400);
+        }
+
+        $hei = HEI::find($heiId);
+        if (!$hei) {
+            return response()->json(['error' => 'HEI not found', 'records' => []], 404);
+        }
+
+        $programs = AnnexOProgram::whereHas('batch', fn($q) =>
+            $q->where('hei_id', $heiId)
+              ->where('academic_year', $selectedYear)
+              ->whereIn('status', ['published', 'submitted', 'request'])
+        )->orderBy('date_conducted', 'desc')->get();
+
+        $records = $programs->map(fn($p) => [
+            'id'                          => $p->id,
+            'title_of_program'            => $p->title_of_program,
+            'date_conducted'              => $p->date_conducted?->format('Y-m-d'),
+            'number_of_beneficiaries'     => $p->number_of_beneficiaries ?? 0,
+            'type_of_community_service'   => $p->type_of_community_service,
+            'community_population_served' => $p->community_population_served,
+        ])->values()->toArray();
+
+        return response()->json([
+            'hei_name'    => $hei->name,
+            'records'     => $records,
+            'total_count' => count($records),
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Student Discipline (Annex F)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /admin/summary/student-discipline?year=XXXX
+     *
+     * Returns one row per HEI with 3 boolean presence fields derived from
+     * annex_f_batches — a field is "present" when it contains a non-empty string.
+     */
+    public function getStudentDisciplineData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexFBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $batches = AnnexFBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($batches) {
+                $batch = $batches->get($hei->id);
+
+                return [
+                    'hei_id'                       => $hei->id,
+                    'hei_code'                     => $hei->code,
+                    'hei_name'                     => $hei->name,
+                    'status'                       => $batch?->status ?? 'not_submitted',
+                    'has_submission'               => (bool) $batch,
+                    'student_discipline_committee' => $batch ? !empty(trim($batch->student_discipline_committee ?? '')) : null,
+                    'procedure_mechanism'          => $batch ? !empty(trim($batch->procedure_mechanism ?? '')) : null,
+                    'complaint_desk'               => $batch ? !empty(trim($batch->complaint_desk ?? '')) : null,
+                ];
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
     }
 }

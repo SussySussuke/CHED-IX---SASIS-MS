@@ -99,6 +99,19 @@ Route::middleware('auth')->group(function () {
         Route::get('/summary/guidance-counselling/{heiId}/{category}/evidence', [SummaryViewController::class, 'getGuidanceCounsellingEvidence'])->name('admin.summary.guidance-counselling.evidence');
         Route::patch('/summary/guidance-counselling/category', [SummaryViewController::class, 'updateGuidanceCounsellingCategory'])->name('admin.summary.guidance-counselling-category.update');
 
+        Route::get('/summary/career-job', [SummaryViewController::class, 'getCareerJobData'])->name('admin.summary.career-job');
+        Route::get('/summary/career-job/{heiId}/{category}/evidence', [SummaryViewController::class, 'getCareerJobEvidence'])->name('admin.summary.career-job.evidence');
+        Route::patch('/summary/career-job/category', [SummaryViewController::class, 'updateCareerJobCategory'])->name('admin.summary.career-job-category.update');
+
+        Route::patch('/summary/health/category', [SummaryViewController::class, 'updateHealthCategory'])->name('admin.summary.health-category.update');
+        Route::get('/summary/health', [SummaryViewController::class, 'getHealthData'])->name('admin.summary.health');
+        Route::get('/summary/health/{heiId}/{category}/evidence', [SummaryViewController::class, 'getHealthEvidence'])->name('admin.summary.health.evidence');
+
+        Route::get('/summary/admission', [SummaryViewController::class, 'getAdmissionData'])->name('admin.summary.admission');
+        Route::get('/summary/social-community', [SummaryViewController::class, 'getAnnexOData'])->name('admin.summary.social-community');
+        Route::get('/summary/social-community/{heiId}/evidence', [SummaryViewController::class, 'getAnnexOEvidence'])->name('admin.summary.social-community.evidence');
+        Route::get('/summary/student-discipline', [SummaryViewController::class, 'getStudentDisciplineData'])->name('admin.summary.student-discipline');
+
         Route::get('/ched-contacts', [CHEDContactController::class, 'index'])->name('admin.ched-contacts');
         Route::post('/ched-contacts', [CHEDContactController::class, 'store'])->name('admin.ched-contacts.store');
         Route::put('/ched-contacts/{contact}', [CHEDContactController::class, 'update'])->name('admin.ched-contacts.update');

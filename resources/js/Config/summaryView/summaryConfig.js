@@ -2,13 +2,23 @@ import { profileConfig } from './profileConfig.jsx';
 import { personnelConfig } from './personnelConfig.jsx';
 import { infoOrientationConfig } from './infoOrientationConfig.jsx';
 import { guidanceCounsellingConfig } from './guidanceCounsellingConfig.jsx';
+import { careerJobConfig } from './careerJobConfig.jsx';
+import { healthConfig } from './healthConfig.jsx';
+import { admissionConfig } from './admissionConfig.jsx';
+import { studentDisciplineConfig } from './studentDisciplineConfig.jsx';
+import { socialCommunityConfig } from './socialCommunityConfig.jsx';
 
 export const summaryConfig = {
   sections: {
-    '1A-Profile':           profileConfig,
-    '1B-Personnel':         personnelConfig,
-    '2-Info-Orientation':   infoOrientationConfig,
+    '1A-Profile':            profileConfig,
+    '1B-Personnel':          personnelConfig,
+    '2-Info-Orientation':    infoOrientationConfig,
     '3-GuidanceCounselling': guidanceCounsellingConfig,
+    '4-CareerJob':           careerJobConfig,
+    '5-Health':              healthConfig,
+    '6-Admission':           admissionConfig,
+    '7-StudentDiscipline':   studentDisciplineConfig,
+    '8-SocialCommunity':     socialCommunityConfig,
   },
 
   gridDefaults: {
