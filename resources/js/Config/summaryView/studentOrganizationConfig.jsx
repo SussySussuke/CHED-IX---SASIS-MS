@@ -1,5 +1,57 @@
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 
+// ─── Drilldown columns (for RecordsModal) ────────────────────────────────────
+export const STUDENT_ORG_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Organization Name',
+    field: 'name_of_accredited',
+    flex: 1,
+    minWidth: 220,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Years of Existence',
+    field: 'years_of_existence',
+    width: 130,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right' },
+    valueFormatter: (params) => params.value ?? '—',
+  },
+  {
+    headerName: 'Accredited/Recognized Since',
+    field: 'accredited_since',
+    width: 160,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Faculty Adviser',
+    field: 'faculty_adviser',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'President/Head & Officers',
+    field: 'president_and_officers',
+    flex: 1,
+    minWidth: 200,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Specialization',
+    field: 'specialization',
+    width: 160,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+];
+
+// ─── Section tip text ─────────────────────────────────────────────────────────
+export const STUDENT_ORG_TIP = 'Student organization data from Annex E. \'Activities Conducted\' = number of organizations that have listed programs/activities. Click any count to view organization details. — = HEI has not submitted.';
+
 // ─── Shared cell renderer ─────────────────────────────────────────────────────
 
 function CountCell({ value, onClick }) {
@@ -37,7 +89,6 @@ function CountCell({ value, onClick }) {
 }
 
 // ─── Section config ───────────────────────────────────────────────────────────
-
 export const studentOrganizationConfig = {
   sectionId:    '9-StudentOrganization',
   sectionTitle: 'Student Organizations',

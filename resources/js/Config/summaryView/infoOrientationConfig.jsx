@@ -112,6 +112,126 @@ function categoryColumnGroup(headerName, fieldPrefix, onActivityClick) {
  *   is clicked. 'category' is one of INFO_ORIENTATION_CATEGORY_KEYS, 'uncategorized',
  *   or 'total'.
  */
+// ─── Drilldown columns (for RecordsModal) ───────────────────────────────────
+export const INFO_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Title',
+    field: 'title',
+    flex: 2,
+    minWidth: 250,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Venue',
+    field: 'venue',
+    flex: 1,
+    minWidth: 150,
+  },
+  {
+    headerName: 'Date',
+    field: 'implementation_date',
+    width: 130,
+    valueFormatter: (params) => {
+      if (!params.value) return '—';
+      return new Date(params.value).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      });
+    },
+  },
+  {
+    headerName: 'Target Group',
+    field: 'target_group',
+    flex: 1,
+    minWidth: 150,
+  },
+  {
+    headerName: 'Face-to-Face',
+    field: 'participants_face_to_face',
+    width: 120,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Online',
+    field: 'participants_online',
+    width: 100,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Total',
+    field: 'total_participants',
+    width: 100,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Organizer',
+    field: 'organizer',
+    flex: 1,
+    minWidth: 150,
+  },
+  {
+    headerName: 'Source',
+    field: 'program_type',
+    width: 110,
+    cellStyle: { textAlign: 'center' },
+    cellRenderer: (params) => {
+      if (!params.value) return <span className="text-gray-400">—</span>;
+      return (
+        <span className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400">
+          {params.value === 'annex_a' ? 'Annex A' : 'Annex B'}
+        </span>
+      );
+    },
+  },
+  {
+    headerName: 'Category',
+    field: 'assigned_categories',
+    minWidth: 220,
+    flex: 1,
+    sortable: false,
+    wrapText: true,
+    autoHeight: true,
+    cellRenderer: (params) => {
+      const cats = params.value;
+      if (!cats || cats.length === 0) return <span className="text-gray-400">—</span>;
+      return (
+        <div className="flex flex-wrap gap-1 py-1">
+          {cats.map((cat) => {
+            const isMisc = cat === 'uncategorized';
+            return (
+              <span
+                key={cat}
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  isMisc
+                    ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300'
+                    : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                }`}
+              >
+                {INFO_ORIENTATION_CATEGORY_LABELS[cat] ?? cat}
+              </span>
+            );
+          })}
+        </div>
+      );
+    },
+  },
+];
+
+// ─── Recategorize options ─────────────────────────────────────────────────────
+export const INFO_RECATEGORIZE_OPTIONS = INFO_ORIENTATION_CATEGORY_KEYS.map((key) => ({
+  value: key,
+  label: INFO_ORIENTATION_CATEGORY_LABELS[key],
+}));
+
+// ─── Section tip text ─────────────────────────────────────────────────────────
+export const INFO_TIP = 'Click any activity count to view program details. Yellow columns indicate activities that couldn\'t be automatically categorized.';
+
 export const infoOrientationConfig = {
   sectionId: '2-Info-Orientation',
   sectionTitle: 'Information & Orientation Services',

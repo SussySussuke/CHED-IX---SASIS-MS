@@ -1,5 +1,49 @@
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 
+// ─── Drilldown columns (for RecordsModal) ────────────────────────────────────
+export const DORM_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Housing / Facility Name',
+    field: 'housing_name',
+    flex: 1,
+    minWidth: 200,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Complete Address',
+    field: 'complete_address',
+    flex: 1,
+    minWidth: 200,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'House Manager',
+    field: 'house_manager_name',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Type',
+    field: 'type',
+    width: 130,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Remarks',
+    field: 'remarks',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+];
+
+// ─── Section tip text ─────────────────────────────────────────────────────────
+export const DORM_TIP = 'Student housing data from Annex L. Male/Female/Co-ed counts reflect exclusive type only (Co-ed includes facilities marked co-ed regardless of other flags). Click any count to view individual facility records. — = HEI has not submitted.';
+
 // ─── Shared cell renderer ─────────────────────────────────────────────────────
 
 function CountCell({ value, onClick }) {
@@ -44,7 +88,6 @@ function NumericCell({ value }) {
 }
 
 // ─── Section config ───────────────────────────────────────────────────────────
-
 export const dormConfig = {
   sectionId:    '13-Dorm',
   sectionTitle: 'Student Housing / Dormitory',
@@ -78,9 +121,7 @@ export const dormConfig = {
       width:      120,
       filter:     'agNumberColumnFilter',
       cellStyle:  { textAlign: 'center' },
-      cellRenderer: (params) => (
-        <NumericCell value={params.value} />
-      ),
+      cellRenderer: (params) => <NumericCell value={params.value} />,
     },
     {
       headerName: 'Female-Only',
@@ -88,9 +129,7 @@ export const dormConfig = {
       width:      120,
       filter:     'agNumberColumnFilter',
       cellStyle:  { textAlign: 'center' },
-      cellRenderer: (params) => (
-        <NumericCell value={params.value} />
-      ),
+      cellRenderer: (params) => <NumericCell value={params.value} />,
     },
     {
       headerName: 'Co-ed',
@@ -98,9 +137,7 @@ export const dormConfig = {
       width:      100,
       filter:     'agNumberColumnFilter',
       cellStyle:  { textAlign: 'center' },
-      cellRenderer: (params) => (
-        <NumericCell value={params.value} />
-      ),
+      cellRenderer: (params) => <NumericCell value={params.value} />,
     },
     {
       headerName: 'Status',

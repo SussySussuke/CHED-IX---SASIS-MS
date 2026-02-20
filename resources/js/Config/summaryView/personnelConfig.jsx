@@ -1,6 +1,6 @@
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 
-// ─── Category key constants ────────────────────────────────────────────────────
+// ─── Category key constants ───────────────────────────────────────────────────
 export const PERSONNEL_CATEGORY_KEYS = [
   'registered_guidance_counselors',
   'guidance_counseling',
@@ -51,10 +51,6 @@ export const PERSONNEL_CATEGORY_LABELS = {
 
 // ─── Shared cell renderer ────────────────────────────────────────────────────
 
-/**
- * Clickable count cell — same UX as ActivityCell in infoOrientationConfig.
- * Zero: dimmed "0 →" still clickable so admin can see empty drilldown.
- */
 function CountCell({ value, onClick }) {
   if (value === null || value === undefined) {
     return <span className="text-gray-400">—</span>;
@@ -89,7 +85,6 @@ function CountCell({ value, onClick }) {
   );
 }
 
-/** Builds a single count column for a role category */
 function categoryColumn(headerName, field, onCountClick) {
   return {
     headerName,
@@ -108,14 +103,92 @@ function categoryColumn(headerName, field, onCountClick) {
   };
 }
 
-// ─── Section config ───────────────────────────────────────────────────────────
+// ─── Drilldown columns (for RecordsModal) ────────────────────────────────────
+export const PERSONNEL_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Name',
+    field: 'name_of_personnel',
+    flex: 1,
+    minWidth: 200,
+    cellRenderer: (params) =>
+      params.value
+        ? <span className="font-medium">{params.value}</span>
+        : <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Position / Designation',
+    field: 'position_designation',
+    flex: 1,
+    minWidth: 220,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Office',
+    field: 'office_type',
+    width: 220,
+    filter: 'agTextColumnFilter',
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Tenure / Appointment',
+    field: 'tenure_nature_of_appointment',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Yrs in Office',
+    field: 'years_in_office',
+    width: 110,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right' },
+    valueFormatter: (params) => params.value ?? '—',
+  },
+  {
+    headerName: 'Highest Degree',
+    field: 'qualification_highest_degree',
+    flex: 1,
+    minWidth: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'License Type',
+    field: 'license_no_type',
+    width: 140,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'License Expiry',
+    field: 'license_expiry_date',
+    width: 130,
+    valueFormatter: (params) => {
+      if (!params.value) return '—';
+      return new Date(params.value).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      });
+    },
+  },
+];
 
+// ─── Recategorize options ─────────────────────────────────────────────────────
+export const PERSONNEL_RECATEGORIZE_OPTIONS = PERSONNEL_CATEGORY_KEYS.map((key) => ({
+  value: key,
+  label: PERSONNEL_CATEGORY_LABELS[key],
+}));
+
+// ─── Section tip text ─────────────────────────────────────────────────────────
+export const PERSONNEL_TIP = 'Counts are derived from position/designation keyword matching on MER2 submissions. Yellow column shows personnel whose position didn\'t match any category. Click any count to view the individual personnel records.';
+
+// ─── Section config ───────────────────────────────────────────────────────────
 export const personnelConfig = {
   sectionId:    '1B-Personnel',
   sectionTitle: 'Personnel',
 
   getColumns: (onCountClick = null) => [
-    // ── HEI Name (pinned) ──────────────────────────────────────────────────
     {
       headerName: 'Institution Name',
       field:      'hei_name',
@@ -125,8 +198,6 @@ export const personnelConfig = {
       pinned:     'left',
       cellStyle:  { fontWeight: '500' },
     },
-
-    // ── SAS Head — plain text, from MER1 ──────────────────────────────────
     {
       headerName: 'SAS Head/s',
       field:      'sas_head_name',
@@ -137,8 +208,6 @@ export const personnelConfig = {
         return <span className="text-sm font-medium">{params.value}</span>;
       },
     },
-
-    // ── Role category count columns ────────────────────────────────────────
     categoryColumn('Registered Guidance Counselors',            'registered_guidance_counselors', onCountClick),
     categoryColumn('Guidance & Counseling',                     'guidance_counseling',             onCountClick),
     categoryColumn('Career Guidance / Placement',               'career_guidance_placement',       onCountClick),
@@ -159,8 +228,6 @@ export const personnelConfig = {
     categoryColumn('Student Governance',                        'student_governance',              onCountClick),
     categoryColumn('Student Publication',                       'student_publication',             onCountClick),
     categoryColumn('Multi-faith Services',                      'multi_faith',                     onCountClick),
-
-    // ── Uncategorized (yellow tint) ────────────────────────────────────────
     {
       headerName: 'Uncategorized',
       field:      'uncategorized',
@@ -201,8 +268,6 @@ export const personnelConfig = {
         );
       },
     },
-
-    // ── Total ──────────────────────────────────────────────────────────────
     {
       headerName: 'Total',
       field:      'total_personnel',
@@ -230,8 +295,6 @@ export const personnelConfig = {
         );
       },
     },
-
-    // ── Status ─────────────────────────────────────────────────────────────
     {
       headerName: 'Status',
       field:      'status',

@@ -1,5 +1,50 @@
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 
+// ─── Drilldown columns (for RecordsModal) ────────────────────────────────────
+export const SCHOLARSHIP_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Scholarship / Financial Assistance',
+    field: 'scholarship_name',
+    flex: 2,
+    minWidth: 220,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Type',
+    field: 'type',
+    width: 150,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Category / Intended Beneficiaries',
+    field: 'category_intended_beneficiaries',
+    flex: 1,
+    minWidth: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'No. of Beneficiaries',
+    field: 'number_of_beneficiaries',
+    width: 150,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Remarks',
+    field: 'remarks',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+];
+
+// ─── Section tip text ─────────────────────────────────────────────────────────
+export const SCHOLARSHIP_TIP = 'Scholarship and financial assistance data from Annex I. Click any count to view individual scholarship records. — = HEI has not submitted.';
+
 // ─── Shared cell renderer ─────────────────────────────────────────────────────
 
 function CountCell({ value, onClick }) {
@@ -37,7 +82,6 @@ function CountCell({ value, onClick }) {
 }
 
 // ─── Section config ───────────────────────────────────────────────────────────
-
 export const scholarshipConfig = {
   sectionId:    '11-Scholarship',
   sectionTitle: 'Scholarships and Financial Assistance',

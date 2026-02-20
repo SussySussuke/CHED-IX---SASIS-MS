@@ -1,5 +1,55 @@
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 
+// ─── Drilldown columns (for RecordsModal) ────────────────────────────────────
+export const SOCIAL_COMMUNITY_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Title of Program',
+    field: 'title_of_program',
+    flex: 2,
+    minWidth: 220,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Date Conducted',
+    field: 'date_conducted',
+    width: 140,
+    valueFormatter: (params) => {
+      if (!params.value) return '—';
+      return new Date(params.value).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      });
+    },
+  },
+  {
+    headerName: 'No. of Beneficiaries',
+    field: 'number_of_beneficiaries',
+    width: 160,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Type of Community Service',
+    field: 'type_of_community_service',
+    flex: 1,
+    minWidth: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Community Population Served',
+    field: 'community_population_served',
+    flex: 1,
+    minWidth: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+];
+
+// ─── Section tip text ─────────────────────────────────────────────────────────
+export const SOCIAL_COMMUNITY_TIP = 'Community involvement and outreach data from Annex O. Participants = total beneficiaries across all programs. — = HEI has not submitted.';
+
 // ─── Shared cell renderer ─────────────────────────────────────────────────────
 
 function CountCell({ value, onClick }) {
@@ -37,7 +87,6 @@ function CountCell({ value, onClick }) {
 }
 
 // ─── Section config ───────────────────────────────────────────────────────────
-
 export const socialCommunityConfig = {
   sectionId:    '8-SocialCommunity',
   sectionTitle: 'Social Community Involvement',

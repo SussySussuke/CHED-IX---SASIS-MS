@@ -1,6 +1,6 @@
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 
-// ─── Category key constants ────────────────────────────────────────────────────
+// ─── Category key constants ───────────────────────────────────────────────────
 export const HEALTH_CATEGORY_KEYS = [
   'medical_checkup',
   'dental_checkup',
@@ -85,14 +85,89 @@ function categoryColumnGroup(headerName, fieldPrefix, onActivityClick) {
   };
 }
 
-// ─── Section config ───────────────────────────────────────────────────────────
+// ─── Drilldown columns (for RecordsModal) ────────────────────────────────────
+export const HEALTH_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Program/Activity Title',
+    field: 'title_of_program',
+    flex: 2,
+    minWidth: 220,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Organizer',
+    field: 'organizer',
+    flex: 1,
+    minWidth: 150,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'No. of Participants',
+    field: 'number_of_participants',
+    width: 150,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Remarks',
+    field: 'remarks',
+    flex: 1,
+    minWidth: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Category',
+    field: 'assigned_categories',
+    minWidth: 220,
+    flex: 1,
+    sortable: false,
+    wrapText: true,
+    autoHeight: true,
+    cellRenderer: (params) => {
+      const cats = params.value;
+      if (!cats || cats.length === 0) return <span className="text-gray-400">—</span>;
+      return (
+        <div className="flex flex-wrap gap-1 py-1">
+          {cats.map((cat) => {
+            const isOther = cat === 'others';
+            return (
+              <span
+                key={cat}
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  isOther
+                    ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300'
+                    : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                }`}
+              >
+                {HEALTH_CATEGORY_LABELS[cat] ?? cat}
+              </span>
+            );
+          })}
+        </div>
+      );
+    },
+  },
+];
 
+// ─── Recategorize options ─────────────────────────────────────────────────────
+export const HEALTH_RECATEGORIZE_OPTIONS = HEALTH_CATEGORY_KEYS.map((key) => ({
+  value: key,
+  label: HEALTH_CATEGORY_LABELS[key],
+}));
+
+// ─── Section tip text ─────────────────────────────────────────────────────────
+export const HEALTH_TIP = 'Click any activity count to view program details from Annex J (Health Services). Yellow column shows activities that couldn\'t be automatically matched to a service type.';
+
+// ─── Section config ───────────────────────────────────────────────────────────
 export const healthConfig = {
   sectionId:    '5-Health',
   sectionTitle: 'Health Services',
 
   getColumns: (onActivityClick = null) => [
-    // ── HEI Name (pinned) ──────────────────────────────────────────────────
     {
       headerName: 'Name of HEI',
       field:      'hei_name',
@@ -102,13 +177,9 @@ export const healthConfig = {
       pinned:     'left',
       cellStyle:  { fontWeight: '500' },
     },
-
-    // ── 3 service type categories ──────────────────────────────────────────
     categoryColumnGroup('Annual Medical Check-up/Consultation',  'medical_checkup',     onActivityClick),
     categoryColumnGroup('Annual Dental Check-up/Consultation',   'dental_checkup',      onActivityClick),
     categoryColumnGroup('Seminar and Educational Tours',         'seminar_educational', onActivityClick),
-
-    // ── Others (yellow) ────────────────────────────────────────────────────
     {
       headerName: 'Others (please specify)',
       children: [
@@ -152,8 +223,6 @@ export const healthConfig = {
         },
       ],
     },
-
-    // ── Total ──────────────────────────────────────────────────────────────
     {
       headerName: 'Total',
       children: [
@@ -190,8 +259,6 @@ export const healthConfig = {
         },
       ],
     },
-
-    // ── Status ─────────────────────────────────────────────────────────────
     {
       headerName: 'Status',
       field:      'status',

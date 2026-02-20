@@ -1,5 +1,61 @@
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 
+// ─── Drilldown columns (for RecordsModal) ────────────────────────────────────
+export const CULTURE_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Title of Activity',
+    field: 'title_of_activity',
+    flex: 2,
+    minWidth: 220,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Date',
+    field: 'implementation_date',
+    width: 130,
+    valueFormatter: (params) => {
+      if (!params.value) return '—';
+      return new Date(params.value).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      });
+    },
+  },
+  {
+    headerName: 'Venue',
+    field: 'implementation_venue',
+    flex: 1,
+    minWidth: 150,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Total Participants',
+    field: 'total_participants',
+    width: 140,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Organizer',
+    field: 'organizer',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Remarks',
+    field: 'remarks',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+];
+
+// ─── Section tip text ─────────────────────────────────────────────────────────
+export const CULTURE_TIP = 'Culture and the arts data from Annex N. Click any count to view individual activity records. — = HEI has not submitted.';
+
 // ─── Shared cell renderer ─────────────────────────────────────────────────────
 
 function CountCell({ value, onClick }) {
@@ -37,7 +93,6 @@ function CountCell({ value, onClick }) {
 }
 
 // ─── Section config ───────────────────────────────────────────────────────────
-
 export const cultureConfig = {
   sectionId:    '10-Culture',
   sectionTitle: 'Culture and the Arts',
