@@ -25,6 +25,18 @@ use App\Models\AnnexHAdmissionService;
 use App\Models\AnnexFBatch;
 use App\Models\AnnexOBatch;
 use App\Models\AnnexOProgram;
+use App\Models\AnnexEBatch;
+use App\Models\AnnexEOrganization;
+use App\Models\AnnexNBatch;
+use App\Models\AnnexNActivity;
+use App\Models\AnnexIBatch;
+use App\Models\AnnexIScholarship;
+use App\Models\AnnexKBatch;
+use App\Models\AnnexKCommittee;
+use App\Models\AnnexLBatch;
+use App\Models\AnnexLHousing;
+use App\Models\AnnexMBatch;
+use App\Models\AnnexMStatistic;
 use Illuminate\Http\Request;
 
 class SummaryViewController extends Controller
@@ -1992,6 +2004,678 @@ class SummaryViewController extends Controller
                     'student_discipline_committee' => $batch ? !empty(trim($batch->student_discipline_committee ?? '')) : null,
                     'procedure_mechanism'          => $batch ? !empty(trim($batch->procedure_mechanism ?? '')) : null,
                     'complaint_desk'               => $batch ? !empty(trim($batch->complaint_desk ?? '')) : null,
+                ];
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Student Organizations (Annex E)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /admin/summary/student-organization?year=XXXX
+     */
+    public function getAnnexEData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexEBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $batches = AnnexEBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with('organizations')
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($batches) {
+                $batch = $batches->get($hei->id);
+
+                if (!$batch) {
+                    return [
+                        'hei_id'               => $hei->id,
+                        'hei_code'             => $hei->code,
+                        'hei_name'             => $hei->name,
+                        'status'               => 'not_submitted',
+                        'has_submission'       => false,
+                        'total_organizations'  => null,
+                        'total_with_activities'=> null,
+                    ];
+                }
+
+                $orgs = $batch->organizations;
+
+                return [
+                    'hei_id'               => $hei->id,
+                    'hei_code'             => $hei->code,
+                    'hei_name'             => $hei->name,
+                    'status'               => $batch->status,
+                    'has_submission'       => true,
+                    'total_organizations'  => $orgs->count(),
+                    'total_with_activities'=> $orgs->filter(
+                        fn($o) => !empty(trim($o->programs_projects_activities ?? ''))
+                    )->count(),
+                ];
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    /**
+     * GET /admin/summary/student-organization/{heiId}/evidence?year=XXXX
+     */
+    public function getAnnexEEvidence(Request $request, $heiId)
+    {
+        $selectedYear = $request->query('year');
+
+        if (!$selectedYear) {
+            return response()->json(['error' => 'Academic year is required', 'records' => []], 400);
+        }
+
+        $hei = HEI::find($heiId);
+        if (!$hei) {
+            return response()->json(['error' => 'HEI not found', 'records' => []], 404);
+        }
+
+        $organizations = AnnexEOrganization::whereHas('batch', fn($q) =>
+            $q->where('hei_id', $heiId)
+              ->where('academic_year', $selectedYear)
+              ->whereIn('status', ['published', 'submitted', 'request'])
+        )->orderBy('name_of_accredited', 'asc')->get();
+
+        $records = $organizations->map(fn($o) => [
+            'id'                           => $o->id,
+            'name_of_accredited'           => $o->name_of_accredited,
+            'years_of_existence'           => $o->years_of_existence,
+            'accredited_since'             => $o->accredited_since,
+            'faculty_adviser'              => $o->faculty_adviser,
+            'president_and_officers'       => $o->president_and_officers,
+            'specialization'               => $o->specialization,
+            'fee_collected'                => $o->fee_collected,
+            'programs_projects_activities' => $o->programs_projects_activities,
+        ])->values()->toArray();
+
+        return response()->json([
+            'hei_name'    => $hei->name,
+            'records'     => $records,
+            'total_count' => count($records),
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Culture and the Arts (Annex N)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /admin/summary/culture?year=XXXX
+     */
+    public function getAnnexNData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexNBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $batches = AnnexNBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with('activities')
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($batches) {
+                $batch = $batches->get($hei->id);
+
+                if (!$batch) {
+                    return [
+                        'hei_id'             => $hei->id,
+                        'hei_code'           => $hei->code,
+                        'hei_name'           => $hei->name,
+                        'status'             => 'not_submitted',
+                        'has_submission'     => false,
+                        'total_activities'   => null,
+                        'total_participants' => null,
+                    ];
+                }
+
+                return [
+                    'hei_id'             => $hei->id,
+                    'hei_code'           => $hei->code,
+                    'hei_name'           => $hei->name,
+                    'status'             => $batch->status,
+                    'has_submission'     => true,
+                    'total_activities'   => $batch->activities->count(),
+                    'total_participants' => $batch->activities->sum('number_of_participants'),
+                ];
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    /**
+     * GET /admin/summary/culture/{heiId}/evidence?year=XXXX
+     */
+    public function getAnnexNEvidence(Request $request, $heiId)
+    {
+        $selectedYear = $request->query('year');
+
+        if (!$selectedYear) {
+            return response()->json(['error' => 'Academic year is required', 'records' => []], 400);
+        }
+
+        $hei = HEI::find($heiId);
+        if (!$hei) {
+            return response()->json(['error' => 'HEI not found', 'records' => []], 404);
+        }
+
+        $activities = AnnexNActivity::whereHas('batch', fn($q) =>
+            $q->where('hei_id', $heiId)
+              ->where('academic_year', $selectedYear)
+              ->whereIn('status', ['published', 'submitted', 'request'])
+        )->orderBy('implementation_date', 'desc')->get();
+
+        $records = $activities->map(fn($a) => [
+            'id'                   => $a->id,
+            'title_of_activity'    => $a->title_of_activity,
+            'implementation_date'  => $a->implementation_date?->format('Y-m-d'),
+            'implementation_venue' => $a->implementation_venue,
+            'total_participants'   => $a->number_of_participants ?? 0,
+            'organizer'            => $a->organizer,
+            'remarks'              => $a->remarks,
+        ])->values()->toArray();
+
+        return response()->json([
+            'hei_name'    => $hei->name,
+            'records'     => $records,
+            'total_count' => count($records),
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Scholarships and Financial Assistance (Annex I)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /admin/summary/scholarship?year=XXXX
+     */
+    public function getAnnexIData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexIBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $batches = AnnexIBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with('scholarships')
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($batches) {
+                $batch = $batches->get($hei->id);
+
+                if (!$batch) {
+                    return [
+                        'hei_id'              => $hei->id,
+                        'hei_code'            => $hei->code,
+                        'hei_name'            => $hei->name,
+                        'status'              => 'not_submitted',
+                        'has_submission'      => false,
+                        'total_scholarships'  => null,
+                        'total_beneficiaries' => null,
+                    ];
+                }
+
+                return [
+                    'hei_id'              => $hei->id,
+                    'hei_code'            => $hei->code,
+                    'hei_name'            => $hei->name,
+                    'status'              => $batch->status,
+                    'has_submission'      => true,
+                    'total_scholarships'  => $batch->scholarships->count(),
+                    'total_beneficiaries' => $batch->scholarships->sum('number_of_beneficiaries'),
+                ];
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    /**
+     * GET /admin/summary/scholarship/{heiId}/evidence?year=XXXX
+     */
+    public function getAnnexIEvidence(Request $request, $heiId)
+    {
+        $selectedYear = $request->query('year');
+
+        if (!$selectedYear) {
+            return response()->json(['error' => 'Academic year is required', 'records' => []], 400);
+        }
+
+        $hei = HEI::find($heiId);
+        if (!$hei) {
+            return response()->json(['error' => 'HEI not found', 'records' => []], 404);
+        }
+
+        $scholarships = AnnexIScholarship::whereHas('batch', fn($q) =>
+            $q->where('hei_id', $heiId)
+              ->where('academic_year', $selectedYear)
+              ->whereIn('status', ['published', 'submitted', 'request'])
+        )->orderBy('scholarship_name', 'asc')->get();
+
+        $records = $scholarships->map(fn($s) => [
+            'id'                              => $s->id,
+            'scholarship_name'                => $s->scholarship_name,
+            'type'                            => $s->type,
+            'category_intended_beneficiaries' => $s->category_intended_beneficiaries,
+            'number_of_beneficiaries'         => $s->number_of_beneficiaries,
+            'remarks'                         => $s->remarks,
+        ])->values()->toArray();
+
+        return response()->json([
+            'hei_name'    => $hei->name,
+            'records'     => $records,
+            'total_count' => count($records),
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Safety and Security (Annex K)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Keyword match helper for a single committee field.
+     * Returns true if ANY committee row in the collection matches the keywords
+     * and does NOT match any of the exclude keywords.
+     */
+    private function matchKCommitteeField(
+        $committees,
+        array $keywords,
+        array $excludeKeywords = []
+    ): bool {
+        return $committees->contains(function ($committee) use ($keywords, $excludeKeywords) {
+            $name = strtolower($committee->committee_name ?? '');
+
+            // Must match at least one include keyword
+            $matched = false;
+            foreach ($keywords as $kw) {
+                if (str_contains($name, strtolower($kw))) {
+                    $matched = true;
+                    break;
+                }
+            }
+
+            if (!$matched) {
+                return false;
+            }
+
+            // Must not match any exclude keyword
+            foreach ($excludeKeywords as $ex) {
+                if (str_contains($name, strtolower($ex))) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    /**
+     * GET /admin/summary/safety-security?year=XXXX
+     */
+    public function getAnnexKData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexKBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $batches = AnnexKBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with('committees')
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($batches) {
+                $batch = $batches->get($hei->id);
+
+                if (!$batch) {
+                    return [
+                        'hei_id'                    => $hei->id,
+                        'hei_code'                  => $hei->code,
+                        'hei_name'                  => $hei->name,
+                        'status'                    => 'not_submitted',
+                        'has_submission'            => false,
+                        'safety_security_committee' => null,
+                        'disaster_risk_reduction'   => null,
+                        'calamity_management'       => null,
+                        'crisis_management_committee' => null,
+                        'crisis_psychosocial'       => null,
+                        'drug_free_committee'       => null,
+                        'drug_education_trained'    => null,
+                    ];
+                }
+
+                $committees = $batch->committees;
+
+                return [
+                    'hei_id'         => $hei->id,
+                    'hei_code'       => $hei->code,
+                    'hei_name'       => $hei->name,
+                    'status'         => $batch->status,
+                    'has_submission' => true,
+
+                    'safety_security_committee' => $this->matchKCommitteeField(
+                        $committees,
+                        ['safety and security', 'safety & security', 'safety committee', 'security committee', 'health safety', 'fire safety', 'safety'],
+                        ['drug', 'disaster', 'crisis', 'calamity', 'psycho']
+                    ),
+
+                    'disaster_risk_reduction' => $this->matchKCommitteeField(
+                        $committees,
+                        ['disaster risk', 'drrm', 'drr', 'disaster management', 'risk reduction', 'disaster risk reduction']
+                    ),
+
+                    'calamity_management' => $this->matchKCommitteeField(
+                        $committees,
+                        ['calamity management', 'calamity', 'institutional calamity', 'emergency management', 'emergency response team', 'emergency response committee']
+                    ),
+
+                    'crisis_management_committee' => $this->matchKCommitteeField(
+                        $committees,
+                        ['crisis management', 'crisis committee', 'crisis response', 'critical incident', 'incident management'],
+                        ['psychosocial', 'psychological']
+                    ),
+
+                    'crisis_psychosocial' => $this->matchKCommitteeField(
+                        $committees,
+                        ['psychosocial', 'psychological support', 'mental health support', 'psychosocial support', 'crisis counseling', 'trauma response', 'crisis psychosocial']
+                    ),
+
+                    'drug_free_committee' => $this->matchKCommitteeField(
+                        $committees,
+                        ['drug-free', 'drug free', 'anti-drug', 'antidrug', 'drug prevention committee', 'drug free committee', 'drug abuse prevention']
+                    ),
+
+                    'drug_education_trained' => $committees->contains(function ($committee) {
+                        $name = strtolower($committee->committee_name ?? '');
+                        if (!str_contains($name, 'drug')) {
+                            return false;
+                        }
+                        return str_contains($name, 'train')
+                            || str_contains($name, 'education')
+                            || str_contains($name, 'counselor')
+                            || str_contains($name, 'personnel')
+                            || str_contains($name, 'preventive');
+                    }),
+                ];
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Student Housing / Dormitory (Annex L)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /admin/summary/dorm?year=XXXX
+     */
+    public function getAnnexLData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexLBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $batches = AnnexLBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with('housing')
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($batches) {
+                $batch = $batches->get($hei->id);
+
+                if (!$batch) {
+                    return [
+                        'hei_id'        => $hei->id,
+                        'hei_code'      => $hei->code,
+                        'hei_name'      => $hei->name,
+                        'status'        => 'not_submitted',
+                        'has_submission'=> false,
+                        'total_housing' => null,
+                        'male_count'    => null,
+                        'female_count'  => null,
+                        'coed_count'    => null,
+                    ];
+                }
+
+                $housing = $batch->housing;
+
+                return [
+                    'hei_id'        => $hei->id,
+                    'hei_code'      => $hei->code,
+                    'hei_name'      => $hei->name,
+                    'status'        => $batch->status,
+                    'has_submission'=> true,
+                    'total_housing' => $housing->count(),
+                    'male_count'    => $housing->filter(fn($h) => $h->male && !$h->female && !$h->coed)->count(),
+                    'female_count'  => $housing->filter(fn($h) => $h->female && !$h->male && !$h->coed)->count(),
+                    'coed_count'    => $housing->filter(fn($h) => $h->coed)->count(),
+                ];
+            })->toArray();
+        }
+
+        return response()->json([
+            'data'           => $result,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
+    /**
+     * GET /admin/summary/dorm/{heiId}/evidence?year=XXXX
+     */
+    public function getAnnexLEvidence(Request $request, $heiId)
+    {
+        $selectedYear = $request->query('year');
+
+        if (!$selectedYear) {
+            return response()->json(['error' => 'Academic year is required', 'records' => []], 400);
+        }
+
+        $hei = HEI::find($heiId);
+        if (!$hei) {
+            return response()->json(['error' => 'HEI not found', 'records' => []], 404);
+        }
+
+        $housing = AnnexLHousing::whereHas('batch', fn($q) =>
+            $q->where('hei_id', $heiId)
+              ->where('academic_year', $selectedYear)
+              ->whereIn('status', ['published', 'submitted', 'request'])
+        )->orderBy('housing_name', 'asc')->get();
+
+        $records = $housing->map(fn($h) => [
+            'id'                 => $h->id,
+            'housing_name'       => $h->housing_name,
+            'complete_address'   => $h->complete_address,
+            'house_manager_name' => $h->house_manager_name,
+            'type'               => collect([
+                $h->male   ? 'Male'   : null,
+                $h->female ? 'Female' : null,
+                $h->coed   ? 'Co-ed'  : null,
+                (!$h->male && !$h->female && !$h->coed && $h->others) ? $h->others : null,
+            ])->filter()->implode(', '),
+            'remarks'            => $h->remarks,
+        ])->values()->toArray();
+
+        return response()->json([
+            'hei_name'    => $hei->name,
+            'records'     => $records,
+            'total_count' => count($records),
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Students with Special Needs / PWD Statistics (Annex M)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /admin/summary/special-needs-stats?year=XXXX
+     *
+     * Reads the Sub-Total rows (is_subtotal=true, subcategory='Sub-Total') for
+     * categories A, B, and C, then extracts year_data[$selectedYear].
+     */
+    public function getAnnexMStatsData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = AnnexMBatch::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()->pluck('academic_year')
+            ->sort()->values()->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $result = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            // Load only the subtotal rows — no need to pull every subcategory row
+            $batches = AnnexMBatch::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->with(['statistics' => fn($q) =>
+                    $q->where('is_subtotal', true)
+                      ->where('subcategory', 'Sub-Total')
+                      ->whereIn('category', [
+                          'A. Persons with Disabilities',
+                          'B. Indigenous People',
+                          'C. Dependents of Solo Parents / Solo Parents',
+                      ])
+                ])
+                ->get()
+                ->keyBy('hei_id');
+
+            $result = $heis->map(function ($hei) use ($batches, $selectedYear) {
+                $batch = $batches->get($hei->id);
+
+                if (!$batch) {
+                    return [
+                        'hei_id'                 => $hei->id,
+                        'hei_code'               => $hei->code,
+                        'hei_name'               => $hei->name,
+                        'status'                 => 'not_submitted',
+                        'has_submission'         => false,
+                        'pwd_enrollment'         => null,
+                        'pwd_graduates'          => null,
+                        'ip_enrollment'          => null,
+                        'ip_graduates'           => null,
+                        'solo_parent_enrollment' => null,
+                        'solo_parent_graduates'  => null,
+                    ];
+                }
+
+                // Index subtotals by category for easy lookup
+                $subtotals = $batch->statistics->keyBy('category');
+
+                $extract = function (string $category, string $field) use ($subtotals, $selectedYear): int {
+                    $row = $subtotals->get($category);
+                    if (!$row || !is_array($row->year_data)) {
+                        return 0;
+                    }
+                    return intval($row->year_data[$selectedYear][$field] ?? 0);
+                };
+
+                return [
+                    'hei_id'                 => $hei->id,
+                    'hei_code'               => $hei->code,
+                    'hei_name'               => $hei->name,
+                    'status'                 => $batch->status,
+                    'has_submission'         => true,
+                    'pwd_enrollment'         => $extract('A. Persons with Disabilities', 'enrollment'),
+                    'pwd_graduates'          => $extract('A. Persons with Disabilities', 'graduates'),
+                    'ip_enrollment'          => $extract('B. Indigenous People', 'enrollment'),
+                    'ip_graduates'           => $extract('B. Indigenous People', 'graduates'),
+                    'solo_parent_enrollment' => $extract('C. Dependents of Solo Parents / Solo Parents', 'enrollment'),
+                    'solo_parent_graduates'  => $extract('C. Dependents of Solo Parents / Solo Parents', 'graduates'),
                 ];
             })->toArray();
         }

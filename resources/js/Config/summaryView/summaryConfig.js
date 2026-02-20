@@ -7,6 +7,12 @@ import { healthConfig } from './healthConfig.jsx';
 import { admissionConfig } from './admissionConfig.jsx';
 import { studentDisciplineConfig } from './studentDisciplineConfig.jsx';
 import { socialCommunityConfig } from './socialCommunityConfig.jsx';
+import { studentOrganizationConfig } from './studentOrganizationConfig.jsx';
+import { cultureConfig } from './cultureConfig.jsx';
+import { scholarshipConfig } from './scholarshipConfig.jsx';
+import { safetySecurityConfig } from './safetySecurityConfig.jsx';
+import { dormConfig } from './dormConfig.jsx';
+import { specialNeedsStatsConfig } from './specialNeedsStatsConfig.jsx';
 
 export const summaryConfig = {
   sections: {
@@ -19,6 +25,12 @@ export const summaryConfig = {
     '6-Admission':           admissionConfig,
     '7-StudentDiscipline':   studentDisciplineConfig,
     '8-SocialCommunity':     socialCommunityConfig,
+    '9-StudentOrganization':  studentOrganizationConfig,
+    '10-Culture':             cultureConfig,
+    '11-Scholarship':         scholarshipConfig,
+    '12-SafetySecurity':      safetySecurityConfig,
+    '13-Dorm':                dormConfig,
+    '14-SpecialNeeds-Stats':  specialNeedsStatsConfig,
   },
 
   gridDefaults: {

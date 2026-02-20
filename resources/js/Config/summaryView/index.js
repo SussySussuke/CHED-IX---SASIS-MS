@@ -13,5 +13,11 @@ export { healthConfig, HEALTH_CATEGORY_KEYS, HEALTH_CATEGORY_LABELS } from './he
 export { admissionConfig } from './admissionConfig.jsx';
 export { studentDisciplineConfig } from './studentDisciplineConfig.jsx';
 export { socialCommunityConfig } from './socialCommunityConfig.jsx';
+export { studentOrganizationConfig } from './studentOrganizationConfig.jsx';
+export { cultureConfig } from './cultureConfig.jsx';
+export { scholarshipConfig } from './scholarshipConfig.jsx';
+export { safetySecurityConfig } from './safetySecurityConfig.jsx';
+export { dormConfig } from './dormConfig.jsx';
+export { specialNeedsStatsConfig } from './specialNeedsStatsConfig.jsx';
 export { summaryConfig } from './summaryConfig';
 export default summaryConfig;

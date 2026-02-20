@@ -1,0 +1,646 @@
+================================================================================
+TASK: CREATE SECTIONS 9, 10, 11, 12 FOR ADMIN SUMMARY VIEW
+================================================================================
+DATE: 2026-02-19
+STATUS: NOT STARTED — analysis complete, no code written yet
+
+SECTIONS TO BUILD:
+  9-StudentOrganization   (Annex E)
+  10-Culture              (Annex N)
+  11-Scholarship          (Annex I)
+  12-SafetySecurity       (Annex K)
+
+================================================================================
+RULES — READ BEFORE TOUCHING ANYTHING
+================================================================================
+
+1. Read relevant source files BEFORE making any changes.
+2. Do NOT write documentation files, .md files, test files, or backup files.
+3. Do NOT abbreviate "Name of HEI" column headers. Always use full label:
+   "Name of Higher Education Institution"
+4. No migrations needed for any of these 4 sections. All tables already exist.
+5. Remove legacy/dead code if encountered. Do not leave orphaned code behind.
+6. Follow patterns EXACTLY as established. Your reference implementations:
+
+   CLICKABLE COUNT PATTERN (Annex O):
+     resources/js/Config/summaryView/socialCommunityConfig.jsx
+     app/Http/Controllers/Admin/SummaryViewController.php → getAnnexOData() + getAnnexOEvidence()
+
+   YES/NO PRESENCE PATTERN (Annex F):
+     resources/js/Config/summaryView/studentDisciplineConfig.jsx
+     app/Http/Controllers/Admin/SummaryViewController.php → getStudentDisciplineData()
+
+   FULL WIRING REFERENCE:
+     resources/js/Pages/Admin/SummaryView.jsx — see how 8-SocialCommunity is wired end-to-end
+
+================================================================================
+SYSTEM OVERVIEW
+================================================================================
+
+Laravel + Inertia + React system for CHED HEI data collection.
+Admin Summary View (/admin/summary) uses AG Grid sections.
+Each section = one backend aggregation endpoint + one frontend config + wiring
+in SummaryView.jsx.
+
+Existing sections already built:
+  1A-Profile, 1B-Personnel, 2-Info-Orientation, 3-GuidanceCounselling,
+  4-CareerJob, 5-Health, 6-Admission, 7-StudentDiscipline, 8-SocialCommunity
+
+================================================================================
+DATA STRUCTURES — VERIFIED FROM MODELS AND FORM CONFIGS
+================================================================================
+
+──────────────────────────────────────────────────────────────────────────────
+ANNEX E (Student Organizations)
+──────────────────────────────────────────────────────────────────────────────
+Batch model:        AnnexEBatch       (app/Models/AnnexEBatch.php)
+Child model:        AnnexEOrganization (app/Models/AnnexEOrganization.php)
+Relationship:       AnnexEBatch hasMany AnnexEOrganization via batch_id
+
+AnnexEOrganization fields:
+  batch_id                        (UUID FK)
+  name_of_accredited              (STRING) ← org name
+  years_of_existence              (INTEGER)
+  accredited_since                (STRING) ← year string e.g. "2019"
+  faculty_adviser                 (STRING, nullable)
+  president_and_officers          (TEXT)
+  specialization                  (STRING)
+  fee_collected                   (STRING, nullable)
+  programs_projects_activities    (TEXT) ← free text, NOT a separate table
+
+CRITICAL: "Total No. of Student Activities Conducted" is NOT a separate table.
+  It is a free-text paragraph field (programs_projects_activities) on each org row.
+  You CANNOT reliably count individual activities from this text.
+  Therefore: Total No. of Student Activities = COUNT of org rows that have a
+  non-empty programs_projects_activities field. This is the correct interpretation.
+  Do NOT try to parse or split the text.
+
+Summary aggregation:
+  total_organizations = COUNT(organizations) per batch
+  total_with_activities = COUNT where !empty(trim(programs_projects_activities))
+
+──────────────────────────────────────────────────────────────────────────────
+ANNEX N (Culture and the Arts)
+──────────────────────────────────────────────────────────────────────────────
+Batch model:        AnnexNBatch     (app/Models/AnnexNBatch.php)
+Child model:        AnnexNActivity  (app/Models/AnnexNActivity.php)
+Relationship:       AnnexNBatch hasMany AnnexNActivity via batch_id
+
+AnnexNActivity fields:
+  batch_id                (UUID FK)
+  title_of_activity       (STRING) ← NOT "title", NOT "title_of_program"
+  implementation_date     (DATE, cast)
+  implementation_venue    (STRING)
+  participants_online     (INTEGER)
+  participants_face_to_face (INTEGER)
+  organizer               (STRING)
+  remarks                 (TEXT, nullable)
+
+CRITICAL: No single number_of_participants field.
+  total_participants = SUM(participants_online + participants_face_to_face)
+  total_activities   = COUNT(activities) per batch
+
+──────────────────────────────────────────────────────────────────────────────
+ANNEX I (Scholarships / Financial Assistance)
+──────────────────────────────────────────────────────────────────────────────
+Batch model:        AnnexIBatch      (app/Models/AnnexIBatch.php)
+Child model:        AnnexIScholarship (app/Models/AnnexIScholarship.php)
+Relationship:       AnnexIBatch hasMany AnnexIScholarship via batch_id
+
+AnnexIScholarship fields:
+  batch_id                        (UUID FK)
+  scholarship_name                (STRING)
+  type                            (STRING)
+  category_intended_beneficiaries (STRING)
+  number_of_beneficiaries         (INTEGER)
+  remarks                         (TEXT, nullable)
+
+Summary aggregation:
+  total_scholarships   = COUNT(scholarships) per batch
+  total_beneficiaries  = SUM(number_of_beneficiaries) per batch
+
+──────────────────────────────────────────────────────────────────────────────
+ANNEX K (Safety and Security Committees)
+──────────────────────────────────────────────────────────────────────────────
+Batch model:        AnnexKBatch     (app/Models/AnnexKBatch.php)
+Child model:        AnnexKCommittee (app/Models/AnnexKCommittee.php)
+Relationship:       AnnexKBatch hasMany AnnexKCommittee via batch_id
+
+AnnexKCommittee fields:
+  batch_id                              (UUID FK)
+  committee_name                        (STRING) ← free text typed by HEI
+  committee_head_name                   (STRING)
+  members_composition                   (TEXT)
+  programs_projects_activities_trainings (TEXT, nullable)
+  remarks                               (TEXT, nullable)
+
+CRITICAL: There are NO boolean fields on the batch or committee for "presence".
+  "Presence" is determined by keyword matching on committee_name.
+  If a batch has ANY committee whose committee_name matches the keywords
+  for that committee type → presence = true. Otherwise false.
+  If HEI has no batch → null (renders as —).
+
+Keyword matching approach (case-insensitive, strtolower):
+  safety_security_committee:
+    ['safety', 'security', 'safety and security', 'health safety', 'fire safety']
+
+  disaster_risk_reduction:
+    ['disaster', 'risk reduction', 'drrm', 'drr', 'disaster risk',
+     'disaster management', 'risk management', 'resilience']
+
+  calamity_management:
+    ['calamity', 'calamity management', 'institutional calamity',
+     'emergency management', 'emergency response', 'emergency']
+
+  crisis_management_committee:
+    ['crisis management', 'crisis committee', 'crisis response',
+     'incident management', 'critical incident']
+
+  crisis_psychosocial:
+    ['psychosocial', 'psychological support', 'mental health support',
+     'psychosocial support', 'crisis counseling', 'trauma']
+
+  drug_free_committee:
+    ['drug', 'drug-free', 'drug free', 'anti-drug', 'antidrug',
+     'substance abuse', 'drug education', 'drug prevention']
+
+  drug_education_trained:
+    ['preventive drug', 'drug education', 'trained', 'drug awareness',
+     'guidance counselor', 'drug prevention training', 'key personnel']
+
+NOTE ON drug_education_trained: This column is about whether guidance counselors
+  or key HEI personnel have been TRAINED on preventive drug education.
+  In practice an HEI may list this as a committee/activity row.
+  Match any committee_name containing 'drug' AND ('train' OR 'education'
+  OR 'counselor' OR 'personnel').
+
+================================================================================
+SECTION 9: STUDENT ORGANIZATION
+================================================================================
+
+sectionId:     '9-StudentOrganization'
+sectionTitle:  'Student Organizations'
+Config file:   resources/js/Config/summaryView/studentOrganizationConfig.jsx
+Pattern:       CLICKABLE COUNT (socialCommunityConfig)
+
+COLUMNS (AG Grid summary table):
+  1. Name of Higher Education Institution  (field: hei_name, pinned left, flex 1)
+  2. Total No. of Accredited/Recognized/Authorized Student Orgs/Council/Government
+       field: total_organizations, clickable → opens RecordsModal
+  3. Total No. of Student Activities Conducted
+       field: total_with_activities, clickable → opens SAME RecordsModal (same evidence)
+       NOTE: This is COUNT of orgs with non-empty programs_projects_activities field.
+       The tooltip/title on the cell should clarify: "Orgs that have recorded activities"
+  4. Status
+
+BACKEND — SummaryViewController.php:
+  Method: getAnnexEData(Request $request)
+  Route:  GET /admin/summary/student-organization
+  Models: AnnexEBatch, AnnexEOrganization (add use statements if not present)
+
+  Logic per HEI row:
+    - batch exists + has orgs:
+        total_organizations  = $batch->organizations->count()
+        total_with_activities = $batch->organizations->filter(
+            fn($o) => !empty(trim($o->programs_projects_activities ?? ''))
+        )->count()
+    - batch exists, no orgs:
+        total_organizations = 0, total_with_activities = 0
+    - no batch:
+        total_organizations = null, total_with_activities = null
+
+  Evidence method: getAnnexEEvidence(Request $request, $heiId)
+  Route:  GET /admin/summary/student-organization/{heiId}/evidence
+  Returns: { records: [...], hei_name: '...', total_count: N }
+
+  Evidence record fields:
+    id, name_of_accredited, years_of_existence, accredited_since,
+    faculty_adviser, president_and_officers, specialization,
+    fee_collected, programs_projects_activities
+
+  Sort evidence by name_of_accredited ASC.
+
+DRILLDOWN COLUMNS (STUDENT_ORG_DRILLDOWN_COLUMNS in SummaryView.jsx):
+  { field: 'name_of_accredited',           headerName: 'Organization Name',         flex: 1, minWidth: 220 }
+  { field: 'years_of_existence',           headerName: 'Years of Existence',         width: 130, type: numericColumn }
+  { field: 'accredited_since',             headerName: 'Accredited/Recognized Since', width: 160 }
+  { field: 'faculty_adviser',              headerName: 'Faculty Adviser',            width: 180, nullable dash }
+  { field: 'president_and_officers',       headerName: 'President/Head & Officers',  flex: 1, minWidth: 200 }
+  { field: 'specialization',              headerName: 'Specialization',             width: 160 }
+
+RecordsModal wiring (no recategorize, no totalFetchUrl):
+  title:           heiName
+  subtitle:        Academic Year {year}
+  categoryLabel:   'Student Organizations'
+  isMiscellaneous: false
+  isTotal:         true
+  fetchUrl:        /admin/summary/student-organization/{heiId}/evidence?year={year}
+  totalFetchUrl:   null
+  recategorizeUrl: null
+  columnDefs:      STUDENT_ORG_DRILLDOWN_COLUMNS
+  categoryOptions: []
+  recordTypeField: 'id'
+  recordIdField:   'id'
+
+SUMMARYVIEW.JSX additions:
+  - const [studentOrgDrilldown, setStudentOrgDrilldown] = useState(CLOSED_MODAL)
+  - handleStudentOrgClick(heiId, heiName) — both count columns call this same handler
+  - closeStudentOrgDrilldown()
+  - STUDENT_ORG_DRILLDOWN_COLUMNS constant (above component)
+  - studentOrgDrilldownProps useMemo
+  - fetch case for '9-StudentOrganization' → /admin/summary/student-organization
+  - dynamicSections array: add '9-StudentOrganization'
+  - selectedYear useEffect: add '9-StudentOrganization' case
+  - columnDefs useMemo: add '9-StudentOrganization' → getColumns(handleStudentOrgClick)
+  - tip banner: "Student organization data from Annex E. Column 3 = count of orgs
+    that have recorded programs/activities. Click any count to view org details."
+  - <RecordsModal> instance for studentOrgDrilldown
+
+TOOLTIP BANNER TEXT:
+  "Student organization data from Annex E. 'Activities Conducted' = number of
+  organizations that have listed programs/activities. Click any count to view
+  organization details. — = HEI has not submitted."
+
+================================================================================
+SECTION 10: CULTURE AND THE ARTS
+================================================================================
+
+sectionId:     '10-Culture'
+sectionTitle:  'Culture and the Arts'
+Config file:   resources/js/Config/summaryView/cultureConfig.jsx
+Pattern:       CLICKABLE COUNT (socialCommunityConfig)
+
+COLUMNS (AG Grid summary table):
+  1. Name of Higher Education Institution  (field: hei_name, pinned left, flex 1)
+  2. Total No. of Activities Conducted     (field: total_activities, clickable)
+  3. Total No. of Participants             (field: total_participants, clickable)
+  4. Status
+
+BACKEND — SummaryViewController.php:
+  Method: getAnnexNData(Request $request)
+  Route:  GET /admin/summary/culture
+  Models: AnnexNBatch, AnnexNActivity (add use statements if not present)
+
+  Logic per HEI row:
+    total_activities   = $batch->activities->count()
+    total_participants = $batch->activities->sum(
+        fn($a) => ($a->participants_online ?? 0) + ($a->participants_face_to_face ?? 0)
+    )
+    null for both if no batch.
+
+  Evidence method: getAnnexNEvidence(Request $request, $heiId)
+  Route:  GET /admin/summary/culture/{heiId}/evidence
+  Returns: { records: [...], hei_name: '...', total_count: N }
+
+  Evidence record fields:
+    id, title_of_activity, implementation_date (formatted Y-m-d),
+    implementation_venue, participants_online, participants_face_to_face,
+    total_participants (computed: online + face_to_face), organizer, remarks
+
+  Sort evidence by implementation_date DESC.
+
+DRILLDOWN COLUMNS (CULTURE_DRILLDOWN_COLUMNS in SummaryView.jsx):
+  { field: 'title_of_activity',       headerName: 'Title of Activity',     flex: 2, minWidth: 220 }
+  { field: 'implementation_date',     headerName: 'Date',                  width: 130, valueFormatter: date format }
+  { field: 'implementation_venue',    headerName: 'Venue',                 flex: 1, minWidth: 150 }
+  { field: 'participants_face_to_face', headerName: 'Face-to-Face',        width: 120, numericColumn }
+  { field: 'participants_online',     headerName: 'Online',                width: 100, numericColumn }
+  { field: 'total_participants',      headerName: 'Total Participants',    width: 130, numericColumn, bold }
+  { field: 'organizer',               headerName: 'Organizer',             width: 180 }
+  { field: 'remarks',                 headerName: 'Remarks',               width: 180, nullable dash }
+
+RecordsModal wiring:
+  title:           heiName
+  subtitle:        Academic Year {year}
+  categoryLabel:   'Culture and Arts Activities'
+  isMiscellaneous: false
+  isTotal:         true
+  fetchUrl:        /admin/summary/culture/{heiId}/evidence?year={year}
+  totalFetchUrl:   null
+  recategorizeUrl: null
+  columnDefs:      CULTURE_DRILLDOWN_COLUMNS
+  categoryOptions: []
+  recordTypeField: 'id'
+  recordIdField:   'id'
+
+SUMMARYVIEW.JSX additions:
+  - const [cultureDrilldown, setCultureDrilldown] = useState(CLOSED_MODAL)
+  - handleCultureClick(heiId, heiName) — both count columns call this same handler
+  - closeCultureDrilldown()
+  - CULTURE_DRILLDOWN_COLUMNS constant (above component)
+  - cultureDrilldownProps useMemo
+  - fetch case '10-Culture' → /admin/summary/culture
+  - dynamicSections, selectedYear useEffect, columnDefs useMemo entries
+  - tip banner + RecordsModal instance
+
+TOOLTIP BANNER TEXT:
+  "Culture and the arts data from Annex N. Participants = online + face-to-face
+  combined. Click any count to view individual activity records. — = HEI has not submitted."
+
+================================================================================
+SECTION 11: SCHOLARSHIP
+================================================================================
+
+sectionId:     '11-Scholarship'
+sectionTitle:  'Scholarships and Financial Assistance'
+Config file:   resources/js/Config/summaryView/scholarshipConfig.jsx
+Pattern:       CLICKABLE COUNT (socialCommunityConfig)
+
+COLUMNS (AG Grid summary table):
+  1. Name of Higher Education Institution  (field: hei_name, pinned left, flex 1)
+  2. Total No. of Scholarships and Financial Assistance Administered/Implemented
+       field: total_scholarships, clickable
+  3. Total No. of Beneficiaries
+       field: total_beneficiaries, clickable
+  4. Status
+
+BACKEND — SummaryViewController.php:
+  Method: getAnnexIData(Request $request)
+  Route:  GET /admin/summary/scholarship
+  Models: AnnexIBatch, AnnexIScholarship (add use statements if not present)
+
+  Logic per HEI row:
+    total_scholarships  = $batch->scholarships->count()
+    total_beneficiaries = $batch->scholarships->sum('number_of_beneficiaries')
+    null for both if no batch.
+
+  Evidence method: getAnnexIEvidence(Request $request, $heiId)
+  Route:  GET /admin/summary/scholarship/{heiId}/evidence
+  Returns: { records: [...], hei_name: '...', total_count: N }
+
+  Evidence record fields:
+    id, scholarship_name, type, category_intended_beneficiaries,
+    number_of_beneficiaries, remarks
+
+  Sort evidence by scholarship_name ASC.
+
+DRILLDOWN COLUMNS (SCHOLARSHIP_DRILLDOWN_COLUMNS in SummaryView.jsx):
+  { field: 'scholarship_name',                headerName: 'Scholarship / Financial Assistance', flex: 2, minWidth: 220 }
+  { field: 'type',                            headerName: 'Type',                               width: 150 }
+  { field: 'category_intended_beneficiaries', headerName: 'Category / Intended Beneficiaries',  flex: 1, minWidth: 180 }
+  { field: 'number_of_beneficiaries',         headerName: 'No. of Beneficiaries',               width: 150, numericColumn, bold }
+  { field: 'remarks',                         headerName: 'Remarks',                            width: 180, nullable dash }
+
+RecordsModal wiring:
+  title:           heiName
+  subtitle:        Academic Year {year}
+  categoryLabel:   'Scholarships & Financial Assistance'
+  isMiscellaneous: false
+  isTotal:         true
+  fetchUrl:        /admin/summary/scholarship/{heiId}/evidence?year={year}
+  totalFetchUrl:   null
+  recategorizeUrl: null
+  columnDefs:      SCHOLARSHIP_DRILLDOWN_COLUMNS
+  categoryOptions: []
+  recordTypeField: 'id'
+  recordIdField:   'id'
+
+SUMMARYVIEW.JSX additions:
+  - const [scholarshipDrilldown, setScholarshipDrilldown] = useState(CLOSED_MODAL)
+  - handleScholarshipClick(heiId, heiName) — both count columns call this same handler
+  - closeScholarshipDrilldown()
+  - SCHOLARSHIP_DRILLDOWN_COLUMNS constant (above component)
+  - scholarshipDrilldownProps useMemo
+  - fetch case '11-Scholarship' → /admin/summary/scholarship
+  - dynamicSections, selectedYear useEffect, columnDefs useMemo entries
+  - tip banner + RecordsModal instance
+
+TOOLTIP BANNER TEXT:
+  "Scholarship and financial assistance data from Annex I. Click any count to
+  view individual scholarship records. — = HEI has not submitted."
+
+================================================================================
+SECTION 12: SAFETY AND SECURITY
+================================================================================
+
+sectionId:     '12-SafetySecurity'
+sectionTitle:  'Safety and Security'
+Config file:   resources/js/Config/summaryView/safetySecurityConfig.jsx
+Pattern:       YES/NO PRESENCE (studentDisciplineConfig)
+
+COLUMNS (AG Grid summary table):
+  1.  Name of Higher Education Institution       (field: hei_name, pinned left, flex 1)
+  2.  Presence of Committee for Safety and Security
+        field: safety_security_committee
+  3.  Presence of School Disaster Risk Reduction and Management
+        field: disaster_risk_reduction
+  4.  Presence of Institutional Calamity Management Team
+        field: calamity_management
+  5.  Presence of Crisis Management Committee
+        field: crisis_management_committee
+  6.  Presence of Crisis Management for Psychosocial Support
+        field: crisis_psychosocial
+  7.  Presence of Functional Drug-Free Committee (established structure, policies and advocacies)
+        field: drug_free_committee
+  8.  Guidance Counselors/HEI Key Personnel Trained on Preventive Drug Education
+        field: drug_education_trained
+  9.  Status
+
+All columns 2–8: Yes/No cell renderer — true = green Yes, false = red No, null = — (gray dash)
+No drilldown. No RecordsModal. No evidence endpoint.
+
+BACKEND — SummaryViewController.php:
+  Method: getAnnexKData(Request $request)
+  Route:  GET /admin/summary/safety-security
+  Models: AnnexKBatch, AnnexKCommittee (add use statements if not present)
+
+  Presence detection logic (per HEI):
+    Load $batch->committees (collection). For each of the 7 fields,
+    presence = $batch->committees->contains(fn($c) =>
+        <keyword match on strtolower($c->committee_name)>
+    )
+    Returns true/false per field. Null for all fields if no batch.
+
+  KEYWORD MATCHING (case-insensitive, use str_contains or stripos):
+
+  safety_security_committee:
+    committee_name contains any of:
+    ['safety and security', 'safety & security', 'safety committee',
+     'security committee', 'health safety', 'fire safety', 'safety']
+    BUT exclude matches that also contain 'drug', 'disaster', 'crisis',
+    'calamity', 'psycho' (to avoid false positives from other committees)
+
+  disaster_risk_reduction:
+    ['disaster risk', 'drrm', 'drr', 'disaster management',
+     'risk reduction', 'disaster risk reduction']
+
+  calamity_management:
+    ['calamity management', 'calamity', 'institutional calamity',
+     'emergency management', 'emergency response team',
+     'emergency response committee']
+
+  crisis_management_committee:
+    ['crisis management', 'crisis committee', 'crisis response',
+     'critical incident', 'incident management']
+    BUT NOT also containing 'psychosocial' or 'psychological'
+    (those go to crisis_psychosocial instead)
+
+  crisis_psychosocial:
+    ['psychosocial', 'psychological support', 'mental health support',
+     'psychosocial support', 'crisis counseling', 'trauma response',
+     'crisis psychosocial']
+
+  drug_free_committee:
+    ['drug-free', 'drug free', 'anti-drug', 'antidrug',
+     'drug prevention committee', 'drug free committee',
+     'drug abuse prevention']
+    NOTE: This is specifically for the committee structure, NOT the training.
+
+  drug_education_trained:
+    committee_name contains ALL of: 'drug' AND ('train' OR 'education'
+    OR 'counselor' OR 'personnel' OR 'preventive')
+    e.g. "Preventive Drug Education Training" → true
+         "Drug-Free Committee" alone → false (no training keyword)
+    NOTE: This is a SEPARATE check from drug_free_committee.
+    An HEI can have both (drug-free committee AND trained personnel record).
+
+  IMPLEMENTATION NOTE: Use a private helper method matchKCommitteeField(
+    Collection $committees, array $keywords, array $excludeKeywords = []
+  ): bool
+  to keep the aggregation method clean.
+
+SUMMARYVIEW.JSX additions (no drilldown needed):
+  - fetch case '12-SafetySecurity' → /admin/summary/safety-security
+  - dynamicSections array: add '12-SafetySecurity'
+  - selectedYear useEffect: add '12-SafetySecurity' case
+  - columnDefs useMemo: '12-SafetySecurity' uses static columns (no callback),
+    so just falls through to summaryConfig.getSectionColumns(activeSection)
+    — no special case needed in the useMemo IF getSectionColumns handles it.
+    Check how '7-StudentDiscipline' is handled — same pattern applies.
+  - tip banner
+  - NO drilldown state, NO handler, NO modal props, NO RecordsModal instance
+
+TOOLTIP BANNER TEXT:
+  "Safety and security committee data from Annex K. Presence is determined by
+  keyword matching on committee names submitted by each HEI. Green = Yes,
+  Red = No, — = HEI has not submitted."
+
+================================================================================
+COMPLETE FILE CHECKLIST — ALL 4 SECTIONS
+================================================================================
+
+FILES TO CREATE (4 new files):
+  resources/js/Config/summaryView/studentOrganizationConfig.jsx
+  resources/js/Config/summaryView/cultureConfig.jsx
+  resources/js/Config/summaryView/scholarshipConfig.jsx
+  resources/js/Config/summaryView/safetySecurityConfig.jsx
+
+FILES TO MODIFY (5 files):
+  app/Http/Controllers/Admin/SummaryViewController.php
+    ADD use statements (if not already present):
+      use App\Models\AnnexEBatch;
+      use App\Models\AnnexEOrganization;
+      use App\Models\AnnexNBatch;
+      use App\Models\AnnexNActivity;
+      use App\Models\AnnexIBatch;
+      use App\Models\AnnexIScholarship;
+      use App\Models\AnnexKBatch;
+      use App\Models\AnnexKCommittee;
+    ADD methods:
+      getAnnexEData(), getAnnexEEvidence()
+      getAnnexNData(), getAnnexNEvidence()
+      getAnnexIData(), getAnnexIEvidence()
+      getAnnexKData()  (no evidence endpoint)
+      matchKCommitteeField() (private helper)
+
+  routes/web.php
+    ADD inside admin middleware group, near other summary routes:
+      Route::get('/summary/student-organization', [...getAnnexEData])
+      Route::get('/summary/student-organization/{heiId}/evidence', [...getAnnexEEvidence])
+      Route::get('/summary/culture', [...getAnnexNData])
+      Route::get('/summary/culture/{heiId}/evidence', [...getAnnexNEvidence])
+      Route::get('/summary/scholarship', [...getAnnexIData])
+      Route::get('/summary/scholarship/{heiId}/evidence', [...getAnnexIEvidence])
+      Route::get('/summary/safety-security', [...getAnnexKData])
+
+  resources/js/Config/summaryView/summaryConfig.js
+    ADD imports (4):
+      import { studentOrganizationConfig } from './studentOrganizationConfig.jsx';
+      import { cultureConfig }             from './cultureConfig.jsx';
+      import { scholarshipConfig }         from './scholarshipConfig.jsx';
+      import { safetySecurityConfig }      from './safetySecurityConfig.jsx';
+    ADD to sections object:
+      '9-StudentOrganization':  studentOrganizationConfig,
+      '10-Culture':             cultureConfig,
+      '11-Scholarship':         scholarshipConfig,
+      '12-SafetySecurity':      safetySecurityConfig,
+
+  resources/js/Config/summaryView/index.js
+    ADD exports:
+      export { studentOrganizationConfig } from './studentOrganizationConfig.jsx';
+      export { cultureConfig }             from './cultureConfig.jsx';
+      export { scholarshipConfig }         from './scholarshipConfig.jsx';
+      export { safetySecurityConfig }      from './safetySecurityConfig.jsx';
+
+  resources/js/Pages/Admin/SummaryView.jsx
+    For sections 9, 10, 11 (clickable — same additions as 8-SocialCommunity):
+      ADD drilldown constants (above component, near other drilldown columns):
+        STUDENT_ORG_DRILLDOWN_COLUMNS
+        CULTURE_DRILLDOWN_COLUMNS
+        SCHOLARSHIP_DRILLDOWN_COLUMNS
+      ADD state:
+        const [studentOrgDrilldown, setStudentOrgDrilldown] = useState(CLOSED_MODAL)
+        const [cultureDrilldown, setCultureDrilldown] = useState(CLOSED_MODAL)
+        const [scholarshipDrilldown, setScholarshipDrilldown] = useState(CLOSED_MODAL)
+      ADD handlers:
+        handleStudentOrgClick, closeStudentOrgDrilldown
+        handleCultureClick, closeCultureDrilldown
+        handleScholarshipClick, closeScholarshipDrilldown
+      ADD to columnDefs useMemo:
+        '9-StudentOrganization'  → getColumns(handleStudentOrgClick)
+        '10-Culture'             → getColumns(handleCultureClick)
+        '11-Scholarship'         → getColumns(handleScholarshipClick)
+      ADD modal props useMemos:
+        studentOrgDrilldownProps, cultureDrilldownProps, scholarshipDrilldownProps
+      ADD RecordsModal JSX instances (3)
+
+    For section 12 (no drilldown):
+      NO state, NO handlers, NO modal props, NO RecordsModal
+      '12-SafetySecurity' falls through to getSectionColumns() in columnDefs useMemo
+
+    For ALL 4 sections:
+      ADD fetch cases in handleSectionChange
+      ADD to dynamicSections array in useEffect
+      ADD to selectedYear useEffect
+      ADD tip banners in JSX
+
+================================================================================
+BUILD COMMAND (no migration needed)
+================================================================================
+
+npm run dev
+
+================================================================================
+KNOWN GOTCHAS
+================================================================================
+
+1. Annex E: programs_projects_activities is a SINGLE TEXT FIELD, not a count.
+   Do not try to parse it. "Activities conducted" = count of orgs that have
+   any non-empty text in this field.
+
+2. Annex N: participants split across participants_online + participants_face_to_face.
+   Sum both. Title field is title_of_activity — NOT title or title_of_program.
+
+3. Annex I: beneficiaries field is number_of_beneficiaries (integer on scholarship row).
+   Scholarships count = COUNT rows, beneficiaries = SUM number_of_beneficiaries.
+
+4. Annex K: NO boolean fields exist anywhere. Presence MUST be derived from
+   keyword matching on committee_name free text. The matching is imprecise
+   by nature — this is acceptable as HEIs type committee names differently.
+   Use the private helper matchKCommitteeField() to keep code clean.
+   The 7 fields are INDEPENDENT — a single committee row can only match ONE
+   field (don't double-count the same row for multiple fields).
+   Actually: a row CAN match multiple fields if its name matches multiple
+   keyword sets. That's fine — presence per field is independent boolean.
+
+5. Check use statements in SummaryViewController before adding — some models
+   may already be imported from previous work. Do not duplicate imports.
+
+6. SummaryView.jsx section 12 tip banner must still be added even though
+   there is no drilldown modal for that section.
+
+7. Config files for 9, 10, 11 must export getColumns(callback) function (not
+   static columns array) because they have clickable cells. Section 12 exports
+   static columns array (same as studentDisciplineConfig). This matters for
+   how summaryConfig.getSectionColumns() resolves the column definitions.
+================================================================================

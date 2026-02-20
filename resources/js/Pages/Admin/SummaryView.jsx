@@ -497,6 +497,191 @@ const HEALTH_RECATEGORIZE_OPTIONS = HEALTH_CATEGORY_KEYS.map((key) => ({
   label: HEALTH_CATEGORY_LABELS[key],
 }));
 
+// ─── Dorm drilldown columns ─────────────────────────────────────────────────
+const DORM_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Housing / Facility Name',
+    field: 'housing_name',
+    flex: 1,
+    minWidth: 200,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Complete Address',
+    field: 'complete_address',
+    flex: 1,
+    minWidth: 200,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'House Manager',
+    field: 'house_manager_name',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Type',
+    field: 'type',
+    width: 130,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Remarks',
+    field: 'remarks',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+];
+
+// ─── Student Organization drilldown columns ─────────────────────────────────
+const STUDENT_ORG_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Organization Name',
+    field: 'name_of_accredited',
+    flex: 1,
+    minWidth: 220,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Years of Existence',
+    field: 'years_of_existence',
+    width: 130,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right' },
+    valueFormatter: (params) => params.value ?? '—',
+  },
+  {
+    headerName: 'Accredited/Recognized Since',
+    field: 'accredited_since',
+    width: 160,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Faculty Adviser',
+    field: 'faculty_adviser',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'President/Head & Officers',
+    field: 'president_and_officers',
+    flex: 1,
+    minWidth: 200,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Specialization',
+    field: 'specialization',
+    width: 160,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+];
+
+// ─── Culture drilldown columns ────────────────────────────────────────────────
+const CULTURE_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Title of Activity',
+    field: 'title_of_activity',
+    flex: 2,
+    minWidth: 220,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Date',
+    field: 'implementation_date',
+    width: 130,
+    valueFormatter: (params) => {
+      if (!params.value) return '—';
+      return new Date(params.value).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      });
+    },
+  },
+  {
+    headerName: 'Venue',
+    field: 'implementation_venue',
+    flex: 1,
+    minWidth: 150,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Total Participants',
+    field: 'total_participants',
+    width: 140,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Organizer',
+    field: 'organizer',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Remarks',
+    field: 'remarks',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+];
+
+// ─── Scholarship drilldown columns ────────────────────────────────────────────
+const SCHOLARSHIP_DRILLDOWN_COLUMNS = [
+  {
+    headerName: 'Scholarship / Financial Assistance',
+    field: 'scholarship_name',
+    flex: 2,
+    minWidth: 220,
+    wrapText: true,
+    autoHeight: true,
+  },
+  {
+    headerName: 'Type',
+    field: 'type',
+    width: 150,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'Category / Intended Beneficiaries',
+    field: 'category_intended_beneficiaries',
+    flex: 1,
+    minWidth: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+  {
+    headerName: 'No. of Beneficiaries',
+    field: 'number_of_beneficiaries',
+    width: 150,
+    type: 'numericColumn',
+    cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+    valueFormatter: (params) => params.value?.toLocaleString() ?? '0',
+  },
+  {
+    headerName: 'Remarks',
+    field: 'remarks',
+    width: 180,
+    cellRenderer: (params) =>
+      params.value || <span className="text-gray-400">—</span>,
+  },
+];
+
 // ─── Social Community drilldown columns ──────────────────────────────────────
 const SOCIAL_COMMUNITY_DRILLDOWN_COLUMNS = [
   {
@@ -569,6 +754,10 @@ const SummaryView = ({
   const [careerJobDrilldown, setCareerJobDrilldown] = useState(CLOSED_MODAL);
   const [healthDrilldown, setHealthDrilldown] = useState(CLOSED_MODAL);
   const [socialCommunityDrilldown, setSocialCommunityDrilldown] = useState(CLOSED_MODAL);
+  const [studentOrgDrilldown, setStudentOrgDrilldown] = useState(CLOSED_MODAL);
+  const [cultureDrilldown, setCultureDrilldown] = useState(CLOSED_MODAL);
+  const [scholarshipDrilldown, setScholarshipDrilldown] = useState(CLOSED_MODAL);
+  const [dormDrilldown, setDormDrilldown] = useState(CLOSED_MODAL);
 
   // ── Year change ────────────────────────────────────────────────────────────
   const handleYearChange = (e) => {
@@ -679,13 +868,79 @@ const SummaryView = ({
       } finally {
         setLoading(false);
       }
+    } else if (sectionId === '9-StudentOrganization' && selectedYear) {
+      setLoading(true);
+      try {
+        const res = await fetch(`/admin/summary/student-organization?year=${selectedYear}`);
+        const result = await res.json();
+        setSectionData(result.data ?? []);
+      } catch {
+        setSectionData([]);
+      } finally {
+        setLoading(false);
+      }
+    } else if (sectionId === '10-Culture' && selectedYear) {
+      setLoading(true);
+      try {
+        const res = await fetch(`/admin/summary/culture?year=${selectedYear}`);
+        const result = await res.json();
+        setSectionData(result.data ?? []);
+      } catch {
+        setSectionData([]);
+      } finally {
+        setLoading(false);
+      }
+    } else if (sectionId === '11-Scholarship' && selectedYear) {
+      setLoading(true);
+      try {
+        const res = await fetch(`/admin/summary/scholarship?year=${selectedYear}`);
+        const result = await res.json();
+        setSectionData(result.data ?? []);
+      } catch {
+        setSectionData([]);
+      } finally {
+        setLoading(false);
+      }
+    } else if (sectionId === '12-SafetySecurity' && selectedYear) {
+      setLoading(true);
+      try {
+        const res = await fetch(`/admin/summary/safety-security?year=${selectedYear}`);
+        const result = await res.json();
+        setSectionData(result.data ?? []);
+      } catch {
+        setSectionData([]);
+      } finally {
+        setLoading(false);
+      }
+    } else if (sectionId === '13-Dorm' && selectedYear) {
+      setLoading(true);
+      try {
+        const res = await fetch(`/admin/summary/dorm?year=${selectedYear}`);
+        const result = await res.json();
+        setSectionData(result.data ?? []);
+      } catch {
+        setSectionData([]);
+      } finally {
+        setLoading(false);
+      }
+    } else if (sectionId === '14-SpecialNeeds-Stats' && selectedYear) {
+      setLoading(true);
+      try {
+        const res = await fetch(`/admin/summary/special-needs-stats?year=${selectedYear}`);
+        const result = await res.json();
+        setSectionData(result.data ?? []);
+      } catch {
+        setSectionData([]);
+      } finally {
+        setLoading(false);
+      }
     } else {
       setSectionData(summaries);
     }
   };
 
   useEffect(() => {
-    const dynamicSections = ['2-Info-Orientation', '1B-Personnel', '3-GuidanceCounselling', '4-CareerJob', '5-Health', '6-Admission', '7-StudentDiscipline', '8-SocialCommunity'];
+    const dynamicSections = ['2-Info-Orientation', '1B-Personnel', '3-GuidanceCounselling', '4-CareerJob', '5-Health', '6-Admission', '7-StudentDiscipline', '8-SocialCommunity', '9-StudentOrganization', '10-Culture', '11-Scholarship', '12-SafetySecurity', '13-Dorm', '14-SpecialNeeds-Stats'];
     if (!dynamicSections.includes(activeSection)) {
       setSectionData(summaries);
     }
@@ -708,6 +963,18 @@ const SummaryView = ({
       handleSectionChange('7-StudentDiscipline');
     } else if (activeSection === '8-SocialCommunity' && selectedYear) {
       handleSectionChange('8-SocialCommunity');
+    } else if (activeSection === '9-StudentOrganization' && selectedYear) {
+      handleSectionChange('9-StudentOrganization');
+    } else if (activeSection === '10-Culture' && selectedYear) {
+      handleSectionChange('10-Culture');
+    } else if (activeSection === '11-Scholarship' && selectedYear) {
+      handleSectionChange('11-Scholarship');
+    } else if (activeSection === '12-SafetySecurity' && selectedYear) {
+      handleSectionChange('12-SafetySecurity');
+    } else if (activeSection === '13-Dorm' && selectedYear) {
+      handleSectionChange('13-Dorm');
+    } else if (activeSection === '14-SpecialNeeds-Stats' && selectedYear) {
+      handleSectionChange('14-SpecialNeeds-Stats');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]);
@@ -795,6 +1062,34 @@ const SummaryView = ({
 
   const closeSocialCommunityDrilldown = () => setSocialCommunityDrilldown(CLOSED_MODAL);
 
+  // ── Student Organization click handlers ─────────────────────────────────
+  const handleStudentOrgClick = (heiId, heiName) => {
+    setStudentOrgDrilldown({ isOpen: true, heiId, heiName, category: '', zeroTargetCategory: null });
+  };
+
+  const closeStudentOrgDrilldown = () => setStudentOrgDrilldown(CLOSED_MODAL);
+
+  // ── Culture click handlers ──────────────────────────────────────────────
+  const handleCultureClick = (heiId, heiName) => {
+    setCultureDrilldown({ isOpen: true, heiId, heiName, category: '', zeroTargetCategory: null });
+  };
+
+  const closeCultureDrilldown = () => setCultureDrilldown(CLOSED_MODAL);
+
+  // ── Scholarship click handlers ─────────────────────────────────────────
+  const handleScholarshipClick = (heiId, heiName) => {
+    setScholarshipDrilldown({ isOpen: true, heiId, heiName, category: '', zeroTargetCategory: null });
+  };
+
+  const closeScholarshipDrilldown = () => setScholarshipDrilldown(CLOSED_MODAL);
+
+  // ── Dorm click handlers ─────────────────────────────────────────────────
+  const handleDormClick = (heiId, heiName) => {
+    setDormDrilldown({ isOpen: true, heiId, heiName, category: '', zeroTargetCategory: null });
+  };
+
+  const closeDormDrilldown = () => setDormDrilldown(CLOSED_MODAL);
+
   // ── Column defs ────────────────────────────────────────────────────────────
   const columnDefs = useMemo(() => {
     if (activeSection === '2-Info-Orientation') {
@@ -814,6 +1109,18 @@ const SummaryView = ({
     }
     if (activeSection === '8-SocialCommunity') {
       return summaryConfig.getSection(activeSection).getColumns(handleSocialCommunityClick);
+    }
+    if (activeSection === '9-StudentOrganization') {
+      return summaryConfig.getSection(activeSection).getColumns(handleStudentOrgClick);
+    }
+    if (activeSection === '10-Culture') {
+      return summaryConfig.getSection(activeSection).getColumns(handleCultureClick);
+    }
+    if (activeSection === '11-Scholarship') {
+      return summaryConfig.getSection(activeSection).getColumns(handleScholarshipClick);
+    }
+    if (activeSection === '13-Dorm') {
+      return summaryConfig.getSection(activeSection).getColumns(handleDormClick);
     }
     return summaryConfig.getSectionColumns(activeSection);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -979,6 +1286,102 @@ const SummaryView = ({
     };
   }, [socialCommunityDrilldown, selectedYear]);
 
+  // ── Student Organization modal props ─────────────────────────────────
+  const studentOrgDrilldownProps = useMemo(() => {
+    const { heiId, heiName } = studentOrgDrilldown;
+
+    const fetchUrl = heiId && selectedYear
+      ? `/admin/summary/student-organization/${heiId}/evidence?year=${selectedYear}`
+      : null;
+
+    return {
+      title:           heiName,
+      subtitle:        `Academic Year ${selectedYear}`,
+      categoryLabel:   'Student Organizations',
+      isMiscellaneous: false,
+      isTotal:         true,
+      fetchUrl,
+      totalFetchUrl:   null,
+      recategorizeUrl: null,
+      columnDefs:      STUDENT_ORG_DRILLDOWN_COLUMNS,
+      categoryOptions: [],
+      recordTypeField: 'id',
+      recordIdField:   'id',
+    };
+  }, [studentOrgDrilldown, selectedYear]);
+
+  // ── Culture modal props ──────────────────────────────────────────────────
+  const cultureDrilldownProps = useMemo(() => {
+    const { heiId, heiName } = cultureDrilldown;
+
+    const fetchUrl = heiId && selectedYear
+      ? `/admin/summary/culture/${heiId}/evidence?year=${selectedYear}`
+      : null;
+
+    return {
+      title:           heiName,
+      subtitle:        `Academic Year ${selectedYear}`,
+      categoryLabel:   'Culture and Arts Activities',
+      isMiscellaneous: false,
+      isTotal:         true,
+      fetchUrl,
+      totalFetchUrl:   null,
+      recategorizeUrl: null,
+      columnDefs:      CULTURE_DRILLDOWN_COLUMNS,
+      categoryOptions: [],
+      recordTypeField: 'id',
+      recordIdField:   'id',
+    };
+  }, [cultureDrilldown, selectedYear]);
+
+  // ── Scholarship modal props ────────────────────────────────────────────
+  const scholarshipDrilldownProps = useMemo(() => {
+    const { heiId, heiName } = scholarshipDrilldown;
+
+    const fetchUrl = heiId && selectedYear
+      ? `/admin/summary/scholarship/${heiId}/evidence?year=${selectedYear}`
+      : null;
+
+    return {
+      title:           heiName,
+      subtitle:        `Academic Year ${selectedYear}`,
+      categoryLabel:   'Scholarships & Financial Assistance',
+      isMiscellaneous: false,
+      isTotal:         true,
+      fetchUrl,
+      totalFetchUrl:   null,
+      recategorizeUrl: null,
+      columnDefs:      SCHOLARSHIP_DRILLDOWN_COLUMNS,
+      categoryOptions: [],
+      recordTypeField: 'id',
+      recordIdField:   'id',
+    };
+  }, [scholarshipDrilldown, selectedYear]);
+
+  // ── Dorm modal props ──────────────────────────────────────────────────
+  const dormDrilldownProps = useMemo(() => {
+    const { heiId, heiName } = dormDrilldown;
+
+    const fetchUrl = heiId && selectedYear
+      ? `/admin/summary/dorm/${heiId}/evidence?year=${selectedYear}`
+      : null;
+
+    return {
+      title:           heiName,
+      subtitle:        `Academic Year ${selectedYear}`,
+      categoryLabel:   'Housing Facilities',
+      isMiscellaneous: false,
+      isTotal:         true,
+      fetchUrl,
+      totalFetchUrl:   null,
+      recategorizeUrl: null,
+      columnDefs:      DORM_DRILLDOWN_COLUMNS,
+      categoryOptions: [],
+      recordTypeField: 'id',
+      recordIdField:   'id',
+    };
+  }, [dormDrilldown, selectedYear]);
+
   // ── Personnel modal props ─────────────────────────────────────────────────
   const personnelDrilldownProps = useMemo(() => {
     const { heiId, heiName, category } = personnelDrilldown;
@@ -1117,6 +1520,78 @@ const SummaryView = ({
               </div>
             )}
 
+            {activeSection === '9-StudentOrganization' && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <IoInformationCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-semibold">Tip:</span>{' '}
+                    Student organization data from Annex E. ‘Activities Conducted’ = number of organizations that have listed programs/activities. Click any count to view organization details. — = HEI has not submitted.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeSection === '10-Culture' && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <IoInformationCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-semibold">Tip:</span>{' '}
+                    Culture and the arts data from Annex N. Click any count to view individual activity records. — = HEI has not submitted.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeSection === '11-Scholarship' && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <IoInformationCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-semibold">Tip:</span>{' '}
+                    Scholarship and financial assistance data from Annex I. Click any count to view individual scholarship records. — = HEI has not submitted.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeSection === '12-SafetySecurity' && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <IoInformationCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-semibold">Tip:</span>{' '}
+                    Safety and security committee data from Annex K. Presence is determined by keyword matching on committee names submitted by each HEI. Green = Yes, Red = No, — = HEI has not submitted.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeSection === '13-Dorm' && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <IoInformationCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-semibold">Tip:</span>{' '}
+                    Student housing data from Annex L. Male/Female/Co-ed counts reflect exclusive type only (Co-ed includes facilities marked co-ed regardless of other flags). Click any count to view individual facility records. — = HEI has not submitted.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeSection === '14-SpecialNeeds-Stats' && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <IoInformationCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-semibold">Tip:</span>{' '}
+                    Students with special needs statistics from Annex M, Table 1. Figures shown are the Sub-Total for each category for the selected academic year only. — = HEI has not submitted.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {activeSection === '7-StudentDiscipline' && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
                 <div className="flex items-start gap-3">
@@ -1227,6 +1702,34 @@ const SummaryView = ({
         {...socialCommunityDrilldownProps}
         isOpen={socialCommunityDrilldown.isOpen}
         onClose={closeSocialCommunityDrilldown}
+      />
+
+      {/* ── Student Organization Drilldown Modal ── */}
+      <RecordsModal
+        {...studentOrgDrilldownProps}
+        isOpen={studentOrgDrilldown.isOpen}
+        onClose={closeStudentOrgDrilldown}
+      />
+
+      {/* ── Culture Drilldown Modal ── */}
+      <RecordsModal
+        {...cultureDrilldownProps}
+        isOpen={cultureDrilldown.isOpen}
+        onClose={closeCultureDrilldown}
+      />
+
+      {/* ── Scholarship Drilldown Modal ── */}
+      <RecordsModal
+        {...scholarshipDrilldownProps}
+        isOpen={scholarshipDrilldown.isOpen}
+        onClose={closeScholarshipDrilldown}
+      />
+
+      {/* ── Dorm Drilldown Modal ── */}
+      <RecordsModal
+        {...dormDrilldownProps}
+        isOpen={dormDrilldown.isOpen}
+        onClose={closeDormDrilldown}
       />
     </AdminLayout>
   );
