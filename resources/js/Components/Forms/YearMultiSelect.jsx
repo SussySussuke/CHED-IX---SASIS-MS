@@ -82,10 +82,20 @@ const YearMultiSelect = ({
       </div>
 
       {/* Trigger / pill container */}
-      <button
-        type="button"
-        disabled={disabled}
+      <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-disabled={disabled}
         onClick={() => !disabled && setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }
+          if (e.key === 'Escape') setOpen(false);
+        }}
         className={[
           'w-full min-h-[42px] px-3 py-2 border-2 rounded-lg text-left',
           'bg-white dark:bg-gray-700',
@@ -126,7 +136,7 @@ const YearMultiSelect = ({
             open ? 'rotate-180' : '',
           ].join(' ')}
         />
-      </button>
+      </div>
 
       {/* Dropdown */}
       {open && (

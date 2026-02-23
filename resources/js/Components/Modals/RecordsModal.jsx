@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import { IoClose, IoRefresh, IoCheckmark, IoTrash, IoListOutline, IoArrowBack } from 'react-icons/io5';
 import AGGridViewer from '../Common/AGGridViewer';
 
@@ -77,23 +78,18 @@ const RecordsModal = ({
     }));
 
     try {
-      const res = await fetch(recategorizeUrl, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-        },
-        body: JSON.stringify({
-          record_type: record[recordTypeField],
-          record_id:   record[recordIdField],
-          // empty array = reset override
-          categories:  selectedCategories.length > 0 ? selectedCategories : null,
-        }),
+      // Use axios (pre-configured by Inertia/Laravel with CSRF + credentials) instead of
+      // raw fetch() to avoid 419 Session Expired from Laravel's CSRF middleware.
+      const response = await axios.patch(recategorizeUrl, {
+        record_type: record[recordTypeField],
+        record_id:   record[recordIdField],
+        categories:  selectedCategories.length > 0 ? selectedCategories : null,
       });
 
+      const res = { ok: response.status >= 200 && response.status < 300, status: response.status };
+
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message ?? `Server error: ${res.status}`);
+        throw new Error(response.data?.message ?? `Server error: ${response.status}`);
       }
 
       setRowStates(prev => ({

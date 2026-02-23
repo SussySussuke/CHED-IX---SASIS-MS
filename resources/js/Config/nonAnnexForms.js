@@ -49,10 +49,18 @@ export const MER_FORMS = {
 
 /**
  * Get route for a specific form code
+ * Handles: SUMMARY, MER forms, and all Annex forms (A-O including hyphenated variants)
  */
 export const getFormRoute = (formCode) => {
   if (formCode === 'SUMMARY') return SUMMARY_FORM.route;
   if (MER_FORMS[formCode]) return MER_FORMS[formCode].route;
+
+  // Annex forms: convert code to URL segment (e.g. 'C-1' → 'annex-c-1', 'M' → 'annex-m')
+  if (formCode && typeof formCode === 'string') {
+    const segment = formCode.toLowerCase().replace(/_/g, '-');
+    return `/hei/annex-${segment}/submit`;
+  }
+
   return null;
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import HEILayout from '../../Layouts/HEILayout';
 import { router } from '@inertiajs/react';
 import AGGridEditor from '../Common/AGGridEditor';
@@ -33,7 +33,6 @@ const SharedAnnexCreate = ({
   const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
   const formOptions = buildFormOptionsGrouped();
 
-  const gridRef = useRef(null);
   const { isDark } = useTheme();
   const [requestNotes, setRequestNotes] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -389,7 +388,6 @@ const SharedAnnexCreate = ({
 
             <div className="mb-4">
               <AGGridEditor
-                ref={gridRef}
                 rowData={data}
                 columnDefs={columnDefs}
                 onCellValueChanged={handleCellValueChanged}

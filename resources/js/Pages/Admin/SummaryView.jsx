@@ -46,6 +46,7 @@ const CLOSED_MODAL = {
   heiId: null,
   heiName: '',
   category: '',
+  year: null,
   zeroTargetCategory: null,
 };
 
@@ -138,21 +139,34 @@ const SummaryView = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYears, activeSection]);
 
-  // Drilldown (disabled in comparison mode)
-  const openDrilldown = useCallback((category, heiId, heiName, count) => {
-    if (isComparing) return;
+  // Drilldown — works in BOTH single-year and comparison mode.
+  // In comparison mode, 'year' param tells us which year column was clicked.
+  // In single-year mode, year falls back to primaryYear via the ref below.
+  // We use a stable ref so the callback identity never changes — preventing
+  // unnecessary columnDefs rebuilds (and grid remounts) on every year toggle.
+  const primaryYearRef = useRef(primaryYear);
+  useEffect(() => { primaryYearRef.current = primaryYear; }, [primaryYear]);
+
+  const openDrilldown = useCallback((category, heiId, heiName, count, year = null) => {
+    const targetYear = year ?? primaryYearRef.current;
+    if (!targetYear) return;
     if (count === null || count === undefined) return;
     if (count === 0 && category !== 'total') {
-      setDrilldown({ isOpen: true, heiId, heiName, category: 'total', zeroTargetCategory: category });
+      setDrilldown({ isOpen: true, heiId, heiName, category: 'total', year: targetYear, zeroTargetCategory: category });
     } else {
-      setDrilldown({ isOpen: true, heiId, heiName, category, zeroTargetCategory: null });
+      setDrilldown({ isOpen: true, heiId, heiName, category, year: targetYear, zeroTargetCategory: null });
     }
-  }, [isComparing]);
+  // stable — no deps needed, reads primaryYear via ref
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openSimpleDrilldown = useCallback((heiId, heiName) => {
-    if (isComparing) return;
-    setDrilldown({ isOpen: true, heiId, heiName, category: 'total', zeroTargetCategory: null });
-  }, [isComparing]);
+    const targetYear = primaryYearRef.current;
+    if (!targetYear) return;
+    setDrilldown({ isOpen: true, heiId, heiName, category: 'total', year: targetYear, zeroTargetCategory: null });
+  // stable — reads primaryYear via ref
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const closeDrilldown = useCallback(() => setDrilldown(CLOSED_MODAL), []);
 
@@ -163,7 +177,9 @@ const SummaryView = ({
   // Column defs
   const columnDefs = useMemo(() => {
     if (isComparing) {
-      return buildComparisonColumns(activeSection, selectedYears);
+      // Pass openDrilldown only for sections that have a drilldown registry entry
+      const hasRegistry = Boolean(SECTION_DRILLDOWN_REGISTRY[activeSection]);
+      return buildComparisonColumns(activeSection, selectedYears, hasRegistry ? openDrilldown : null);
     }
 
     const section = summaryConfig.getSection(activeSection);
@@ -179,33 +195,35 @@ const SummaryView = ({
     }
 
     return section.getColumns(openDrilldown);
+  // selectedYears included because buildComparisonColumns needs the full year list
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection, isComparing, selectedYears]);
 
-  // RecordsModal props
+  // RecordsModal props — works for both single-year and comparison mode.
+  // drilldown.year stores which specific year was clicked (set by openDrilldown).
   const modalProps = useMemo(() => {
-    if (!drilldown.isOpen || isComparing) return null;
+    if (!drilldown.isOpen) return null;
     const registry = SECTION_DRILLDOWN_REGISTRY[activeSection];
     if (!registry) return null;
 
-    const { heiId, heiName, category, zeroTargetCategory } = drilldown;
+    const { heiId, heiName, category, year: modalYear, zeroTargetCategory } = drilldown;
     const isTotal = category === 'total';
     const isMisc  = registry.miscKey ? category === registry.miscKey : false;
 
-    const fetchUrl = heiId && primaryYear
-      ? registry.fetchPath(heiId, category, primaryYear)
+    const fetchUrl = heiId && modalYear
+      ? registry.fetchPath(heiId, category, modalYear)
       : null;
 
-    const totalFetchUrl = (!isTotal && heiId && primaryYear && registry.totalFetchPath)
-      ? registry.totalFetchPath(heiId, primaryYear)
+    const totalFetchUrl = (!isTotal && heiId && modalYear && registry.totalFetchPath)
+      ? registry.totalFetchPath(heiId, modalYear)
       : null;
 
     const labelMap      = CATEGORY_LABEL_MAP[activeSection];
     const categoryLabel = labelMap ? (labelMap[category] ?? category) : 'Records';
 
     const subtitle = zeroTargetCategory
-      ? `Academic Year ${primaryYear} — Assign records into: ${labelMap?.[zeroTargetCategory] ?? zeroTargetCategory}`
-      : `Academic Year ${primaryYear}`;
+      ? `Academic Year ${modalYear} — Assign records into: ${labelMap?.[zeroTargetCategory] ?? zeroTargetCategory}`
+      : `Academic Year ${modalYear}`;
 
     const recategorizeUrl = (isTotal && activeSection === '1B-Personnel')
       ? null
@@ -225,7 +243,7 @@ const SummaryView = ({
       recordTypeField: registry.recordTypeField,
       recordIdField:   registry.recordIdField,
     };
-  }, [drilldown, activeSection, primaryYear, isComparing]);
+  }, [drilldown, activeSection]);
 
   // Active tip text
   const activeTip = useMemo(() => {
@@ -300,7 +318,7 @@ const SummaryView = ({
                 <p className="text-xs text-blue-700 dark:text-blue-300">
                   Showing data for: <strong>{selectedYears.join(' → ')}</strong>.
                   {' '}Δ columns show the change between each consecutive pair of years.
-                  {' '}Drilldown is disabled in comparison mode — switch to a single year to view individual records.
+                  {' '}Click any activity count (→) to view and edit records for that specific year.
                 </p>
               </div>
             </div>
@@ -366,8 +384,8 @@ const SummaryView = ({
         )}
       </div>
 
-      {/* Drilldown Modal (single-year mode only) */}
-      {modalProps && !isComparing && (
+      {/* Drilldown Modal — works in both single-year and comparison mode */}
+      {modalProps && (
         <RecordsModal
           {...modalProps}
           isOpen={drilldown.isOpen}

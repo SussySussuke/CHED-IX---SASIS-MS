@@ -6,13 +6,13 @@
  * ─── Column structure ───────────────────────────────────────────────────────
  *
  * Sections with flat `fields`:
- *   [HEI Code pinned] [Name of HEI pinned] [Type pinned]
+ *   [Name of HEI pinned]
  *   [Year A]  →  flat leaf cols
  *   [Δ A→B]   →  flat delta leaf cols (numeric only)
  *   [Year B]  →  flat leaf cols
  *
  * Sections with `groups` (Health, Guidance, CareerJob, InfoOrientation):
- *   [HEI Code pinned] [Name of HEI pinned] [Type pinned]
+ *   [Name of HEI pinned]
  *   [Year A]
  *     [Category sub-group]  →  leaf cols
  *     [Category sub-group]  →  leaf cols
@@ -24,10 +24,11 @@
  *     same sub-group structure
  *
  * ─── AG Grid column group rules (v35) ───────────────────────────────────────
- * - Use plain { headerName, children } — NO groupId on inner groups.
- *   groupId on inner groups in AG Grid 35 changes reconciliation and can
- *   suppress intermediate header rendering.
- * - Top-level year/delta groups use groupId (safe, they're top-level).
+ * - Inner sub-groups MUST have year-scoped groupIds. Without them, AG Grid v35
+ *   merges identical sub-group headerNames (same label across different years)
+ *   and collapses the intermediate header row.
+ * - Top-level year/delta groups also use groupId (prevents cross-section collisions).
+ * - marryChildren goes on top-level year/delta groups only, not the sub-groups.
  * - Every leaf column has an explicit colId so AG Grid never recycles stale
  *   column state across section/mode changes.
  */
@@ -82,22 +83,19 @@ export function buildComparisonRows(dataByYear, years) {
 // buildComparisonColumns
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function buildComparisonColumns(sectionId, years) {
+/**
+ * onDrilldown(category, heiId, heiName, count, year) — fired when a clickable
+ * numeric cell is clicked in comparison mode. Only wired for fields with
+ * clickable:true + categoryKey set in comparisonConfig.js.
+ * Delta columns are NEVER clickable.
+ */
+export function buildComparisonColumns(sectionId, years, onDrilldown = null) {
   const config = SECTION_COMPARISON_FIELDS[sectionId];
   if (!config || years.length === 0) return [];
 
   const isGrouped = Boolean(config.groups);
 
   const identityCols = [
-    {
-      colId:      `cmp::${sectionId}::identity::hei_code`,
-      headerName: 'HEI Code',
-      field:      'hei_code',
-      width:      120,
-      pinned:     'left',
-      filter:     'agTextColumnFilter',
-      cellStyle:  { fontWeight: '500' },
-    },
     {
       colId:      `cmp::${sectionId}::identity::hei_name`,
       headerName: 'Name of HEI',
@@ -108,15 +106,6 @@ export function buildComparisonColumns(sectionId, years) {
       filter:     'agTextColumnFilter',
       cellStyle:  { fontWeight: '500' },
     },
-    {
-      colId:      `cmp::${sectionId}::identity::hei_type`,
-      headerName: 'Type',
-      field:      'hei_type',
-      width:      90,
-      pinned:     'left',
-      filter:     'agTextColumnFilter',
-      cellStyle:  { textAlign: 'center' },
-    },
   ];
 
   const dataCols = [];
@@ -126,12 +115,13 @@ export function buildComparisonColumns(sectionId, years) {
 
     dataCols.push(
       isGrouped
-        ? buildGroupedYearGroup(sectionId, year, config.groups)
-        : buildFlatYearGroup(sectionId, year, config.fields)
+        ? buildGroupedYearGroup(sectionId, year, config.groups, onDrilldown)
+        : buildFlatYearGroup(sectionId, year, config.fields, onDrilldown)
     );
 
     if (i < years.length - 1) {
       const nextYear = years[i + 1];
+      // Delta columns are always read-only — no onDrilldown passed
       const deltaGroup = isGrouped
         ? buildGroupedDeltaGroup(sectionId, year, nextYear, config.groups)
         : buildFlatDeltaGroup(sectionId, year, nextYear, config.fields);
@@ -147,12 +137,12 @@ export function buildComparisonColumns(sectionId, years) {
 // Flat section helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildFlatYearGroup(sectionId, year, fields) {
+function buildFlatYearGroup(sectionId, year, fields, onDrilldown) {
   return {
     groupId:     `cmp::${sectionId}::year::${year}`,
     headerName:  year,
     headerClass: 'year-group-header',
-    children:    fields.map((f) => buildLeafCol(sectionId, year, f)),
+    children:    fields.map((f) => buildLeafCol(sectionId, year, f, onDrilldown)),
   };
 }
 
@@ -170,32 +160,49 @@ function buildFlatDeltaGroup(sectionId, yearA, yearB, fields) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Grouped section helpers
-// NOTE: sub-groups use plain { headerName, children } — NO groupId.
-// This matches the pattern used by single-year configs (healthConfig.jsx, etc.)
-// which render correctly. Adding groupId to inner groups in AG Grid 35 breaks
-// intermediate header rendering.
+// NOTE: sub-groups REQUIRE a year-scoped groupId in AG Grid v35.
+// When multiple year top-level groups share identical sub-group headerNames
+// (e.g. "Annual Medical Check-up/Consultation"), AG Grid merges them across
+// year columns — collapsing the intermediate header row entirely.
+// The fix: groupId must include the year slug so each sub-group is unique.
+// marryChildren goes on the TOP-LEVEL year group, not the sub-groups.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildGroupedYearGroup(sectionId, year, groups) {
+function buildGroupedYearGroup(sectionId, year, groups, onDrilldown) {
+  // slugify year label for use in groupId (e.g. "2024-2025" stays as-is)
+  const yearSlug = year.replace(/\s+/g, '_');
+
   return {
-    groupId:     `cmp::${sectionId}::year::${year}`,
-    headerName:  year,
-    headerClass: 'year-group-header',
-    children: groups.map((group) => ({
-      // NO groupId here — plain headerName+children matches single-year pattern
-      headerName: group.groupLabel,
-      children:   group.fields.map((f) => buildLeafCol(sectionId, year, f)),
-    })),
+    groupId:       `cmp::${sectionId}::year::${yearSlug}`,
+    headerName:    year,
+    headerClass:   'year-group-header',
+    marryChildren: true, // keep the year header from splitting across column blocks
+    children: groups.map((group) => {
+      // Each sub-group MUST have a year-scoped groupId.
+      // Without it, AG Grid v35 sees identical sub-group headerNames (e.g.
+      // "Annual Medical Check-up/Consultation") across multiple year columns
+      // and tries to span/merge them — collapsing the intermediate header row.
+      const subGroupSlug = group.groupLabel.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);
+      return {
+        groupId:    `cmp::${sectionId}::year::${yearSlug}::${subGroupSlug}`,
+        headerName: group.groupLabel,
+        children:   group.fields.map((f) => buildLeafCol(sectionId, year, f, onDrilldown)),
+      };
+    }),
   };
 }
 
 function buildGroupedDeltaGroup(sectionId, yearA, yearB, groups) {
+  const yearASlug = yearA.replace(/\s+/g, '_');
+  const yearBSlug = yearB.replace(/\s+/g, '_');
+
   const deltaSubGroups = groups
     .map((group) => {
       const numericFields = group.fields.filter((f) => f.type === 'numeric');
       if (numericFields.length === 0) return null;
+      const subGroupSlug = group.groupLabel.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);
       return {
-        // NO groupId — plain headerName+children
+        groupId:    `cmp::${sectionId}::delta::${yearASlug}::${yearBSlug}::${subGroupSlug}`,
         headerName: group.groupLabel,
         children:   numericFields.map((f) => buildDeltaLeafCol(sectionId, yearA, yearB, f)),
       };
@@ -205,10 +212,11 @@ function buildGroupedDeltaGroup(sectionId, yearA, yearB, groups) {
   if (deltaSubGroups.length === 0) return null;
 
   return {
-    groupId:     `cmp::${sectionId}::delta::${yearA}::${yearB}`,
-    headerName:  `Δ ${yearA} → ${yearB}`,
-    headerClass: 'delta-group-header',
-    children:    deltaSubGroups,
+    groupId:       `cmp::${sectionId}::delta::${yearASlug}::${yearBSlug}`,
+    headerName:    `Δ ${yearA} → ${yearB}`,
+    headerClass:   'delta-group-header',
+    marryChildren: true,
+    children:      deltaSubGroups,
   };
 }
 
@@ -216,8 +224,9 @@ function buildGroupedDeltaGroup(sectionId, yearA, yearB, groups) {
 // Leaf builders
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildLeafCol(sectionId, year, fieldDef) {
-  const { field, label, type } = fieldDef;
+function buildLeafCol(sectionId, year, fieldDef, onDrilldown) {
+  const { field, label, type, clickable, categoryKey } = fieldDef;
+  const isClickable = clickable && categoryKey && typeof onDrilldown === 'function';
 
   const base = {
     colId:      `cmp::${sectionId}::${year}::${field}`,
@@ -236,6 +245,31 @@ function buildLeafCol(sectionId, year, fieldDef) {
       cellRenderer: (params) => {
         const v = params.value;
         if (v === null || v === undefined) return <span style={{ color: '#9ca3af' }}>—</span>;
+
+        if (isClickable) {
+          const colour = categoryKey === 'uncategorized' || categoryKey === 'others'
+            ? '#ca8a04'  // yellow for misc categories
+            : '#2563eb'; // blue for normal categories
+          return (
+            <button
+              style={{
+                color: colour,
+                fontWeight: 600,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '0 4px',
+                textDecoration: 'underline',
+                fontSize: 'inherit',
+              }}
+              title={`Click to view records for ${year}`}
+              onClick={() => onDrilldown(categoryKey, params.data?.hei_id, params.data?.hei_name, v, year)}
+            >
+              {Number(v).toLocaleString()} →
+            </button>
+          );
+        }
+
         return <span>{Number(v).toLocaleString()}</span>;
       },
     };

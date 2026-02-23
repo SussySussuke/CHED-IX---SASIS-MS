@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { useAGGridTheme, useAGGridMinHeightRemoval, getAGGridAutoHeightClass } from '@/Hooks/useAGGridTheme';
@@ -141,36 +141,6 @@ const AGGridEditor = ({
     gridOptions,
     shouldUseAutoHeight,
   ]);
-
-  // Expose useful methods
-  const getRowData = useCallback(() => {
-    const data = [];
-    if (gridRef.current) {
-      gridRef.current.api.forEachNode(node => data.push(node.data));
-    }
-    return data;
-  }, []);
-
-  const addRow = useCallback((newRow) => {
-    if (gridRef.current) {
-      gridRef.current.api.applyTransaction({ add: [newRow] });
-    }
-  }, []);
-
-  const deleteSelectedRows = useCallback(() => {
-    if (gridRef.current) {
-      const selectedRows = gridRef.current.api.getSelectedRows();
-      gridRef.current.api.applyTransaction({ remove: selectedRows });
-    }
-  }, []);
-
-  // Attach methods to ref for parent access
-  React.useImperativeHandle(gridRef, () => ({
-    getRowData,
-    addRow,
-    deleteSelectedRows,
-    api: gridRef.current?.api,
-  }));
 
   // Dynamic container style
   const containerStyle = useMemo(() => {

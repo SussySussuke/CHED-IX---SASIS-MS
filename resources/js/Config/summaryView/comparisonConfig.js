@@ -46,7 +46,7 @@ export const SECTION_COMPARISON_FIELDS = {
       { field: 'student_publication',            label: 'Student Publication',             type: 'numeric' },
       { field: 'multi_faith',                    label: 'Multi-faith Services',            type: 'numeric' },
       { field: 'uncategorized',                  label: 'Uncategorized',                   type: 'numeric' },
-      { field: 'total_personnel',                label: 'Total Personnel',                 type: 'numeric' },
+      { field: 'total_personnel',                label: 'Total Personnel',                 type: 'numeric', clickable: true, categoryKey: 'total' },
     ],
   },
 
@@ -56,63 +56,63 @@ export const SECTION_COMPARISON_FIELDS = {
       {
         groupLabel: 'Campus Orientation',
         fields: [
-          { field: 'campus_orientation_activities', label: 'Activities', type: 'numeric' },
+          { field: 'campus_orientation_activities', label: 'Activities', type: 'numeric', clickable: true, categoryKey: 'campus_orientation' },
           { field: 'campus_orientation_students',   label: 'Students',   type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Gender-Sensitivity / VAWC',
         fields: [
-          { field: 'gender_sensitivity_activities', label: 'Activities', type: 'numeric' },
+          { field: 'gender_sensitivity_activities', label: 'Activities', type: 'numeric', clickable: true, categoryKey: 'gender_sensitivity' },
           { field: 'gender_sensitivity_students',   label: 'Students',   type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Anti-Hazing',
         fields: [
-          { field: 'anti_hazing_activities', label: 'Activities', type: 'numeric' },
+          { field: 'anti_hazing_activities', label: 'Activities', type: 'numeric', clickable: true, categoryKey: 'anti_hazing' },
           { field: 'anti_hazing_students',   label: 'Students',   type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Substance-Abuse Campaigns',
         fields: [
-          { field: 'substance_abuse_activities', label: 'Activities', type: 'numeric' },
+          { field: 'substance_abuse_activities', label: 'Activities', type: 'numeric', clickable: true, categoryKey: 'substance_abuse' },
           { field: 'substance_abuse_students',   label: 'Students',   type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Sexual / Reproductive Health',
         fields: [
-          { field: 'sexual_health_activities', label: 'Activities', type: 'numeric' },
+          { field: 'sexual_health_activities', label: 'Activities', type: 'numeric', clickable: true, categoryKey: 'sexual_health' },
           { field: 'sexual_health_students',   label: 'Students',   type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Mental Health / Wellness',
         fields: [
-          { field: 'mental_health_activities', label: 'Activities', type: 'numeric' },
+          { field: 'mental_health_activities', label: 'Activities', type: 'numeric', clickable: true, categoryKey: 'mental_health' },
           { field: 'mental_health_students',   label: 'Students',   type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Disaster Risk Management',
         fields: [
-          { field: 'disaster_risk_activities', label: 'Activities', type: 'numeric' },
+          { field: 'disaster_risk_activities', label: 'Activities', type: 'numeric', clickable: true, categoryKey: 'disaster_risk' },
           { field: 'disaster_risk_students',   label: 'Students',   type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Miscellaneous',
         fields: [
-          { field: 'uncategorized_activities', label: 'Activities', type: 'numeric' },
+          { field: 'uncategorized_activities', label: 'Activities', type: 'numeric', clickable: true, categoryKey: 'uncategorized' },
           { field: 'uncategorized_students',   label: 'Students',   type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Total',
         fields: [
-          { field: 'total_activities', label: 'Activities', type: 'numeric' },
+          { field: 'total_activities', label: 'Activities', type: 'numeric', clickable: true, categoryKey: 'total' },
           { field: 'total_students',   label: 'Students',   type: 'numeric' },
         ],
       },
@@ -125,56 +125,56 @@ export const SECTION_COMPARISON_FIELDS = {
       {
         groupLabel: 'Individual Inventory',
         fields: [
-          { field: 'individual_inventory_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'individual_inventory_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'individual_inventory' },
           { field: 'individual_inventory_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Counseling Service',
         fields: [
-          { field: 'counseling_service_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'counseling_service_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'counseling_service' },
           { field: 'counseling_service_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Referral',
         fields: [
-          { field: 'referral_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'referral_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'referral' },
           { field: 'referral_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Testing / Appraisal',
         fields: [
-          { field: 'testing_appraisal_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'testing_appraisal_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'testing_appraisal' },
           { field: 'testing_appraisal_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Follow-up',
         fields: [
-          { field: 'follow_up_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'follow_up_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'follow_up' },
           { field: 'follow_up_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Peer Facilitating Program/Activities',
         fields: [
-          { field: 'peer_facilitating_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'peer_facilitating_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'peer_facilitating' },
           { field: 'peer_facilitating_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Others (please specify)',
         fields: [
-          { field: 'others_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'others_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'others' },
           { field: 'others_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Total',
         fields: [
-          { field: 'total_activities', label: 'No. of Activities', type: 'numeric' },
+          { field: 'total_activities', label: 'No. of Activities', type: 'numeric', clickable: true, categoryKey: 'total' },
           { field: 'total_students',   label: 'No. of Students',   type: 'numeric' },
         ],
       },
@@ -187,42 +187,42 @@ export const SECTION_COMPARISON_FIELDS = {
       {
         groupLabel: 'Labor Empowerment and Career Guidance Conference for All Graduating Students (per RA 11551)',
         fields: [
-          { field: 'labor_empowerment_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'labor_empowerment_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'labor_empowerment' },
           { field: 'labor_empowerment_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Job Fairs in Coordination with DOLE Regional Offices and PESOs',
         fields: [
-          { field: 'job_fairs_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'job_fairs_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'job_fairs' },
           { field: 'job_fairs_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Registration of Graduating Students in PhilJobNet Portal',
         fields: [
-          { field: 'phil_job_net_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'phil_job_net_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'phil_job_net' },
           { field: 'phil_job_net_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Career Vocational and Employment Counseling',
         fields: [
-          { field: 'career_counseling_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'career_counseling_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'career_counseling' },
           { field: 'career_counseling_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Others (please specify)',
         fields: [
-          { field: 'others_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'others_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'others' },
           { field: 'others_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Total',
         fields: [
-          { field: 'total_activities', label: 'No. of Activities', type: 'numeric' },
+          { field: 'total_activities', label: 'No. of Activities', type: 'numeric', clickable: true, categoryKey: 'total' },
           { field: 'total_students',   label: 'No. of Students',   type: 'numeric' },
         ],
       },
@@ -235,35 +235,35 @@ export const SECTION_COMPARISON_FIELDS = {
       {
         groupLabel: 'Annual Medical Check-up/Consultation',
         fields: [
-          { field: 'medical_checkup_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'medical_checkup_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'medical_checkup' },
           { field: 'medical_checkup_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Annual Dental Check-up/Consultation',
         fields: [
-          { field: 'dental_checkup_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'dental_checkup_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'dental_checkup' },
           { field: 'dental_checkup_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Seminar and Educational Tours',
         fields: [
-          { field: 'seminar_educational_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'seminar_educational_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'seminar_educational' },
           { field: 'seminar_educational_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Others (please specify)',
         fields: [
-          { field: 'others_activities', label: 'No. of Activities Conducted',  type: 'numeric' },
+          { field: 'others_activities', label: 'No. of Activities Conducted',  type: 'numeric', clickable: true, categoryKey: 'others' },
           { field: 'others_students',   label: 'No. of Students Participated', type: 'numeric' },
         ],
       },
       {
         groupLabel: 'Total',
         fields: [
-          { field: 'total_activities', label: 'No. of Activities', type: 'numeric' },
+          { field: 'total_activities', label: 'No. of Activities', type: 'numeric', clickable: true, categoryKey: 'total' },
           { field: 'total_students',   label: 'No. of Students',   type: 'numeric' },
         ],
       },
