@@ -88,6 +88,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/audit-logs', [App\Http\Controllers\Admin\AuditLogController::class, 'index'])->name('admin.audit-logs');
 
         Route::get('/summary', [SummaryViewController::class, 'index'])->name('admin.summary');
+        Route::get('/summary/profile', [SummaryViewController::class, 'getProfileData'])->name('admin.summary.profile');
         Route::get('/summary/info-orientation', [SummaryViewController::class, 'getInfoOrientationData'])->name('admin.summary.info-orientation');
         Route::get('/summary/personnel', [SummaryViewController::class, 'getPersonnelData'])->name('admin.summary.personnel');
         Route::get('/summary/personnel/{heiId}/{category}/evidence', [SummaryViewController::class, 'getPersonnelEvidence'])->name('admin.summary.personnel.evidence');

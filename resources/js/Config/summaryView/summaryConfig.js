@@ -150,6 +150,7 @@ export const SECTION_DRILLDOWN_REGISTRY = {
  * Maps section ID → API path (year appended by the fetch handler).
  */
 export const SECTION_FETCH_URLS = {
+  '1A-Profile':            '/admin/summary/profile',
   '2-Info-Orientation':    '/admin/summary/info-orientation',
   '1B-Personnel':          '/admin/summary/personnel',
   '3-GuidanceCounselling': '/admin/summary/guidance-counselling',

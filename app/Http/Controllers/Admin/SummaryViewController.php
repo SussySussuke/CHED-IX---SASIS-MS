@@ -95,6 +95,79 @@ class SummaryViewController extends Controller
     // Summary index (Profile / Personnel data)
     // ──────────────────────────────────────────────────────────────────────────
 
+    /**
+     * GET /admin/summary/profile?year=XXXX
+     *
+     * JSON-only endpoint for Profile data — used by the multi-year comparison fetch.
+     * Returns the same row shape as index() but as { data: [...] }.
+     */
+    public function getProfileData(Request $request)
+    {
+        $selectedYear = $request->query('year');
+
+        $availableYears = Summary::whereIn('status', ['published', 'submitted', 'request'])
+            ->distinct()
+            ->pluck('academic_year')
+            ->sort()
+            ->values()
+            ->toArray();
+
+        if (!$selectedYear && count($availableYears) > 0) {
+            $selectedYear = $availableYears[count($availableYears) - 1];
+        }
+
+        $rows = [];
+
+        if ($selectedYear) {
+            $heis = HEI::where('is_active', true)->orderBy('name')->get();
+
+            $summaryData = Summary::where('academic_year', $selectedYear)
+                ->whereIn('status', ['published', 'submitted', 'request'])
+                ->get()
+                ->keyBy('hei_id');
+
+            $rows = $heis->map(function ($hei) use ($summaryData, $selectedYear) {
+                $summary = $summaryData->get($hei->id);
+
+                if ($summary) {
+                    return [
+                        'id'                   => $summary->id,
+                        'hei_id'               => $hei->id,
+                        'hei_code'             => $hei->code,
+                        'hei_name'             => $hei->name,
+                        'hei_type'             => $hei->type,
+                        'academic_year'        => $summary->academic_year,
+                        'population_male'      => $summary->population_male,
+                        'population_female'    => $summary->population_female,
+                        'population_intersex'  => $summary->population_intersex,
+                        'population_total'     => $summary->population_total,
+                        'status'               => $summary->status,
+                    ];
+                }
+
+                return [
+                    'id'                   => null,
+                    'hei_id'               => $hei->id,
+                    'hei_code'             => $hei->code,
+                    'hei_name'             => $hei->name,
+                    'hei_type'             => $hei->type,
+                    'academic_year'        => $selectedYear,
+                    'population_male'      => null,
+                    'population_female'    => null,
+                    'population_intersex'  => null,
+                    'population_total'     => null,
+                    'status'               => 'not_submitted',
+                ];
+            })->values()->toArray();
+        }
+
+        return response()->json([
+            'data'           => $rows,
+            'availableYears' => $availableYears,
+            'selectedYear'   => $selectedYear,
+        ]);
+    }
+
     public function index(Request $request)
     {
         $selectedYear = $request->query('year');
