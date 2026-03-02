@@ -69,7 +69,7 @@ export const FORM_NAMES = {
   K: 'Safety and Security Committees',
   L: 'Student Housing',
   'L-1': 'Foreign/International Students Services',
-  M: 'Sports Development',
+  M: 'Students Enrollment Special Needs/PWD',
   N: 'Culture and the Arts',
   'N-1': 'Sports Development Program',
   O: 'Community Involvement/Outreach',

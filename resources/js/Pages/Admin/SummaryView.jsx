@@ -5,7 +5,8 @@ import EmptyState from '../../Components/Common/EmptyState';
 import FormSelector from '../../Components/Forms/FormSelector';
 import YearMultiSelect from '../../Components/Forms/YearMultiSelect';
 import RecordsModal from '../../Components/Modals/RecordsModal';
-import { IoDocumentText, IoInformationCircle, IoGridOutline, IoGitCompare } from 'react-icons/io5';
+import { IoDocumentText, IoInformationCircle, IoGridOutline, IoGitCompare, IoDownloadOutline } from 'react-icons/io5';
+import { exportSummaryToExcel } from '../../Utils/excelExport';
 import {
   summaryConfig,
   SECTION_DRILLDOWN_REGISTRY,
@@ -252,6 +253,20 @@ const SummaryView = ({
     return registry?.tip ?? SECTION_TIPS[activeSection] ?? null;
   }, [activeSection, isComparing]);
 
+  // Export handler
+  const handleExport = useCallback(() => {
+    const section = summaryConfig.getSection(activeSection);
+    const sectionTitle = section?.sectionTitle ?? activeSection;
+    exportSummaryToExcel({
+      sectionData,
+      columnDefs,
+      sectionTitle,
+      selectedYears,
+      isComparing,
+      activeSection,
+    });
+  }, [sectionData, columnDefs, activeSection, selectedYears, isComparing]);
+
   const sections       = summaryConfig.getSectionList();
   const sectionOptions = [
     {
@@ -279,12 +294,23 @@ const SummaryView = ({
             </p>
           </div>
 
-          {isComparing && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-sm font-medium">
-              <IoGitCompare className="w-4 h-4" />
-              Comparing {selectedYears.length} years
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {isComparing && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-sm font-medium">
+                <IoGitCompare className="w-4 h-4" />
+                Comparing {selectedYears.length} years
+              </div>
+            )}
+            <button
+              onClick={handleExport}
+              disabled={loading || !hasData}
+              title={hasData ? `Export ${isComparing ? 'multi-year comparison' : 'current view'} to Excel` : 'No data to export'}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors shadow-sm"
+            >
+              <IoDownloadOutline className="w-4 h-4" />
+              Export Excel
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
