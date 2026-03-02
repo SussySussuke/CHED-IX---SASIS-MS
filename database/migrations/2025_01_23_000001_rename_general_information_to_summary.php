@@ -1,24 +1,23 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+
+// THIS MIGRATION IS A NO-OP.
+// Originally renamed 'general_information' -> 'summary'.
+// The base migration (0001_01_01_000000_create_base_tables.php) now creates
+// the 'summary' table directly, so this rename is obsolete.
+// Kept in history to preserve migration order integrity.
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::rename('general_information', 'summary');
+        // no-op: table already created as 'summary' in base migration
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::rename('summary', 'general_information');
+        // no-op
     }
 };
