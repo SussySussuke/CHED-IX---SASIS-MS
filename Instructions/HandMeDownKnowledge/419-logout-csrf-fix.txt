@@ -1,0 +1,42 @@
+TITLE: 419 Page Expired on Logout — CSRF Double-Submit Race Condition Fix
+DATE: 2026-03-06
+
+GOAL
+----
+Logout must complete cleanly without 419 errors across all user roles.
+
+PROBLEM DEFINITION
+------------------
+Logging out intermittently produced HTTP 419 Page Expired.
+Log pattern: one ~513ms request followed by one ~0.36ms request to /logout.
+The fast second request hit an already-invalidated session — no valid CSRF token remained.
+
+KEY DISCOVERIES
+---------------
+- LogoutButton.jsx used `confirm()` before `router.post('/logout')`.
+- `confirm()` is a synchronous blocking dialog. It does not prevent double-submission;
+  rapid or repeated clicks could queue multiple Inertia POST requests.
+- First request: Auth::logout() + session()->invalidate() + session()->regenerateToken() — session dead.
+- Second request (0.36ms): POST with CSRF token referencing a now-dead session → 419.
+- The route, AuthController::logout(), and session config were all correct and not the cause.
+
+DECISIONS & RATIONALE
+----------------------
+- Removed `confirm()` entirely. It is a blocking browser dialog with no role in a production UI.
+- Added a `useRef(false)` mutex flag (`processing`) in LogoutButton to prevent re-entrant calls.
+- Used `useRef` not `useState` — no re-render needed, purely a guard flag.
+- `onFinish` callback resets the flag after Inertia completes the request (success or failure).
+- No changes to backend (AuthController, routes, session config) — all correct as-is.
+
+ATTEMPTED SOLUTIONS / FAILURES
+--------------------------------
+- None failed. Root cause was identified directly from log timestamps and component code.
+
+CURRENT STATUS
+--------------
+RESOLVED. LogoutButton.jsx updated. Needs `npm run build` or `npm run dev` to recompile.
+No backend changes. No migration. No further action required.
+
+FILES MODIFIED
+--------------
+- resources/js/Components/Common/LogoutButton.jsx

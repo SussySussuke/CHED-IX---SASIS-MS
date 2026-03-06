@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { router } from '@inertiajs/react';
 
 const LogoutButton = () => {
+  const processing = useRef(false);
+
   const handleLogout = () => {
-    if (confirm('Are you sure you want to logout?')) {
-      router.post('/logout');
-    }
+    if (processing.current) return;
+    processing.current = true;
+    router.post('/logout', {}, {
+      onFinish: () => { processing.current = false; },
+    });
   };
 
   return (
