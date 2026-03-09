@@ -4,12 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Database\Factories\HEIFactory;
 
 class HEI extends Model
 {
     use HasFactory;
 
     protected $table = 'heis';
+
+    protected static function newFactory(): HEIFactory
+    {
+        return HEIFactory::new();
+    }
 
     // Use 'id' as primary key (default behavior, but explicit for clarity)
     protected $primaryKey = 'id';

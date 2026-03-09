@@ -5,16 +5,21 @@
 
 ## SEEDER
 
-`database/seeders/DatabaseSeeder.php` — single file, no sub-seeders.
+`database/seeders/DatabaseSeeder.php` — calls `DemoDataSeeder` as sub-seeder.
 
 Run with: `php artisan migrate:fresh --seed`
 
-Creates exactly ONE account:
-- **Name:** Super Admin
-- **Email:** superadmin@ched.gov.ph
-- **Password:** password123
-- **Role:** superadmin
-- **is_active:** true
+**Accounts created (all password: `password123`):**
+
+| Email | Role | Source |
+|---|---|---|
+| superadmin@ched.gov.ph | superadmin | DatabaseSeeder |
+| rai.admin@ched.gov.ph | admin | DatabaseSeeder |
+| admin@ched.gov.ph | admin | DemoDataSeeder |
+| hei@demostateuniversity.edu.ph | hei | DemoDataSeeder (HEI #1) |
+| hei@lakeviewcollege.edu.ph | hei | DemoDataSeeder (HEI #2) |
+
+See `seeder-and-demo-data.md` for full breakdown of HEI demo data.
 
 ---
 

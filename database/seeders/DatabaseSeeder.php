@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        // Super Admin account (always present)
         User::create([
             'name'         => 'Super Admin',
             'email'        => 'superadmin@ched.gov.ph',
@@ -20,5 +21,17 @@ class DatabaseSeeder extends Seeder
             'account_type' => 'superadmin',
             'is_active'    => true,
         ]);
+
+        // CHED Region Admin (your account)
+        User::create([
+            'name'         => 'Rai Admin',
+            'email'        => 'rai.admin@ched.gov.ph',
+            'password'     => Hash::make('password123'),
+            'account_type' => 'admin',
+            'is_active'    => true,
+        ]);
+
+        // Demo HEI with all forms populated
+        $this->call(DemoDataSeeder::class);
     }
 }
