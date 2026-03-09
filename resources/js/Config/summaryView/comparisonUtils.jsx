@@ -31,6 +31,20 @@
  * - marryChildren goes on top-level year/delta groups only, not the sub-groups.
  * - Every leaf column has an explicit colId so AG Grid never recycles stale
  *   column state across section/mode changes.
+ *
+ * ─── Zero-total inert state ──────────────────────────────────────────────────
+ * When the section total for an HEI in a given year is 0, ALL clickable cells
+ * for that row/year are rendered as inert plain text (no button, no cursor).
+ * This is semantically distinct from a category-zero (0 +) where the total IS
+ * non-zero but this specific category has no records yet — that state still
+ * shows the clickable "0 +" button because assigning is meaningful.
+ * Total-zero means no submissions exist at all; nothing can be drilled into or
+ * assigned. Rendering a button there is a false affordance.
+ *
+ * Implementation: each section config has at most one field with categoryKey
+ * === 'total'. That field's prefixed row key (`${year}::${field}`) is resolved
+ * once per year group and passed down as `totalField` to buildLeafCol, which
+ * reads it from params.data at render time.
  */
 
 import { SECTION_COMPARISON_FIELDS } from './comparisonConfig';
@@ -141,11 +155,16 @@ export function buildComparisonColumns(sectionId, years, onDrilldown = null, { s
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildFlatYearGroup(sectionId, year, fields, onDrilldown) {
+  // Resolve the prefixed total field key for this year so buildLeafCol can
+  // check whether the entire section is empty for a given HEI/year row.
+  const totalFieldDef = fields.find((f) => f.categoryKey === 'total');
+  const totalField    = totalFieldDef ? `${year}::${totalFieldDef.field}` : null;
+
   return {
     groupId:     `cmp::${sectionId}::year::${year}`,
     headerName:  year,
     headerClass: 'year-group-header',
-    children:    fields.map((f) => buildLeafCol(sectionId, year, f, onDrilldown)),
+    children:    fields.map((f) => buildLeafCol(sectionId, year, f, onDrilldown, totalField)),
   };
 }
 
@@ -175,6 +194,13 @@ function buildGroupedYearGroup(sectionId, year, groups, onDrilldown) {
   // slugify year label for use in groupId (e.g. "2024-2025" stays as-is)
   const yearSlug = year.replace(/\s+/g, '_');
 
+  // Resolve the prefixed total field key across all groups for this section.
+  // Grouped sections (Health, Guidance, etc.) keep the 'total' field in the
+  // last group ("Total"). We scan all groups to find it.
+  const allGroupFields  = groups.flatMap((g) => g.fields);
+  const totalFieldDef   = allGroupFields.find((f) => f.categoryKey === 'total');
+  const totalField      = totalFieldDef ? `${year}::${totalFieldDef.field}` : null;
+
   return {
     groupId:       `cmp::${sectionId}::year::${yearSlug}`,
     headerName:    year,
@@ -189,7 +215,7 @@ function buildGroupedYearGroup(sectionId, year, groups, onDrilldown) {
       return {
         groupId:    `cmp::${sectionId}::year::${yearSlug}::${subGroupSlug}`,
         headerName: group.groupLabel,
-        children:   group.fields.map((f) => buildLeafCol(sectionId, year, f, onDrilldown)),
+        children:   group.fields.map((f) => buildLeafCol(sectionId, year, f, onDrilldown, totalField)),
       };
     }),
   };
@@ -227,7 +253,14 @@ function buildGroupedDeltaGroup(sectionId, yearA, yearB, groups) {
 // Leaf builders
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildLeafCol(sectionId, year, fieldDef, onDrilldown) {
+/**
+ * totalField — prefixed row key for the section's aggregate total, e.g.
+ * "2024-2025::total_personnel". When provided, a row whose total is 0
+ * renders ALL clickable cells as inert plain text — there is nothing to drill
+ * into or assign. This is distinct from a category-zero (total > 0, this
+ * category = 0) which still shows the actionable "0 +" button.
+ */
+function buildLeafCol(sectionId, year, fieldDef, onDrilldown, totalField = null) {
   const { field, label, type, clickable, categoryKey } = fieldDef;
   const isClickable = clickable && categoryKey && typeof onDrilldown === 'function';
 
@@ -253,7 +286,25 @@ function buildLeafCol(sectionId, year, fieldDef, onDrilldown) {
           const colour = categoryKey === 'uncategorized' || categoryKey === 'others'
             ? '#ca8a04'  // yellow for misc categories
             : '#2563eb'; // blue for normal categories
-          const isZero = v === 0;
+          const isZero     = v === 0;
+          // Section total for this HEI in this year. When the total is 0 the
+          // HEI has no submissions at all — every cell is inert regardless of
+          // whether it would normally show "0 +" or a count.
+          // sectionTotal is null  → no totalField configured for this section (no guard)
+          // sectionTotal is 0     → backend returned explicit zero (submitted but empty)
+          // sectionTotal is undef → year is missing for this HEI (__missing path in
+          //                         buildComparisonRows); treat as empty too.
+          const rawTotal     = totalField != null ? params.data?.[totalField] : null;
+          const sectionTotal = totalField != null ? (rawTotal ?? null) : null;
+          const sectionEmpty = sectionTotal === 0 || (totalField != null && rawTotal === undefined);
+
+          if (isZero && sectionEmpty) {
+            // Total-zero: the whole section is unsubmitted. Render inert — no
+            // button, no cursor, no false affordance. A plain dash communicates
+            // "nothing here" without implying the user can do something.
+            return <span style={{ color: '#d1d5db' }}>—</span>;
+          }
+
           return (
             <button
               style={{

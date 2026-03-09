@@ -51,12 +51,29 @@ export const PERSONNEL_CATEGORY_LABELS = {
 
 // ─── Shared cell renderer ────────────────────────────────────────────────────
 
-function CountCell({ value, onClick }) {
+/**
+ * CountCell renders a clickable count button in two states:
+ *
+ *   value > 0, sectionTotal > 0  → blue/yellow underlined "N →" button
+ *   value = 0, sectionTotal > 0  → gray muted "0 +" button (assign into category)
+ *   value = 0, sectionTotal = 0  → inert plain dash (no submissions; nothing to assign)
+ *
+ * sectionTotal (total_personnel for this row) is passed from the column renderer
+ * so CountCell can distinguish a genuinely empty section from a category-zero.
+ */
+function CountCell({ value, onClick, sectionTotal = null }) {
   if (value === null || value === undefined) {
     return <span className="text-gray-400">—</span>;
   }
 
   if (value === 0) {
+    // Section has no submissions at all — no button, no false affordance.
+    // Treat null/undefined the same as 0 — backend may return null for
+    // HEIs that have no submission record at all (not just empty submission).
+    if (sectionTotal === 0 || sectionTotal === null || sectionTotal === undefined) {
+      return <span className="text-gray-300 dark:text-gray-600">—</span>;
+    }
+
     return (
       <button
         className="text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400
@@ -95,6 +112,7 @@ function categoryColumn(headerName, field, onCountClick) {
     cellRenderer: (params) => (
       <CountCell
         value={params.value}
+        sectionTotal={params.data?.total_personnel ?? null}
         onClick={() =>
           onCountClick?.(field, params.data.hei_id, params.data.hei_name, params.value)
         }
@@ -234,39 +252,13 @@ export const personnelConfig = {
       width:      130,
       filter:     'agNumberColumnFilter',
       cellStyle:  { textAlign: 'center' },
-      cellRenderer: (params) => {
-        if (params.value === null || params.value === undefined) {
-          return <span className="text-gray-400">—</span>;
-        }
-        if (params.value === 0) {
-          return (
-            <button
-              className="text-gray-400 dark:text-gray-500 hover:text-yellow-500 dark:hover:text-yellow-400
-                         focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-yellow-500
-                         rounded px-1.5 py-0.5 transition-all text-sm"
-              onClick={() => onCountClick?.('uncategorized', params.data.hei_id, params.data.hei_name, params.value)}
-              title="No uncategorized personnel — click to view"
-            >
-              0 +
-            </button>
-          );
-        }
-        return (
-          <button
-            className="font-semibold text-yellow-600 dark:text-yellow-400
-                       hover:text-yellow-800 dark:hover:text-yellow-200
-                       hover:underline focus:outline-none focus:ring-2
-                       focus:ring-offset-1 focus:ring-yellow-500 rounded
-                       px-1.5 py-0.5 transition-all"
-            onClick={() =>
-              onCountClick?.('uncategorized', params.data.hei_id, params.data.hei_name, params.value)
-            }
-            title="Click to view uncategorized personnel"
-          >
-            {params.value} →
-          </button>
-        );
-      },
+      cellRenderer: (params) => (
+        <CountCell
+          value={params.value}
+          sectionTotal={params.data?.total_personnel ?? null}
+          onClick={() => onCountClick?.('uncategorized', params.data.hei_id, params.data.hei_name, params.value)}
+        />
+      ),
     },
     {
       headerName: 'Total',
@@ -277,6 +269,10 @@ export const personnelConfig = {
       cellRenderer: (params) => {
         if (params.value === null || params.value === undefined) {
           return <span className="text-gray-400">—</span>;
+        }
+        // Total column: if zero, nothing to view — render inert plain text.
+        if (params.value === 0) {
+          return <span className="text-gray-400 dark:text-gray-500 font-bold">0</span>;
         }
         return (
           <button
