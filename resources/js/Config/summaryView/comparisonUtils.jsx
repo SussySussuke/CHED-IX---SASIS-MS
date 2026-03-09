@@ -88,8 +88,11 @@ export function buildComparisonRows(dataByYear, years) {
  * numeric cell is clicked in comparison mode. Only wired for fields with
  * clickable:true + categoryKey set in comparisonConfig.js.
  * Delta columns are NEVER clickable.
+ *
+ * options.showDelta  boolean (default true) — when false, all Δ columns are
+ * omitted from the returned columnDefs. Applies to both flat and grouped sections.
  */
-export function buildComparisonColumns(sectionId, years, onDrilldown = null) {
+export function buildComparisonColumns(sectionId, years, onDrilldown = null, { showDelta = true } = {}) {
   const config = SECTION_COMPARISON_FIELDS[sectionId];
   if (!config || years.length === 0) return [];
 
@@ -119,7 +122,7 @@ export function buildComparisonColumns(sectionId, years, onDrilldown = null) {
         : buildFlatYearGroup(sectionId, year, config.fields, onDrilldown)
     );
 
-    if (i < years.length - 1) {
+    if (showDelta && i < years.length - 1) {
       const nextYear = years[i + 1];
       // Delta columns are always read-only — no onDrilldown passed
       const deltaGroup = isGrouped
@@ -250,22 +253,23 @@ function buildLeafCol(sectionId, year, fieldDef, onDrilldown) {
           const colour = categoryKey === 'uncategorized' || categoryKey === 'others'
             ? '#ca8a04'  // yellow for misc categories
             : '#2563eb'; // blue for normal categories
+          const isZero = v === 0;
           return (
             <button
               style={{
-                color: colour,
-                fontWeight: 600,
+                color: isZero ? '#9ca3af' : colour,
+                fontWeight: isZero ? 400 : 600,
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
                 padding: '0 4px',
-                textDecoration: 'underline',
+                textDecoration: isZero ? 'none' : 'underline',
                 fontSize: 'inherit',
               }}
-              title={`Click to view records for ${year}`}
+              title={isZero ? 'No records yet — click to open and assign records into this category' : `Click to view records for ${year}`}
               onClick={() => onDrilldown(categoryKey, params.data?.hei_id, params.data?.hei_name, v, year)}
             >
-              {Number(v).toLocaleString()} →
+              {isZero ? '0 +' : `${Number(v).toLocaleString()} →`}
             </button>
           );
         }

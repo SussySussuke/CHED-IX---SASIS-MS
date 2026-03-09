@@ -99,3 +99,15 @@ Sections with clickable fields: `1B-Personnel` (total_personnel only), `2-Info-O
 ---
 
 ## Status: ALL KNOWN ISSUES RESOLVED — needs browser testing
+
+---
+
+## Delta Column Toggle
+
+`showDelta` boolean state in `SummaryView.jsx` (default `true`).
+- Toggle button appears in the header area **only when `isComparing` is true**.
+- Button is orange when on, gray when off. Uses `IoGitMergeOutline` icon.
+- `buildComparisonColumns` accepts a 4th param: `{ showDelta = true }` (options object, backward-compatible — old callers with no 4th arg are unaffected).
+- `exportSummaryToExcel` accepts `showDelta` prop — passed through to `buildLeafDescriptors`. Export respects the same toggle state as the grid.
+- `columnDefs` useMemo deps updated to include `showDelta`.
+- Banner text for Δ column description is conditionally rendered based on `showDelta`.

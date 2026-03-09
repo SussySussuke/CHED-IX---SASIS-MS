@@ -5,7 +5,7 @@ import EmptyState from '../../Components/Common/EmptyState';
 import FormSelector from '../../Components/Forms/FormSelector';
 import YearMultiSelect from '../../Components/Forms/YearMultiSelect';
 import RecordsModal from '../../Components/Modals/RecordsModal';
-import { IoDocumentText, IoInformationCircle, IoGridOutline, IoGitCompare, IoDownloadOutline } from 'react-icons/io5';
+import { IoDocumentText, IoInformationCircle, IoGridOutline, IoGitCompare, IoDownloadOutline, IoGitMergeOutline } from 'react-icons/io5';
 import { exportSummaryToExcel } from '../../Utils/excelExport';
 import {
   summaryConfig,
@@ -71,6 +71,11 @@ const SummaryView = ({
 
   const isComparing = selectedYears.length > 1;
   const primaryYear = selectedYears[selectedYears.length - 1] ?? null;
+
+  // Whether to show delta (Δ) columns in comparison mode.
+  // Defaults to true; user can toggle off when they only want side-by-side data.
+  const [showDelta, setShowDelta] = useState(true);
+  const toggleShowDelta = useCallback(() => setShowDelta((prev) => !prev), []);
 
   // Sync selectedYears when Inertia navigates (browser back/forward)
   useEffect(() => {
@@ -180,7 +185,12 @@ const SummaryView = ({
     if (isComparing) {
       // Pass openDrilldown only for sections that have a drilldown registry entry
       const hasRegistry = Boolean(SECTION_DRILLDOWN_REGISTRY[activeSection]);
-      return buildComparisonColumns(activeSection, selectedYears, hasRegistry ? openDrilldown : null);
+      return buildComparisonColumns(
+        activeSection,
+        selectedYears,
+        hasRegistry ? openDrilldown : null,
+        { showDelta },
+      );
     }
 
     const section = summaryConfig.getSection(activeSection);
@@ -197,8 +207,9 @@ const SummaryView = ({
 
     return section.getColumns(openDrilldown);
   // selectedYears included because buildComparisonColumns needs the full year list
+  // showDelta included because toggling it changes which columns are returned
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSection, isComparing, selectedYears]);
+  }, [activeSection, isComparing, selectedYears, showDelta]);
 
   // RecordsModal props — works for both single-year and comparison mode.
   // drilldown.year stores which specific year was clicked (set by openDrilldown).
@@ -264,8 +275,9 @@ const SummaryView = ({
       selectedYears,
       isComparing,
       activeSection,
+      showDelta,
     });
-  }, [sectionData, columnDefs, activeSection, selectedYears, isComparing]);
+  }, [sectionData, columnDefs, activeSection, selectedYears, isComparing, showDelta]);
 
   const sections       = summaryConfig.getSectionList();
   const sectionOptions = [
@@ -296,10 +308,25 @@ const SummaryView = ({
 
           <div className="flex items-center gap-3">
             {isComparing && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-sm font-medium">
-                <IoGitCompare className="w-4 h-4" />
-                Comparing {selectedYears.length} years
-              </div>
+              <>
+                <button
+                  onClick={toggleShowDelta}
+                  title={showDelta ? 'Hide Δ (delta) columns' : 'Show Δ (delta) columns'}
+                  className={[
+                    'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors',
+                    showDelta
+                      ? 'bg-orange-100 dark:bg-orange-900/30 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/50'
+                      : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600',
+                  ].join(' ')}
+                >
+                  <IoGitMergeOutline className="w-4 h-4" />
+                  {showDelta ? 'Δ Columns On' : 'Δ Columns Off'}
+                </button>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-sm font-medium">
+                  <IoGitCompare className="w-4 h-4" />
+                  Comparing {selectedYears.length} years
+                </div>
+              </>
             )}
             <button
               onClick={handleExport}
@@ -342,9 +369,9 @@ const SummaryView = ({
                   Multi-year comparison mode
                 </p>
                 <p className="text-xs text-blue-700 dark:text-blue-300">
-                  Showing data for: <strong>{selectedYears.join(' → ')}</strong>.
-                  {' '}Δ columns show the change between each consecutive pair of years.
-                  {' '}Click any activity count (→) to view and edit records for that specific year.
+                  Showing data for: <strong>{selectedYears.join(' \u2192 ')}</strong>.
+                  {showDelta && ' \u0394 columns show the change between each consecutive pair of years.'}
+                  {' '}Click any activity count (\u2192) to view and edit records for that specific year.
                 </p>
               </div>
             </div>

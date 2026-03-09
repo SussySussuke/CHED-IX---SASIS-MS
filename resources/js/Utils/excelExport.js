@@ -154,7 +154,7 @@ function resolveDelta(row, fieldA, fieldB) {
 //                   isDelta=true with yearAField/yearBField for delta cols
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildLeafDescriptors(sectionId, years, isComparing) {
+function buildLeafDescriptors(sectionId, years, isComparing, showDelta = true) {
   const config = SECTION_COMPARISON_FIELDS[sectionId];
   if (!config) return { headerGroups: [], leaves: [] };
 
@@ -219,7 +219,7 @@ function buildLeafDescriptors(sectionId, years, isComparing) {
     }
 
     // Delta group (between consecutive years)
-    if (yi < years.length - 1) {
+    if (showDelta && yi < years.length - 1) {
       const nextYear = years[yi + 1];
       const numericFields = isGrouped
         ? config.groups.flatMap((g) => g.fields.filter((f) => f.type === 'numeric'))
@@ -260,6 +260,7 @@ export function exportSummaryToExcel({
   selectedYears,
   isComparing,
   activeSection,
+  showDelta = true,
 }) {
   if (!sectionData?.length) return;
 
@@ -270,7 +271,7 @@ export function exportSummaryToExcel({
     return;
   }
 
-  const { headerGroups, leaves, isGrouped } = buildLeafDescriptors(activeSection, selectedYears, isComparing);
+  const { headerGroups, leaves, isGrouped } = buildLeafDescriptors(activeSection, selectedYears, isComparing, showDelta);
   if (!leaves.length) return;
 
   const ws = {};
