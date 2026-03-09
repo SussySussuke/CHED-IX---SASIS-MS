@@ -26,12 +26,24 @@ const MERTableComponent = ({ formData, config }) => {
     const dataByAnnex = {};
 
     formData.services.forEach(service => {
-      if (!service.rows || service.rows.length === 0) return;
+      const annexType = service.annex_type; // e.g. 'annex_a'
 
-      const annexType = service.annex_type;
-      const configService = config.services.find(s => s.annexType === annexType);
-      
+      // Normalize: PHP returns 'annex_a', JS config stores 'A'.
+      // Convert 'annex_c_1' → 'C-1', 'annex_a' → 'A', etc.
+      const normalizeAnnexType = (type) => {
+        return type
+          .replace(/^annex_/, '')          // strip leading 'annex_'
+          .replace(/_1$/, '-1')             // trailing _1 → -1 (e.g. c_1 → c-1)
+          .toUpperCase();                   // 'c' → 'C'
+      };
+
+      const configService = config.services.find(
+        s => s.annexType === normalizeAnnexType(annexType)
+      );
+
       if (!configService) return;
+
+      if (!service.rows || service.rows.length === 0) return;
 
       if (!dataByAnnex[annexType]) {
         dataByAnnex[annexType] = {
@@ -280,23 +292,22 @@ const MERTableComponent = ({ formData, config }) => {
       });
 
       if (remarksToSave.length === 0) {
-        alert('No changes to save');
         setSaving(false);
         return;
       }
 
-      const response = await axios.post('/admin/mer/remarks/batch', {
+      const response = await axios.post('/admin/mer4/remarks/batch', {
         remarks: remarksToSave,
       });
 
       if (response.data.success) {
         setOriginalDataByAnnex(JSON.parse(JSON.stringify(tableDataByAnnex)));
         setHasChanges(false);
-        alert('Changes saved successfully!');
+
       }
     } catch (error) {
       console.error('Error saving remarks:', error);
-      alert('Failed to save remarks. Please try again.');
+
     } finally {
       setSaving(false);
     }

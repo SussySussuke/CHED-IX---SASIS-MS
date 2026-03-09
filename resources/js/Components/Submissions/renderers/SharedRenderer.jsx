@@ -110,10 +110,6 @@ function renderTableOnly(annex, data, config, isDark) {
   const tableSection = config.tableSections[0];
   const tableData = data[tableSection.key] || [];
 
-  if (tableData.length === 0) {
-    return <p className="text-gray-500 dark:text-gray-400">No data available.</p>;
-  }
-
   // If using ANNEX_CONFIG columns
   if (tableSection.useAnnexConfig) {
     const annexConfig = getAnnexConfig(annex);
@@ -250,10 +246,6 @@ function renderHybrid(annex, data, config, isDark) {
       {/* Table Sections */}
       {config.tableSections && config.tableSections.map((section, index) => {
         const tableData = data[section.key] || [];
-        
-        if (tableData.length === 0 && section.optional) {
-          return null;
-        }
 
         return (
           <div key={index}>
@@ -262,17 +254,12 @@ function renderHybrid(annex, data, config, isDark) {
                 {section.title} {tableData.length > 0 && `(${tableData.length} entries)`}
               </h3>
             )}
-            
-            {tableData.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 italic">No data available.</p>
-            ) : (
-              <AGGridViewer
-                rowData={tableData}
-                columnDefs={section.columns}
-                height="300px"
-                paginationPageSize={10}
-              />
-            )}
+            <AGGridViewer
+              rowData={tableData}
+              columnDefs={section.columns}
+              height="300px"
+              paginationPageSize={10}
+            />
           </div>
         );
       })}
@@ -291,17 +278,12 @@ function renderHybrid(annex, data, config, isDark) {
               <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
                 {tableConfig.title} {groupedData.length > 0 && `(${groupedData.length} entries)`}
               </h3>
-              
-              {groupedData.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 italic">No personnel in this office.</p>
-              ) : (
-                <AGGridViewer
-                  rowData={groupedData}
-                  columnDefs={tableConfig.columns}
-                  height="300px"
-                  paginationPageSize={10}
-                />
-              )}
+              <AGGridViewer
+                rowData={groupedData}
+                columnDefs={tableConfig.columns}
+                height="300px"
+                paginationPageSize={10}
+              />
             </div>
           );
         });
@@ -338,19 +320,6 @@ function renderCustomTable(annex, data, config, isDark) {
       {config.customTableSections.map((section, index) => {
         const tableData = data[section.key] || [];
         
-        if (tableData.length === 0) {
-          return (
-            <div key={index}>
-              {section.title && (
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                  {section.title}
-                </h3>
-              )}
-              <p className="text-gray-500 dark:text-gray-400 italic">No data available.</p>
-            </div>
-          );
-        }
-
         // Map data using dataMapper if provided
         const mappedData = section.dataMapper 
           ? tableData.map(section.dataMapper)

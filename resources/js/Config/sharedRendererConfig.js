@@ -200,9 +200,10 @@ export const ANNEX_G_CONFIG = {
 };
 
 /**
- * MER1 Configuration - Hybrid
+ * MER1 Configuration - Hybrid (Renderer)
+ * NOTE: Do NOT confuse with MER1_CONFIG in mer1Config.js (that one is for the form editor)
  */
-export const MER1_CONFIG = {
+export const MER1_RENDERER_CONFIG = {
   renderType: 'hybrid',
   
   formSection: {
@@ -468,7 +469,7 @@ export function getSharedRendererConfig(annexType) {
   if (annexType === 'SUMMARY') return SUMMARY_CONFIG;
   if (annexType === 'D') return ANNEX_D_CONFIG;
   if (annexType === 'G') return ANNEX_G_CONFIG;
-  if (annexType === 'MER1') return MER1_CONFIG;
+  if (annexType === 'MER1') return MER1_RENDERER_CONFIG;
   if (annexType === 'MER2') return MER2_CONFIG;
   if (annexType === 'MER3') return MER3_CONFIG;
   if (annexType === 'MER4A') return MER4A_CONFIG;
