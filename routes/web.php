@@ -91,38 +91,38 @@ Route::middleware('auth')->group(function () {
         Route::get('/summary/profile', [SummaryViewController::class, 'getProfileData'])->name('admin.summary.profile');
         Route::get('/summary/info-orientation', [SummaryViewController::class, 'getInfoOrientationData'])->name('admin.summary.info-orientation');
         Route::get('/summary/personnel', [SummaryViewController::class, 'getPersonnelData'])->name('admin.summary.personnel');
-        Route::get('/summary/personnel/{heiId}/{category}/evidence', [SummaryViewController::class, 'getPersonnelEvidence'])->name('admin.summary.personnel.evidence');
+        Route::get('/summary/personnel/{hei}/{category}/evidence', [SummaryViewController::class, 'getPersonnelEvidence'])->name('admin.summary.personnel.evidence');
         Route::patch('/summary/personnel/category', [SummaryViewController::class, 'updatePersonnelCategory'])->name('admin.summary.personnel-category.update');
-        Route::get('/summary/info-orientation/{heiId}/{category}/evidence', [SummaryViewController::class, 'getInfoOrientationEvidence'])->name('admin.summary.info-orientation.evidence');
+        Route::get('/summary/info-orientation/{hei}/{category}/evidence', [SummaryViewController::class, 'getInfoOrientationEvidence'])->name('admin.summary.info-orientation.evidence');
         Route::patch('/summary/info-orientation/programs/category', [SummaryViewController::class, 'updateProgramCategory'])->name('admin.summary.program-category.update');
 
         Route::get('/summary/guidance-counselling', [SummaryViewController::class, 'getGuidanceCounsellingData'])->name('admin.summary.guidance-counselling');
-        Route::get('/summary/guidance-counselling/{heiId}/{category}/evidence', [SummaryViewController::class, 'getGuidanceCounsellingEvidence'])->name('admin.summary.guidance-counselling.evidence');
+        Route::get('/summary/guidance-counselling/{hei}/{category}/evidence', [SummaryViewController::class, 'getGuidanceCounsellingEvidence'])->name('admin.summary.guidance-counselling.evidence');
         Route::patch('/summary/guidance-counselling/category', [SummaryViewController::class, 'updateGuidanceCounsellingCategory'])->name('admin.summary.guidance-counselling-category.update');
 
         Route::get('/summary/career-job', [SummaryViewController::class, 'getCareerJobData'])->name('admin.summary.career-job');
-        Route::get('/summary/career-job/{heiId}/{category}/evidence', [SummaryViewController::class, 'getCareerJobEvidence'])->name('admin.summary.career-job.evidence');
+        Route::get('/summary/career-job/{hei}/{category}/evidence', [SummaryViewController::class, 'getCareerJobEvidence'])->name('admin.summary.career-job.evidence');
         Route::patch('/summary/career-job/category', [SummaryViewController::class, 'updateCareerJobCategory'])->name('admin.summary.career-job-category.update');
 
         Route::patch('/summary/health/category', [SummaryViewController::class, 'updateHealthCategory'])->name('admin.summary.health-category.update');
         Route::get('/summary/health', [SummaryViewController::class, 'getHealthData'])->name('admin.summary.health');
-        Route::get('/summary/health/{heiId}/{category}/evidence', [SummaryViewController::class, 'getHealthEvidence'])->name('admin.summary.health.evidence');
+        Route::get('/summary/health/{hei}/{category}/evidence', [SummaryViewController::class, 'getHealthEvidence'])->name('admin.summary.health.evidence');
 
         Route::get('/summary/admission', [SummaryViewController::class, 'getAdmissionData'])->name('admin.summary.admission');
         Route::get('/summary/social-community', [SummaryViewController::class, 'getAnnexOData'])->name('admin.summary.social-community');
-        Route::get('/summary/social-community/{heiId}/evidence', [SummaryViewController::class, 'getAnnexOEvidence'])->name('admin.summary.social-community.evidence');
+        Route::get('/summary/social-community/{hei}/evidence', [SummaryViewController::class, 'getAnnexOEvidence'])->name('admin.summary.social-community.evidence');
         Route::get('/summary/student-discipline', [SummaryViewController::class, 'getStudentDisciplineData'])->name('admin.summary.student-discipline');
 
         Route::get('/summary/student-organization', [SummaryViewController::class, 'getAnnexEData'])->name('admin.summary.student-organization');
-        Route::get('/summary/student-organization/{heiId}/evidence', [SummaryViewController::class, 'getAnnexEEvidence'])->name('admin.summary.student-organization.evidence');
+        Route::get('/summary/student-organization/{hei}/evidence', [SummaryViewController::class, 'getAnnexEEvidence'])->name('admin.summary.student-organization.evidence');
         Route::get('/summary/culture', [SummaryViewController::class, 'getAnnexNData'])->name('admin.summary.culture');
-        Route::get('/summary/culture/{heiId}/evidence', [SummaryViewController::class, 'getAnnexNEvidence'])->name('admin.summary.culture.evidence');
+        Route::get('/summary/culture/{hei}/evidence', [SummaryViewController::class, 'getAnnexNEvidence'])->name('admin.summary.culture.evidence');
         Route::get('/summary/scholarship', [SummaryViewController::class, 'getAnnexIData'])->name('admin.summary.scholarship');
-        Route::get('/summary/scholarship/{heiId}/evidence', [SummaryViewController::class, 'getAnnexIEvidence'])->name('admin.summary.scholarship.evidence');
+        Route::get('/summary/scholarship/{hei}/evidence', [SummaryViewController::class, 'getAnnexIEvidence'])->name('admin.summary.scholarship.evidence');
         Route::get('/summary/safety-security', [SummaryViewController::class, 'getAnnexKData'])->name('admin.summary.safety-security');
 
         Route::get('/summary/dorm', [SummaryViewController::class, 'getAnnexLData'])->name('admin.summary.dorm');
-        Route::get('/summary/dorm/{heiId}/evidence', [SummaryViewController::class, 'getAnnexLEvidence'])->name('admin.summary.dorm.evidence');
+        Route::get('/summary/dorm/{hei}/evidence', [SummaryViewController::class, 'getAnnexLEvidence'])->name('admin.summary.dorm.evidence');
         Route::get('/summary/special-needs-stats', [SummaryViewController::class, 'getAnnexMStatsData'])->name('admin.summary.special-needs-stats');
 
         Route::get('/ched-contacts', [CHEDContactController::class, 'index'])->name('admin.ched-contacts');

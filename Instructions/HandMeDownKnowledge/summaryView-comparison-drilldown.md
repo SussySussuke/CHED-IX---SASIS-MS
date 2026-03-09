@@ -29,6 +29,8 @@ SummaryView supports single-year and multi-year comparison modes. Comparison mod
 | `resources/js/Config/summaryView/personnelConfig.jsx` | Single-year Personnel columns — reference for expected clickable behavior |
 | `resources/js/Config/summaryView/summaryConfig.js` | `SECTION_DRILLDOWN_REGISTRY` — controls which sections receive `onDrilldown` |
 | `resources/js/Pages/Admin/SummaryView.jsx` | `openDrilldown` callback; `columnDefs` useMemo passes drilldown to comparison builder |
+| `app/Services/Summary/` | Backend service layer — see `summaryView-backend-architecture.md` |
+| `app/Http/Controllers/Admin/SummaryViewController.php` | Thin controller; all business logic moved to services (post-refactor) |
 
 ---
 
@@ -37,7 +39,7 @@ SummaryView supports single-year and multi-year comparison modes. Comparison mod
 - **Comparison and single-year column pipelines are completely separate.** Changes to `personnelConfig.jsx` have zero effect in comparison mode. Any clickability must be explicitly declared in `comparisonConfig.js`.
 - `openDrilldown` in `SummaryView.jsx` is a stable callback (no deps, reads `primaryYear` via ref). In comparison mode, the explicit `year` param passed from `buildLeafCol` overrides the ref — so the modal always fetches the correct clicked year.
 - Zero-click behavior is intentional: clicking `0 +` redirects to `category: 'total'` fetch with `zeroTargetCategory` set, opening the modal in "assign into this category" mode. This is not a bug.
-- `categoryKey` for `1B-Personnel` individual fields must match the raw field name (e.g. `physician`, `nurse`) because the backend `fetchPath` uses it directly as the URL segment: `/admin/summary/personnel/{heiId}/{category}/evidence`.
+- `categoryKey` for `1B-Personnel` individual fields must match the raw field name (e.g. `physician`, `nurse`) because the backend `fetchPath` uses it directly as the URL segment: `/admin/summary/personnel/{hei}/{category}/evidence` (note: `{hei}` after backend refactor — route model binding).
 - `total_personnel` uses `categoryKey: 'total'` (not `total_personnel`) — the backend uses `total` as the special aggregate key.
 
 ---
