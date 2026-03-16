@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\HEI;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Services\CacheService;
 use App\Services\FormConfigService;
-use App\Services\AcademicYearService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -21,13 +21,13 @@ class SubmissionController extends Controller
         $user = Auth::user();
         $hei = $user->hei;
         $selectedAnnex = $request->get('annex', 'A');
-        $selectedYear = $request->get('year', AcademicYearService::getCurrentAcademicYear());
+        $selectedYear = $request->get('year', $this->getDefaultAcademicYear());
 
         // Get submissions (cached)
         $submissions = $this->getSubmissions($hei->id);
 
         // Get available academic years (cached)
-        $academicYears = AcademicYearService::getHeiAcademicYears($hei->id);
+        $academicYears = $this->getHeiAcademicYears($hei->id);
 
         return inertia('HEI/Submissions/Index', [
             'hei' => [
@@ -41,6 +41,51 @@ class SubmissionController extends Controller
             'submissions' => $submissions,
             'selectedAnnex' => $selectedAnnex,
         ]);
+    }
+
+    /**
+     * Current academic year based on deadline setting.
+     * Before deadline: previous year is "current". After deadline: current calendar year is "current".
+     */
+    private function getDefaultAcademicYear(): string
+    {
+        $currentYear = (int) date('Y');
+        return Setting::isPastDeadline()
+            ? $currentYear . '-' . ($currentYear + 1)
+            : ($currentYear - 1) . '-' . $currentYear;
+    }
+
+    /**
+     * Get distinct academic years this HEI has submissions in (cached).
+     * Always includes the default year so the dropdown is never empty.
+     */
+    private function getHeiAcademicYears(int $heiId): array
+    {
+        return Cache::remember(
+            CacheService::heiAcademicYearsKey($heiId),
+            CacheService::TTL_MEDIUM,
+            function () use ($heiId) {
+                $years = collect();
+
+                foreach (FormConfigService::getAllFormTypes() as $config) {
+                    try {
+                        $table = (new $config['model']())->getTable();
+                        $years = $years->merge(
+                            DB::table($table)
+                                ->where('hei_id', $heiId)
+                                ->distinct()
+                                ->pluck('academic_year')
+                        );
+                    } catch (\Exception $e) {
+                        continue;
+                    }
+                }
+
+                $years->push($this->getDefaultAcademicYear());
+
+                return $years->unique()->filter()->sort()->values()->toArray();
+            }
+        );
     }
 
     /**
