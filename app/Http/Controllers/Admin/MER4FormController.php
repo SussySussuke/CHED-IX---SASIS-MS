@@ -4,194 +4,99 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\HEI;
+use App\Models\AnnexABatch;
 use App\Services\MER4FormBuilder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class MER4FormController extends Controller
 {
-    protected $formBuilder;
+    public function __construct(private readonly MER4FormBuilder $formBuilder) {}
 
-    public function __construct(MER4FormBuilder $formBuilder)
-    {
-        $this->formBuilder = $formBuilder;
-    }
-
-    /**
-     * Show MER4 Form 1 selector page
-     */
     public function form1Index()
     {
-        $heis = HEI::where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        $academicYears = $this->getAvailableAcademicYears();
-
-        // Calculate default academic year (based on September 1st deadline)
-        $now = now();
-        $currentYear = $now->year;
-        $currentMonth = $now->month;
-
-        // If before September, use previous year
-        $startYear = $currentMonth < 9 ? $currentYear - 1 : $currentYear;
-        $defaultAcademicYear = "{$startYear}-" . ($startYear + 1);
-
-        // Ensure default year exists in the list
-        if (!in_array($defaultAcademicYear, $academicYears)) {
-            $academicYears[] = $defaultAcademicYear;
-            sort($academicYears);
-        }
-
-        return inertia('Admin/MER4/Form1Index', [
-            'heis' => $heis,
-            'academicYears' => $academicYears,
-            'initialHeiId' => null, // No default selection
-            'initialAcademicYear' => $defaultAcademicYear,
-            'formData' => null, // Initially no form data
-        ]);
+        return $this->formIndex(1, 'Admin/MER4/Form1Index');
     }
 
-    /**
-     * Load MER4 Form 1 with data
-     */
     public function form1Load($heiId, $academicYear)
     {
-        $result = $this->formBuilder->buildForm1($heiId, $academicYear);
-
-        // Return the same page with form data
-        return inertia('Admin/MER4/Form1Index', [
-            'heis' => HEI::where('is_active', true)->orderBy('name')->get(),
-            'academicYears' => $this->getAvailableAcademicYears(),
-            'initialHeiId' => $heiId,
-            'initialAcademicYear' => $academicYear,
-            'formData' => $result['success'] ? $result['data'] : null,
-        ]);
+        return $this->formLoad(1, 'Admin/MER4/Form1Index', $heiId, $academicYear);
     }
 
-    /**
-     * Show MER4 Form 2 selector page
-     */
     public function form2Index()
     {
-        $heis = HEI::where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        $academicYears = $this->getAvailableAcademicYears();
-
-        // Calculate default academic year
-        $now = now();
-        $currentYear = $now->year;
-        $currentMonth = $now->month;
-        $startYear = $currentMonth < 9 ? $currentYear - 1 : $currentYear;
-        $defaultAcademicYear = "{$startYear}-" . ($startYear + 1);
-
-        if (!in_array($defaultAcademicYear, $academicYears)) {
-            $academicYears[] = $defaultAcademicYear;
-            sort($academicYears);
-        }
-
-        return inertia('Admin/MER4/Form2Index', [
-            'heis' => $heis,
-            'academicYears' => $academicYears,
-            'initialHeiId' => null,
-            'initialAcademicYear' => $defaultAcademicYear,
-            'formData' => null,
-        ]);
+        return $this->formIndex(2, 'Admin/MER4/Form2Index');
     }
 
-    /**
-     * Load MER4 Form 2 with data
-     */
     public function form2Load($heiId, $academicYear)
     {
-        $result = $this->formBuilder->buildForm2($heiId, $academicYear);
+        return $this->formLoad(2, 'Admin/MER4/Form2Index', $heiId, $academicYear);
+    }
 
-        return inertia('Admin/MER4/Form2Index', [
-            'heis' => HEI::where('is_active', true)->orderBy('name')->get(),
-            'academicYears' => $this->getAvailableAcademicYears(),
-            'initialHeiId' => $heiId,
-            'initialAcademicYear' => $academicYear,
-            'formData' => $result['success'] ? $result['data'] : null,
+    public function form3Index()
+    {
+        return $this->formIndex(3, 'Admin/MER4/Form3Index');
+    }
+
+    public function form3Load($heiId, $academicYear)
+    {
+        return $this->formLoad(3, 'Admin/MER4/Form3Index', $heiId, $academicYear);
+    }
+
+    private function formIndex(int $formNumber, string $component)
+    {
+        $academicYears     = $this->getAvailableAcademicYears();
+        $defaultYear       = $this->resolveDefaultAcademicYear($academicYears);
+
+        return inertia($component, [
+            'heis'               => $this->activeHeis(),
+            'academicYears'      => $academicYears,
+            'initialHeiId'       => null,
+            'initialAcademicYear' => $defaultYear,
+            'formData'           => null,
         ]);
     }
 
-    /**
-     * Show MER4 Form 3 selector page
-     */
-    public function form3Index()
+    private function formLoad(int $formNumber, string $component, $heiId, $academicYear)
     {
-        $heis = HEI::where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $buildMethod = 'buildForm' . $formNumber;
+        $result      = $this->formBuilder->$buildMethod($heiId, $academicYear);
 
-        $academicYears = $this->getAvailableAcademicYears();
+        return inertia($component, [
+            'heis'               => $this->activeHeis(),
+            'academicYears'      => $this->getAvailableAcademicYears(),
+            'initialHeiId'       => $heiId,
+            'initialAcademicYear' => $academicYear,
+            'formData'           => $result['success'] ? $result['data'] : null,
+        ]);
+    }
 
-        // Calculate default academic year
-        $now = now();
-        $currentYear = $now->year;
-        $currentMonth = $now->month;
-        $startYear = $currentMonth < 9 ? $currentYear - 1 : $currentYear;
-        $defaultAcademicYear = "{$startYear}-" . ($startYear + 1);
+    private function activeHeis()
+    {
+        return HEI::where('is_active', true)->orderBy('name')->get();
+    }
 
-        if (!in_array($defaultAcademicYear, $academicYears)) {
-            $academicYears[] = $defaultAcademicYear;
+    /** Default year based on September deadline: before Sep → previous AY, else current AY. */
+    private function resolveDefaultAcademicYear(array &$academicYears): string
+    {
+        $now       = now();
+        $startYear = $now->month < 9 ? $now->year - 1 : $now->year;
+        $default   = "{$startYear}-" . ($startYear + 1);
+
+        if (!in_array($default, $academicYears)) {
+            $academicYears[] = $default;
             sort($academicYears);
         }
 
-        return inertia('Admin/MER4/Form3Index', [
-            'heis' => $heis,
-            'academicYears' => $academicYears,
-            'initialHeiId' => null,
-            'initialAcademicYear' => $defaultAcademicYear,
-            'formData' => null,
-        ]);
+        return $default;
     }
 
-    /**
-     * Load MER4 Form 3 with data
-     */
-    public function form3Load($heiId, $academicYear)
+    /** Academic years sourced from published/submitted data. */
+    private function getAvailableAcademicYears(): array
     {
-        $result = $this->formBuilder->buildForm3($heiId, $academicYear);
-
-        return inertia('Admin/MER4/Form3Index', [
-            'heis' => HEI::where('is_active', true)->orderBy('name')->get(),
-            'academicYears' => $this->getAvailableAcademicYears(),
-            'initialHeiId' => $heiId,
-            'initialAcademicYear' => $academicYear,
-            'formData' => $result['success'] ? $result['data'] : null,
-        ]);
-    }
-
-    /**
-     * Get available academic years from existing submissions
-     */
-    private function getAvailableAcademicYears()
-    {
-        // Query all batch tables to find distinct academic years
-        $years = collect();
-
-        // Get years from a few representative tables
-        $tables = [
-            'annex_a_batches',
-            'annex_b_batches',
-            'annex_c_batches',
-        ];
-
-        foreach ($tables as $table) {
-            $tableYears = DB::table($table)
-                ->select('academic_year')
-                ->distinct()
-                ->pluck('academic_year');
-
-            $years = $years->merge($tableYears);
-        }
-
-        return $years->unique()
+        return AnnexABatch::distinct()
+            ->orderBy('academic_year')
+            ->pluck('academic_year')
             ->filter()
-            ->sort()
             ->values()
             ->toArray();
     }

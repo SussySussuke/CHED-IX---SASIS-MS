@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\HEI;
-use App\Models\CHEDRemark;
+use App\Models\AnnexABatch;
 use App\Models\AuditLog;
+use App\Models\CHEDRemark;
+use App\Models\HEI;
+use App\Models\Summary;
 use App\Services\CacheService;
 use App\Services\FormConfigService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 
 class SubmissionController extends Controller
@@ -55,104 +56,29 @@ class SubmissionController extends Controller
     {
         $hei = HEI::findOrFail($heiId);
 
-        $annexTypes = FormConfigService::getAnnexTypes();
         $submissions = [];
 
-        // Add Summary submissions
-        $summarySubmissions = \App\Models\Summary::where('hei_id', $heiId)
-            ->orderBy('academic_year', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($submission) {
-                return [
-                    'id' => $submission->id,
-                    'batch_id' => $submission->id,
-                    'annex' => 'SUMMARY',
-                    'academic_year' => $submission->academic_year,
-                    'status' => $submission->status,
-                    'submitted_at' => $submission->created_at,
-                    'request_notes' => $submission->request_notes ?? null,
-                ];
-            });
+        // Collect non-annex form submissions (Summary + MER forms) using FormConfigService
+        $nonAnnexForms = FormConfigService::getSummaryConfig() + FormConfigService::getMERFormTypes();
+        foreach ($nonAnnexForms as $code => $config) {
+            $rows = $config['model']::where('hei_id', $heiId)
+                ->orderBy('academic_year', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(fn($s) => [
+                    'id'           => $s->id,
+                    'batch_id'     => $s->id,
+                    'annex'        => $code,
+                    'academic_year' => $s->academic_year,
+                    'status'       => $s->status,
+                    'submitted_at' => $s->created_at,
+                    'request_notes' => $s->request_notes ?? null,
+                ]);
 
-        $submissions = array_merge($submissions, $summarySubmissions->toArray());
+            $submissions = array_merge($submissions, $rows->toArray());
+        }
 
-        // Add MER1 submissions
-        $mer1Submissions = \App\Models\MER1Submission::where('hei_id', $heiId)
-            ->orderBy('academic_year', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($submission) {
-                return [
-                    'id' => $submission->id,
-                    'batch_id' => $submission->id,
-                    'annex' => 'MER1',
-                    'academic_year' => $submission->academic_year,
-                    'status' => $submission->status,
-                    'submitted_at' => $submission->created_at,
-                    'request_notes' => $submission->request_notes ?? null,
-                ];
-            });
-
-        $submissions = array_merge($submissions, $mer1Submissions->toArray());
-
-        // Add MER2 submissions
-        $mer2Submissions = \App\Models\MER2Submission::where('hei_id', $heiId)
-            ->orderBy('academic_year', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($submission) {
-                return [
-                    'id' => $submission->id,
-                    'batch_id' => $submission->id,
-                    'annex' => 'MER2',
-                    'academic_year' => $submission->academic_year,
-                    'status' => $submission->status,
-                    'submitted_at' => $submission->created_at,
-                    'request_notes' => $submission->request_notes ?? null,
-                ];
-            });
-
-        $submissions = array_merge($submissions, $mer2Submissions->toArray());
-
-        // Add MER3 submissions
-        $mer3Submissions = \App\Models\MER3Submission::where('hei_id', $heiId)
-            ->orderBy('academic_year', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($submission) {
-                return [
-                    'id' => $submission->id,
-                    'batch_id' => $submission->id,
-                    'annex' => 'MER3',
-                    'academic_year' => $submission->academic_year,
-                    'status' => $submission->status,
-                    'submitted_at' => $submission->created_at,
-                    'request_notes' => $submission->request_notes ?? null,
-                ];
-            });
-
-        $submissions = array_merge($submissions, $mer3Submissions->toArray());
-
-        // Add MER4A submissions
-        $mer4aSubmissions = \App\Models\MER4ASubmission::where('hei_id', $heiId)
-            ->orderBy('academic_year', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($submission) {
-                return [
-                    'id' => $submission->id,
-                    'batch_id' => $submission->id,
-                    'annex' => 'MER4A',
-                    'academic_year' => $submission->academic_year,
-                    'status' => $submission->status,
-                    'submitted_at' => $submission->created_at,
-                    'request_notes' => $submission->request_notes ?? null,
-                ];
-            });
-
-        $submissions = array_merge($submissions, $mer4aSubmissions->toArray());
-
+        $annexTypes = FormConfigService::getAnnexTypes();
         foreach ($annexTypes as $code => $config) {
             $batches = $config['model']::where('hei_id', $heiId)
                 ->orderBy('academic_year', 'desc')
@@ -660,77 +586,28 @@ class SubmissionController extends Controller
         return response()->json($data);
     }
 
-    /**
-     * Get total pending requests count for an HEI
-     */
-    private function getPendingRequestsCount($heiId)
+    private function getPendingRequestsCount(int $heiId): int
     {
-        $models = [
-            \App\Models\Summary::class,
-            \App\Models\MER1Submission::class,
-            \App\Models\MER2Submission::class,
-            \App\Models\MER3Submission::class,
-            \App\Models\MER4ASubmission::class,
-            \App\Models\AnnexABatch::class,
-            \App\Models\AnnexBBatch::class,
-            \App\Models\AnnexCBatch::class,
-            \App\Models\AnnexDSubmission::class,
-            \App\Models\AnnexEBatch::class,
-            \App\Models\AnnexFBatch::class,
-            \App\Models\AnnexGSubmission::class,
-            \App\Models\AnnexHBatch::class,
-            \App\Models\AnnexIBatch::class,
-            \App\Models\AnnexJBatch::class,
-            \App\Models\AnnexKBatch::class,
-            \App\Models\AnnexLBatch::class,
-            \App\Models\AnnexMBatch::class,
-            \App\Models\AnnexNBatch::class,
-            \App\Models\AnnexOBatch::class,
-        ];
-
         $count = 0;
-        foreach ($models as $model) {
-            $count += $model::where('hei_id', $heiId)
+        foreach (FormConfigService::getAllFormTypes() as $config) {
+            $count += $config['model']::where('hei_id', $heiId)
                 ->where('status', 'request')
                 ->count();
         }
-
         return $count;
     }
 
-    /**
-     * Get model class by annex type
-     */
-    private function getModelClass($annexType)
+    private function getModelClass(string $annexType): string
     {
         return FormConfigService::getFormModel($annexType);
     }
 
-    /**
-     * Get available academic years from existing submissions
-     */
-    private function getAvailableAcademicYears()
+    private function getAvailableAcademicYears(): array
     {
-        $years = collect();
-
-        $tables = [
-            'annex_a_batches',
-            'annex_b_batches',
-            'annex_c_batches',
-        ];
-
-        foreach ($tables as $table) {
-            $tableYears = DB::table($table)
-                ->select('academic_year')
-                ->distinct()
-                ->pluck('academic_year');
-
-            $years = $years->merge($tableYears);
-        }
-
-        return $years->unique()
+        return AnnexABatch::distinct()
+            ->orderBy('academic_year')
+            ->pluck('academic_year')
             ->filter()
-            ->sort()
             ->values()
             ->toArray();
     }

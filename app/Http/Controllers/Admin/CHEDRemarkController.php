@@ -5,36 +5,20 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\CHEDRemarkService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class CHEDRemarkController extends Controller
 {
-    protected $remarkService;
+    public function __construct(private readonly CHEDRemarkService $remarkService) {}
 
-    public function __construct(CHEDRemarkService $remarkService)
-    {
-        $this->remarkService = $remarkService;
-    }
-
-    /**
-     * Toggle a CHED remark (auto-save on checkbox click)
-     */
     public function toggle(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'annex_type' => 'required|string',
-            'row_id' => 'required|integer',
-            'batch_id' => 'required|string',
-            'hei_id' => 'required|integer',
+        $request->validate([
+            'annex_type'    => 'required|string',
+            'row_id'        => 'required|integer',
+            'batch_id'      => 'required|string',
+            'hei_id'        => 'required|integer',
             'academic_year' => 'required|string',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors(),
-            ], 422);
-        }
 
         $remark = $this->remarkService->toggleRemark(
             $request->annex_type,
@@ -54,27 +38,17 @@ class CHEDRemarkController extends Controller
         ]);
     }
 
-    /**
-     * Set a specific remark value
-     */
     public function setRemark(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'annex_type' => 'required|string',
-            'row_id' => 'required|integer',
-            'batch_id' => 'required|string',
-            'hei_id' => 'required|integer',
-            'academic_year' => 'required|string',
+        $request->validate([
+            'annex_type'      => 'required|string',
+            'row_id'          => 'required|integer',
+            'batch_id'        => 'required|string',
+            'hei_id'          => 'required|integer',
+            'academic_year'   => 'required|string',
             'is_best_practice' => 'required|boolean',
-            'admin_notes' => 'nullable|string',
+            'admin_notes'     => 'nullable|string',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors(),
-            ], 422);
-        }
 
         $remark = $this->remarkService->setRemark(
             $request->annex_type,
@@ -97,28 +71,18 @@ class CHEDRemarkController extends Controller
         ]);
     }
 
-    /**
-     * Batch save multiple remarks
-     */
     public function batchSave(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'remarks' => 'required|array',
-            'remarks.*.annex_type' => 'required|string',
-            'remarks.*.row_id' => 'required|integer',
-            'remarks.*.batch_id' => 'required|string',
-            'remarks.*.hei_id' => 'required|integer',
-            'remarks.*.academic_year' => 'required|string',
-            'remarks.*.is_best_practice' => 'required|boolean',
-            'remarks.*.admin_notes' => 'nullable|string',
+        $request->validate([
+            'remarks'                      => 'required|array',
+            'remarks.*.annex_type'         => 'required|string',
+            'remarks.*.row_id'             => 'required|integer',
+            'remarks.*.batch_id'           => 'required|string',
+            'remarks.*.hei_id'             => 'required|integer',
+            'remarks.*.academic_year'      => 'required|string',
+            'remarks.*.is_best_practice'   => 'required|boolean',
+            'remarks.*.admin_notes'        => 'nullable|string',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors(),
-            ], 422);
-        }
 
         $remarks = $this->remarkService->batchSetRemarks($request->remarks);
 
