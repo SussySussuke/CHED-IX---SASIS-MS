@@ -70,6 +70,35 @@ class AuditLog extends Model
     }
 
     /**
+     * Create an audit log entry from a CLI/system context (no authenticated user).
+     * Use this from artisan commands where auth()->user() is null.
+     */
+    public static function logSystem(
+        string $action,
+        string $entityType,
+        ?int $entityId,
+        ?string $entityName,
+        string $description,
+        ?array $oldValues = null,
+        ?array $newValues = null
+    ): self {
+        return self::create([
+            'user_id'     => null,
+            'user_name'   => 'System',
+            'user_role'   => 'system',
+            'action'      => $action,
+            'entity_type' => $entityType,
+            'entity_id'   => $entityId,
+            'entity_name' => $entityName,
+            'description' => $description,
+            'old_values'  => $oldValues,
+            'new_values'  => $newValues,
+            'ip_address'  => null,
+            'user_agent'  => 'artisan/cli',
+        ]);
+    }
+
+    /**
      * Get action badge color
      */
     public function getActionColorAttribute(): string
@@ -82,6 +111,7 @@ class AuditLog extends Model
             'rejected' => 'red',
             'activated' => 'green',
             'deactivated' => 'orange',
+            'published'   => 'green',
             default => 'gray',
         };
     }

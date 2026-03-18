@@ -14,7 +14,7 @@ class AuditLogController extends Controller
     public function index(Request $request)
     {
         $query = AuditLog::with('user')
-            ->where('user_role', 'admin')
+            ->whereIn('user_role', ['admin', 'system'])
             ->orderBy('created_at', 'desc');
 
         // Apply filters if provided
@@ -54,13 +54,13 @@ class AuditLogController extends Controller
         });
 
         // Get filter options
-        $actions = AuditLog::where('user_role', 'admin')
+        $actions = AuditLog::whereIn('user_role', ['admin', 'system'])
             ->distinct()
             ->pluck('action')
             ->sort()
             ->values();
 
-        $entityTypes = AuditLog::where('user_role', 'admin')
+        $entityTypes = AuditLog::whereIn('user_role', ['admin', 'system'])
             ->distinct()
             ->pluck('entity_type')
             ->sort()
