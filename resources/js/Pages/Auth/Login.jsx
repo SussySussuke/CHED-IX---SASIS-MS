@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import TextInput from '../../Components/Forms/TextInput';
-import ContactAdminModal from '../../Components/Common/ContactAdminModal';
+import NeedHelp from '../../Components/HEI/NeedHelp';
+import Modal from '../../Components/Common/Modal';
 
 const Login = () => {
-  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isNeedHelpOpen, setIsNeedHelpOpen] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [icosphereOffset, setIcosphereOffset] = useState({ x: 0, y: 0 });
 
@@ -334,12 +335,13 @@ const Login = () => {
                     Remember me
                   </label>
                 </div>
-                <a
-                  href="/forgot-password"
+                <button
+                  type="button"
+                  onClick={() => setIsNeedHelpOpen(true)}
                   className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                 >
                   Forgot password?
-                </a>
+                </button>
               </div>
 
               <button
@@ -366,7 +368,7 @@ const Login = () => {
               Need an account?{' '}
               <button
                 type="button"
-                onClick={() => setIsContactModalOpen(true)}
+                onClick={() => setIsNeedHelpOpen(true)}
                 className="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors underline"
               >
                 Contact administrator
@@ -380,12 +382,17 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Contact Admin Modal */}
-        <ContactAdminModal
-          isOpen={isContactModalOpen}
-          onClose={() => setIsContactModalOpen(false)}
-        />
       </div>
+
+      {/* Need Help Modal */}
+      <Modal
+        isOpen={isNeedHelpOpen}
+        onClose={() => setIsNeedHelpOpen(false)}
+        title="Need Help?"
+        size="md"
+      >
+        <NeedHelp open={isNeedHelpOpen} />
+      </Modal>
 
       {/* Custom animations */}
       <style>{`

@@ -35,6 +35,9 @@ use App\Http\Controllers\HEI\MER3Controller;
 use App\Http\Controllers\HEI\MER4AController;
 use Illuminate\Support\Facades\Route;
 
+// Public routes (no auth required)
+Route::get('/api/ched-contacts', [CHEDContactController::class, 'getActiveContacts'])->name('ched-contacts.public');
+
 // Guest routes
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -328,6 +331,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/annex-o/{batch_id}/programs', [AnnexOController::class, 'getBatchPrograms'])->name('hei.annex-o.programs');
         Route::get('/annex-o/{batch_id}/edit', [AnnexOController::class, 'edit'])->name('hei.annex-o.edit');
         Route::post('/annex-o/{batch_id}/cancel', [AnnexOController::class, 'cancel'])->name('hei.annex-o.cancel');
+
+        Route::get('/about', function () {
+            return inertia('HEI/About');
+        })->name('hei.about');
 
         Route::get('/notifications', function () {
             return inertia('HEI/Notifications');

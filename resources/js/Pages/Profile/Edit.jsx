@@ -1,73 +1,97 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 import TextInput from '../../Components/Forms/TextInput';
+import {
+    ProfileCard,
+    ProfilePageHeader,
+    ProfileSuccessBanner,
+    ProfileFieldRow,
+    ProfileFormActions,
+    ProfilePasswordCard,
+} from '../../Components/Profile';
+
+const ACCOUNT_TYPE_LABELS = {
+    admin:      'Administrator',
+    superadmin: 'Super Administrator',
+};
 
 const Edit = ({ user }) => {
-  const { data, setData, put, processing, errors } = useForm({
-    name: user.name || '',
-    email: user.email || ''
-  });
+    const [isEditing, setIsEditing] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    put('/profile');
-  };
+    const { data, setData, put, processing, errors, reset, recentlySuccessful } = useForm({
+        name:  user.name  ?? '',
+        email: user.email ?? '',
+    });
 
-  return (
-    <AppLayout title="Profile Settings">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-          Profile Settings
-        </h1>
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        put('/profile', { onSuccess: () => setIsEditing(false) });
+    };
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <TextInput
-              label="Name"
-              name="name"
-              value={data.name}
-              onChange={(e) => setData('name', e.target.value)}
-              error={errors.name}
-              required
-            />
+    const handleCancel = () => { reset(); setIsEditing(false); };
 
-            <TextInput
-              label="Email Address"
-              name="email"
-              type="email"
-              value={data.email}
-              onChange={(e) => setData('email', e.target.value)}
-              error={errors.email}
-              required
-            />
+    return (
+        <AppLayout title="Profile Settings">
+            <div className="max-w-3xl mx-auto p-6 space-y-6">
 
-            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                <strong>Account Type:</strong> {user.account_type}
-              </p>
+                <ProfilePageHeader
+                    title="Profile Settings"
+                    subtitle="Manage your account information"
+                    isEditing={isEditing}
+                    onEdit={() => setIsEditing(true)}
+                />
+
+                <ProfileSuccessBanner show={recentlySuccessful} />
+
+                <ProfileCard heading="Account Identity">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <ProfileFieldRow
+                            label="Account Type"
+                            value={ACCOUNT_TYPE_LABELS[user.account_type] ?? user.account_type}
+                        />
+                        <ProfileFieldRow
+                            label="Account ID"
+                            value={`#${user.id}`}
+                        />
+                    </div>
+                </ProfileCard>
+
+                <ProfileCard heading="Account Details">
+                    {isEditing ? (
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <TextInput
+                                label="Name"
+                                name="name"
+                                value={data.name}
+                                onChange={(e) => setData('name', e.target.value)}
+                                error={errors.name}
+                                required
+                            />
+                            <TextInput
+                                label="Email Address"
+                                name="email"
+                                type="email"
+                                value={data.email}
+                                onChange={(e) => setData('email', e.target.value)}
+                                error={errors.email}
+                                required
+                            />
+                            <ProfileFormActions processing={processing} onCancel={handleCancel} />
+                        </form>
+                    ) : (
+                        <div className="space-y-4">
+                            <ProfileFieldRow label="Name"          value={user.name} />
+                            <ProfileFieldRow label="Email Address" value={user.email} />
+                        </div>
+                    )}
+                </ProfileCard>
+
+                <ProfilePasswordCard />
+
             </div>
-
-            <div className="flex justify-end gap-4 border-t border-gray-200 dark:border-gray-700 pt-6">
-              <a
-                href="/change-password"
-                className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                Change Password
-              </a>
-              <button
-                type="submit"
-                disabled={processing}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {processing ? 'Updating...' : 'Update Profile'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </AppLayout>
-  );
+        </AppLayout>
+    );
 };
 
 export default Edit;

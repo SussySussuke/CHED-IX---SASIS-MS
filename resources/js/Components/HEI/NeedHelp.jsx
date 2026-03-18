@@ -2,19 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { IoCall, IoMail, IoLocation, IoChevronBack, IoChevronForward } from 'react-icons/io5';
 import axios from 'axios';
 
-const NeedHelp = () => {
+const NeedHelp = ({ open = true }) => {
   const [contacts, setContacts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [fetched, setFetched] = useState(false);
 
   useEffect(() => {
-    fetchContacts();
-  }, []);
+    if (open && !fetched) {
+      fetchContacts();
+    }
+  }, [open]);
 
   const fetchContacts = async () => {
+    setLoading(true);
     try {
-      const response = await axios.get('/hei/api/ched-contacts');
+      const response = await axios.get('/api/ched-contacts');
       setContacts(response.data);
+      setFetched(true);
     } catch (error) {
       console.error('Error fetching CHED contacts:', error);
     } finally {
