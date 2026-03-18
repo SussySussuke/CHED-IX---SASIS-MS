@@ -140,6 +140,7 @@ All annexes seeded with `status = 'submitted'`. Each follows the batch → child
 - `rai.admin@ched.gov.ph` (role: `admin`) is in `DatabaseSeeder`, not `DemoDataSeeder` — always created regardless of demo data.
 - Password for all accounts is `password123` (Hash::make at seed time).
 - `2024-2025` added to `YEARS` and `AY_DATES` constants.
+- `annual_submission_deadline` is seeded in `DatabaseSeeder` via `Setting::set()` with default value `2025-12-31 23:59:59`. Placed before `DemoDataSeeder` call so the setting exists before any HEI data is created.
 - Partial HEI design intent:
   - DEMO03 (~70%): missing Annex C1, D, I1, L1, N1, MER4A
   - DEMO04 (~40%): only Summary, Annex A, B, E, G, J, MER1

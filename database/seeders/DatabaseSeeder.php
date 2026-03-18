@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -30,6 +31,9 @@ class DatabaseSeeder extends Seeder
             'account_type' => 'admin',
             'is_active'    => true,
         ]);
+
+        // Default annual submission deadline
+        Setting::set('annual_submission_deadline', '2025-12-31 23:59:59');
 
         // Demo HEI with all forms populated
         $this->call(DemoDataSeeder::class);
