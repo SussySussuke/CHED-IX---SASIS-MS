@@ -4,23 +4,30 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Setting;
+use App\Models\Summary;
+use App\Models\MER1Submission;
+use App\Models\MER2Submission;
+use App\Models\MER3Submission;
+use App\Models\MER4ASubmission;
 use App\Models\AnnexABatch;
 use App\Models\AnnexBBatch;
 use App\Models\AnnexCBatch;
+use App\Models\AnnexC1Batch;
 use App\Models\AnnexDSubmission;
 use App\Models\AnnexEBatch;
 use App\Models\AnnexFBatch;
 use App\Models\AnnexGSubmission;
 use App\Models\AnnexHBatch;
 use App\Models\AnnexIBatch;
+use App\Models\AnnexI1Batch;
 use App\Models\AnnexJBatch;
 use App\Models\AnnexKBatch;
 use App\Models\AnnexLBatch;
+use App\Models\AnnexL1Batch;
 use App\Models\AnnexMBatch;
 use App\Models\AnnexNBatch;
+use App\Models\AnnexN1Batch;
 use App\Models\AnnexOBatch;
-use App\Models\GeneralInformation;
-use Illuminate\Support\Facades\DB;
 
 class PublishSubmittedBatches extends Command
 {
@@ -66,43 +73,37 @@ class PublishSubmittedBatches extends Command
 
         $totalPublished = 0;
 
-        // Define all batch/submission models
-        $batchModels = [
+        // Define all models — must match PRIORITY_ORDER in formConfig.js:
+        // SUMMARY, MER1-4A, Annexes A, B, C, C-1, D, E, F, G, H, I, I-1, J, K, L, L-1, M, N, N-1, O
+        $allModels = [
+            Summary::class,
+            MER1Submission::class,
+            MER2Submission::class,
+            MER3Submission::class,
+            MER4ASubmission::class,
             AnnexABatch::class,
             AnnexBBatch::class,
             AnnexCBatch::class,
+            AnnexC1Batch::class,
+            AnnexDSubmission::class,
             AnnexEBatch::class,
             AnnexFBatch::class,
+            AnnexGSubmission::class,
             AnnexHBatch::class,
             AnnexIBatch::class,
+            AnnexI1Batch::class,
             AnnexJBatch::class,
             AnnexKBatch::class,
             AnnexLBatch::class,
+            AnnexL1Batch::class,
             AnnexMBatch::class,
             AnnexNBatch::class,
+            AnnexN1Batch::class,
             AnnexOBatch::class,
         ];
 
-        $submissionModels = [
-            GeneralInformation::class,
-            AnnexDSubmission::class,
-            AnnexGSubmission::class,
-        ];
-
-        // Process batch models
-        foreach ($batchModels as $model) {
-            $count = $model::where('status', 'submitted')
-                ->where('created_at', '<', $deadline)
-                ->update(['status' => 'published', 'updated_at' => $now]);
-
-            if ($count > 0) {
-                $this->info("Published {$count} records from " . class_basename($model));
-                $totalPublished += $count;
-            }
-        }
-
-        // Process submission models (Annex D and G)
-        foreach ($submissionModels as $model) {
+        // Process all models uniformly
+        foreach ($allModels as $model) {
             $count = $model::where('status', 'submitted')
                 ->where('created_at', '<', $deadline)
                 ->update(['status' => 'published', 'updated_at' => $now]);
