@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Services\DashboardService;
@@ -16,7 +16,10 @@ class DashboardController extends Controller
         $academicYears = $this->service->getAvailableAcademicYears();
         $stats         = $this->service->getStats($selectedYear);
 
-        return inertia('Admin/Dashboard', [
+        // SuperAdmin-only extra stat
+        $stats['totalAdmins'] = $this->service->getTotalAdmins();
+
+        return inertia('SuperAdmin/Dashboard', [
             'academicYears' => $academicYears,
             'selectedYear'  => $selectedYear,
             'stats'         => $stats,

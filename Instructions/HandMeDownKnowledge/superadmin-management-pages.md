@@ -69,3 +69,44 @@ Dashboard → Admin Management → HEI Accounts → CHED Contacts → System Aud
 - **Service extraction over controller duplication** — README explicitly forbids duplicating controllers for the same logic. Services were the correct abstraction.
 - **No new migrations, models, or routes outside superadmin prefix** — feature is purely access-layer, not data-layer.
 - **SuperAdmin `CHEDContactController` omits `getActiveContacts`** — it's a public-facing API for HEI users, not an admin management action. Duplicating it under superadmin would be meaningless.
+
+---
+
+# SuperAdmin Dashboard
+
+## Feature Scope
+SuperAdmin dashboard mirrors the Admin dashboard exactly, plus one extra stat card: **Total Admins**. All charts, tables, and year-selector are shared via the same components and a new `DashboardService`.
+
+## Input
+- `?year=` query param (defaults to current academic year)
+- `role:superadmin` middleware — closure route replaced with a real controller
+
+## Process
+- All dashboard query logic extracted from `Admin/DashboardController` into `app/Services/DashboardService.php`
+- `getTotalAdmins()` is a public method on `DashboardService`, called only by the SuperAdmin controller and appended to the shared `$stats` array before passing to Inertia
+- Cache key is shared (`admin_dashboard_stats_{year}`) — both dashboards read the same cached result; SuperAdmin just adds `totalAdmins` on top (uncached, cheap COUNT query)
+- Admin `DashboardController` refactored to thin controller delegating to `DashboardService`
+
+## Output
+
+### New files
+| File | Purpose |
+|---|---|
+| `app/Services/DashboardService.php` | All dashboard stats logic: pending reviews, completion rate, enrollment/HEI distribution, recent submissions, top HEIs, form completion rates, academic year helpers |
+| `app/Http/Controllers/SuperAdmin/DashboardController.php` | Thin controller — calls service, appends `totalAdmins`, renders `SuperAdmin/Dashboard` |
+
+### Modified files
+| File | Change |
+|---|---|
+| `app/Http/Controllers/Admin/DashboardController.php` | Refactored to thin controller using `DashboardService` |
+| `resources/js/Pages/SuperAdmin/Dashboard.jsx` | Full rebuild — `AdminYearHeader`, `EnrollmentDistributionChart`, `HEITypeDistributionChart`, `RecentSubmissionsTable`, `TopPerformingHEIs`, `FormCompletionChart` all reused; added Total Admins `StatCard` as a 3rd card in the top row |
+| `routes/web.php` | Replaced inline closure with `[SuperAdminDashboardController::class, 'index']`; added import alias |
+
+## Key Discoveries
+- The original SuperAdmin dashboard route was an inline closure passing zero data — `stats` was always undefined on the frontend.
+- Cache key `admin_dashboard_stats_{year}` is shared between Admin and SuperAdmin — intentional, they show the same data. `totalAdmins` is not cached because it's a trivial COUNT and is superadmin-only.
+- All Admin dashboard child components (`AdminYearHeader`, charts, tables) are layout-agnostic — they accept props only, no layout assumptions, so they work inside `SuperAdminLayout` without modification.
+
+## Decisions Made
+- **Shared cache key** — Admin and SuperAdmin dashboards show identical HEI stats; no reason to duplicate the cache entry.
+- **`totalAdmins` outside cache** — Appended after cache retrieval so it doesn't bleed into the Admin dashboard's cached payload.

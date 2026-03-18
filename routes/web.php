@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\SuperAdmin\AdminManagementController;
+use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdmin\HEIManagementController as SuperAdminHEIManagementController;
 use App\Http\Controllers\SuperAdmin\CHEDContactController as SuperAdminCHEDContactController;
 use App\Http\Controllers\Admin\HEIManagementController;
@@ -59,9 +60,7 @@ Route::middleware('auth')->group(function () {
 
     // SuperAdmin routes
     Route::middleware('role:superadmin')->prefix('superadmin')->group(function () {
-        Route::get('/dashboard', function () {
-            return inertia('SuperAdmin/Dashboard');
-        })->name('superadmin.dashboard');
+        Route::get('/dashboard', [SuperAdminDashboardController::class, 'index'])->name('superadmin.dashboard');
 
         Route::get('/admin-management', [AdminManagementController::class, 'index'])->name('superadmin.admin-management');
         Route::post('/admins', [AdminManagementController::class, 'store'])->name('superadmin.admins.store');
