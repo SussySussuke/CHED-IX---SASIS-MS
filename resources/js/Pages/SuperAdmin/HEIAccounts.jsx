@@ -4,20 +4,26 @@ import ConfirmationModal from '../../Components/Common/ConfirmationModal';
 import { AGGridViewer } from '@/Components/Common';
 import { useForm } from '@inertiajs/react';
 import { IoEye, IoEyeOff, IoPencil, IoTrash } from 'react-icons/io5';
+import AddressSearchInput from '../../Components/Forms/AddressSearchInput';
 import IconButton from '../../Components/Common/IconButton';
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 
-const AdminManagement = ({ admins = [] }) => {
+const HEIAccounts = ({ heis = [] }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editingAdmin, setEditingAdmin] = useState(null);
+  const [editingHEI, setEditingHEI] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
+    uii: '',
     name: '',
+    type: '',
+    code: '',
     email: '',
+    address: '',
+    established_at: '2000-01-01',
     password: '',
     password_confirmation: '',
     is_active: true,
@@ -25,17 +31,17 @@ const AdminManagement = ({ admins = [] }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (isEditMode && editingAdmin) {
-      put(`/superadmin/admins/${editingAdmin.id}`, {
+    if (isEditMode && editingHEI) {
+      put(`/superadmin/heis/${editingHEI.id}`, {
         onSuccess: () => {
           setIsModalOpen(false);
           setIsEditMode(false);
-          setEditingAdmin(null);
+          setEditingHEI(null);
           reset();
         },
       });
     } else {
-      post('/superadmin/admins', {
+      post('/superadmin/heis', {
         onSuccess: () => {
           setIsModalOpen(false);
           reset();
@@ -44,15 +50,20 @@ const AdminManagement = ({ admins = [] }) => {
     }
   };
 
-  const handleEdit = (admin) => {
-    setEditingAdmin(admin);
+  const handleEdit = (hei) => {
+    setEditingHEI(hei);
     setIsEditMode(true);
     setData({
-      name: admin.name,
-      email: admin.email,
+      uii: hei.uii,
+      name: hei.name,
+      type: hei.type,
+      code: hei.code,
+      email: hei.email,
+      address: hei.address || '',
+      established_at: hei.established_at || '2000-01-01',
       password: '',
       password_confirmation: '',
-      is_active: admin.is_active,
+      is_active: hei.is_active,
     });
     setShowPassword(false);
     setShowConfirmPassword(false);
@@ -60,7 +71,7 @@ const AdminManagement = ({ admins = [] }) => {
   };
 
   const handleDelete = () => {
-    destroy(`/superadmin/admins/${deleteConfirm.id}`, {
+    destroy(`/superadmin/heis/${deleteConfirm.id}`, {
       onSuccess: () => {
         setDeleteConfirm(null);
       },
@@ -69,7 +80,7 @@ const AdminManagement = ({ admins = [] }) => {
 
   const openAddModal = () => {
     setIsEditMode(false);
-    setEditingAdmin(null);
+    setEditingHEI(null);
     reset();
     setShowPassword(false);
     setShowConfirmPassword(false);
@@ -78,11 +89,32 @@ const AdminManagement = ({ admins = [] }) => {
 
   const columnDefs = useMemo(() => [
     {
-      headerName: 'Name',
-      field: 'name',
-      flex: 1,
-      minWidth: 180,
+      headerName: 'UII',
+      field: 'uii',
+      width: 120,
       filter: 'agTextColumnFilter',
+      cellStyle: { fontWeight: '500' },
+    },
+    {
+      headerName: 'Institution Name',
+      field: 'name',
+      width: 350,
+      filter: 'agTextColumnFilter',
+      flex: 1,
+    },
+    {
+      headerName: 'Type',
+      field: 'type',
+      width: 120,
+      filter: 'agTextColumnFilter',
+      cellStyle: { textAlign: 'center' },
+    },
+    {
+      headerName: 'HEI Code',
+      field: 'code',
+      width: 130,
+      filter: 'agTextColumnFilter',
+      cellStyle: { textAlign: 'center' },
     },
     {
       headerName: 'Email',
@@ -93,7 +125,7 @@ const AdminManagement = ({ admins = [] }) => {
     {
       headerName: 'Status',
       field: 'is_active',
-      width: 130,
+      width: 120,
       filter: 'agTextColumnFilter',
       cellRenderer: (params) => (
         <StatusBadge
@@ -108,12 +140,6 @@ const AdminManagement = ({ admins = [] }) => {
       },
     },
     {
-      headerName: 'Created',
-      field: 'created_at',
-      width: 160,
-      filter: 'agTextColumnFilter',
-    },
-    {
       headerName: 'Actions',
       field: 'actions',
       width: 140,
@@ -121,22 +147,22 @@ const AdminManagement = ({ admins = [] }) => {
       sortable: false,
       filter: false,
       cellRenderer: (params) => {
-        const admin = params.data;
+        const hei = params.data;
         return (
           <div className="flex items-center justify-center gap-1.5 h-full">
             <IconButton
               data-action="edit"
-              data-admin-id={admin.id}
+              data-hei-id={hei.id}
               variant="blue"
-              title="Edit admin"
+              title="Edit HEI"
             >
               <IoPencil size={16} />
             </IconButton>
             <IconButton
               data-action="delete"
-              data-admin-id={admin.id}
+              data-hei-id={hei.id}
               variant="red"
-              title="Delete admin"
+              title="Delete HEI"
             >
               <IoTrash size={16} />
             </IconButton>
@@ -151,52 +177,52 @@ const AdminManagement = ({ admins = [] }) => {
     if (!button) return;
 
     const action = button.getAttribute('data-action');
-    const adminId = button.getAttribute('data-admin-id');
-    if (!action || !adminId) return;
+    const heiId = button.getAttribute('data-hei-id');
+    if (!action || !heiId) return;
 
-    const admin = admins.find((a) => a.id === parseInt(adminId));
-    if (!admin) return;
+    const hei = heis.find((h) => h.id === parseInt(heiId));
+    if (!hei) return;
 
-    if (action === 'edit') handleEdit(admin);
-    else if (action === 'delete') setDeleteConfirm(admin);
+    if (action === 'edit') handleEdit(hei);
+    else if (action === 'delete') setDeleteConfirm(hei);
   };
 
   return (
-    <SuperAdminLayout title="Admin Management">
+    <SuperAdminLayout title="HEI Accounts">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Admin Management
+              HEI Account Management
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Manage all CHED administrator accounts
+              Manage all Higher Education Institution accounts
             </p>
           </div>
           <button
             onClick={openAddModal}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
           >
-            Add New Admin
+            Add New HEI
           </button>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           <AGGridViewer
-            rowData={admins}
+            rowData={heis}
             columnDefs={columnDefs}
             height="calc(100vh - 280px)"
             paginationPageSize={50}
-            paginationPageSizeSelector={[25, 50, 100]}
+            paginationPageSizeSelector={[25, 50, 100, 200]}
             enableQuickFilter={true}
-            quickFilterPlaceholder="Search admins by name or email..."
+            quickFilterPlaceholder="Search HEIs by name, code, email, type..."
             gridOptions={{
               onCellClicked: onCellClicked,
             }}
           />
         </div>
 
-        {/* Add / Edit Admin Modal */}
+        {/* Add / Edit HEI Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -205,18 +231,35 @@ const AdminManagement = ({ admins = [] }) => {
                 onClick={() => setIsModalOpen(false)}
               />
 
-              <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
                 <form onSubmit={handleSubmit}>
                   <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                      {isEditMode ? 'Edit Administrator' : 'Add New Administrator'}
+                      {isEditMode ? 'Edit HEI Account' : 'Add New HEI Account'}
                     </h3>
 
-                    <div className="space-y-4">
-                      {/* Name */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Name
+                          UII
+                        </label>
+                        <input
+                          type="text"
+                          value={data.uii}
+                          onChange={(e) => setData('uii', e.target.value.slice(0, 6))}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                          placeholder="09001a"
+                          maxLength="8"
+                          required
+                        />
+                        {errors.uii && (
+                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.uii}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Name of HEI
                         </label>
                         <input
                           type="text"
@@ -230,7 +273,42 @@ const AdminManagement = ({ admins = [] }) => {
                         )}
                       </div>
 
-                      {/* Email */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Type
+                        </label>
+                        <select
+                          value={data.type}
+                          onChange={(e) => setData('type', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                          required
+                        >
+                          <option value="">Select Type</option>
+                          <option value="Private">Private</option>
+                          <option value="SUC">SUC</option>
+                          <option value="LUC">LUC</option>
+                        </select>
+                        {errors.type && (
+                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.type}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          HEI Code
+                        </label>
+                        <input
+                          type="text"
+                          value={data.code}
+                          onChange={(e) => setData('code', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                          required
+                        />
+                        {errors.code && (
+                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.code}</p>
+                        )}
+                      </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Email
@@ -247,9 +325,34 @@ const AdminManagement = ({ admins = [] }) => {
                         )}
                       </div>
 
-                      {/* Active toggle — edit mode only */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Established Date
+                        </label>
+                        <input
+                          type="date"
+                          value={data.established_at}
+                          onChange={(e) => setData('established_at', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                        />
+                        {errors.established_at && (
+                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.established_at}</p>
+                        )}
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Address
+                        </label>
+                        <AddressSearchInput
+                          value={data.address}
+                          onChange={(value) => setData('address', value)}
+                          error={errors.address}
+                        />
+                      </div>
+
                       {isEditMode && (
-                        <div>
+                        <div className="md:col-span-2">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
@@ -262,13 +365,9 @@ const AdminManagement = ({ admins = [] }) => {
                         </div>
                       )}
 
-                      {/* Password */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Password{' '}
-                          {isEditMode && (
-                            <span className="text-gray-500 text-xs font-normal">(leave blank to keep current)</span>
-                          )}
+                          Password
                         </label>
                         <div className="relative">
                           <input
@@ -276,7 +375,7 @@ const AdminManagement = ({ admins = [] }) => {
                             value={data.password}
                             onChange={(e) => setData('password', e.target.value)}
                             className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                            required={!isEditMode}
+                            placeholder={isEditMode ? 'Leave blank to keep current password' : 'password'}
                           />
                           <button
                             type="button"
@@ -286,12 +385,16 @@ const AdminManagement = ({ admins = [] }) => {
                             {showPassword ? <IoEyeOff size={20} /> : <IoEye size={20} />}
                           </button>
                         </div>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {isEditMode
+                            ? 'If left blank, current password will be kept'
+                            : 'If left blank, defaults to "password"'}
+                        </p>
                         {errors.password && (
                           <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password}</p>
                         )}
                       </div>
 
-                      {/* Confirm Password */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Confirm Password
@@ -302,7 +405,7 @@ const AdminManagement = ({ admins = [] }) => {
                             value={data.password_confirmation}
                             onChange={(e) => setData('password_confirmation', e.target.value)}
                             className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                            required={!isEditMode}
+                            placeholder={isEditMode ? 'Leave blank to keep current password' : 'Confirm password'}
                           />
                           <button
                             type="button"
@@ -327,7 +430,7 @@ const AdminManagement = ({ admins = [] }) => {
                     >
                       {processing
                         ? (isEditMode ? 'Updating...' : 'Creating...')
-                        : (isEditMode ? 'Update Admin' : 'Create Admin')}
+                        : (isEditMode ? 'Update HEI' : 'Create HEI')}
                     </button>
                     <button
                       type="button"
@@ -348,8 +451,8 @@ const AdminManagement = ({ admins = [] }) => {
           isOpen={!!deleteConfirm}
           onClose={() => setDeleteConfirm(null)}
           onConfirm={handleDelete}
-          title="Delete Administrator"
-          message={`Are you sure you want to delete "${deleteConfirm?.name}"? This action cannot be undone.`}
+          title="Delete HEI Account"
+          message={`Are you sure you want to delete "${deleteConfirm?.name}"? This will also delete all associated user accounts. This action cannot be undone.`}
           confirmText="Delete"
           variant="danger"
           processing={processing}
@@ -359,4 +462,4 @@ const AdminManagement = ({ admins = [] }) => {
   );
 };
 
-export default AdminManagement;
+export default HEIAccounts;

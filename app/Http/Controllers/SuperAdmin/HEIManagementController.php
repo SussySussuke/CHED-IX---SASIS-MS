@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\HEI;
@@ -14,7 +14,7 @@ class HEIManagementController extends Controller
 
     public function index()
     {
-        return inertia('Admin/HEIAccounts', [
+        return inertia('SuperAdmin/HEIAccounts', [
             'heis' => $this->service->list(),
         ]);
     }
@@ -34,7 +34,7 @@ class HEIManagementController extends Controller
 
         $this->service->create($validated);
 
-        return redirect()->route('admin.hei-accounts')
+        return redirect()->route('superadmin.hei-accounts')
             ->with('success', 'HEI account created successfully.');
     }
 
@@ -61,7 +61,7 @@ class HEIManagementController extends Controller
 
         $this->service->update($hei, $validated, $request->filled('password'), $request->input('password'));
 
-        return redirect()->route('admin.hei-accounts')
+        return redirect()->route('superadmin.hei-accounts')
             ->with('success', 'HEI account updated successfully.');
     }
 
@@ -69,7 +69,7 @@ class HEIManagementController extends Controller
     {
         $this->service->delete($hei);
 
-        return redirect()->route('admin.hei-accounts')
+        return redirect()->route('superadmin.hei-accounts')
             ->with('success', 'HEI account deleted successfully.');
     }
 }

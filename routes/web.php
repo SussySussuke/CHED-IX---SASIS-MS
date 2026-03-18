@@ -4,6 +4,8 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\SuperAdmin\AdminManagementController;
+use App\Http\Controllers\SuperAdmin\HEIManagementController as SuperAdminHEIManagementController;
+use App\Http\Controllers\SuperAdmin\CHEDContactController as SuperAdminCHEDContactController;
 use App\Http\Controllers\Admin\HEIManagementController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\CHEDContactController;
@@ -65,6 +67,17 @@ Route::middleware('auth')->group(function () {
         Route::post('/admins', [AdminManagementController::class, 'store'])->name('superadmin.admins.store');
         Route::put('/admins/{admin}', [AdminManagementController::class, 'update'])->name('superadmin.admins.update');
         Route::delete('/admins/{admin}', [AdminManagementController::class, 'destroy'])->name('superadmin.admins.destroy');
+
+        Route::get('/hei-accounts', [SuperAdminHEIManagementController::class, 'index'])->name('superadmin.hei-accounts');
+        Route::post('/heis', [SuperAdminHEIManagementController::class, 'store'])->name('superadmin.heis.store');
+        Route::put('/heis/{hei}', [SuperAdminHEIManagementController::class, 'update'])->name('superadmin.heis.update');
+        Route::delete('/heis/{hei}', [SuperAdminHEIManagementController::class, 'destroy'])->name('superadmin.heis.destroy');
+
+        Route::get('/ched-contacts', [SuperAdminCHEDContactController::class, 'index'])->name('superadmin.ched-contacts');
+        Route::post('/ched-contacts', [SuperAdminCHEDContactController::class, 'store'])->name('superadmin.ched-contacts.store');
+        Route::put('/ched-contacts/{contact}', [SuperAdminCHEDContactController::class, 'update'])->name('superadmin.ched-contacts.update');
+        Route::delete('/ched-contacts/{contact}', [SuperAdminCHEDContactController::class, 'destroy'])->name('superadmin.ched-contacts.destroy');
+        Route::post('/ched-contacts/reorder', [SuperAdminCHEDContactController::class, 'reorder'])->name('superadmin.ched-contacts.reorder');
 
         Route::get('/system-audit-logs', [App\Http\Controllers\SuperAdmin\SystemAuditLogController::class, 'index'])->name('superadmin.system-audit-logs');
 

@@ -3,7 +3,7 @@ import AppLayout from './AppLayout';
 import Sidebar from '../Components/Common/Sidebar';
 import { PERMISSIONS } from '../Utils/permissions';
 import PermissionGate from '../Components/Common/PermissionGate';
-import { IoGrid, IoPeople, IoDocument, IoSettings } from 'react-icons/io5';
+import { IoGrid, IoPeople, IoDocument, IoSettings, IoSchool, IoCall } from 'react-icons/io5';
 
 const SuperAdminLayout = ({ title, children }) => {
   const sidebarLinks = [
@@ -16,6 +16,16 @@ const SuperAdminLayout = ({ title, children }) => {
       href: '/superadmin/admin-management',
       label: 'Admin Management',
       icon: <IoPeople />
+    },
+    {
+      href: '/superadmin/hei-accounts',
+      label: 'HEI Accounts',
+      icon: <IoSchool />
+    },
+    {
+      href: '/superadmin/ched-contacts',
+      label: 'CHED Contacts',
+      icon: <IoCall />
     },
     {
       href: '/superadmin/system-audit-logs',

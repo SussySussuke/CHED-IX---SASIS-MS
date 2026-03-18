@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CHEDContact;
@@ -14,7 +14,7 @@ class CHEDContactController extends Controller
 
     public function index()
     {
-        return Inertia::render('Admin/CHEDContacts', [
+        return Inertia::render('SuperAdmin/CHEDContacts', [
             'contacts' => $this->service->list(),
         ]);
     }
@@ -67,13 +67,5 @@ class CHEDContactController extends Controller
         $this->service->reorder($validated['contacts']);
 
         return redirect()->back()->with('success', 'Contact order updated successfully!');
-    }
-
-    /**
-     * Public API endpoint — active contacts for HEI users.
-     */
-    public function getActiveContacts()
-    {
-        return response()->json($this->service->getActive());
     }
 }
