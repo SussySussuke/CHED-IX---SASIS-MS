@@ -14,6 +14,16 @@ import { getSubmissionStatusMessage } from '../../../Utils/submissionStatus';
 import { getAcademicYearFromUrl } from '../../../Utils/urlHelpers';
 import { IoPeople, IoMale, IoFemale, IoMaleFemale, IoCalculator, IoDocumentText, IoGlobe, IoBook } from 'react-icons/io5';
 
+// social_media_contacts may come from the server as a JSON string, a plain
+// string, null, or already an array. Always normalize to a non-empty array.
+const toContactsArray = (val) => {
+  if (Array.isArray(val) && val.length > 0) return val;
+  if (typeof val === 'string' && val.trim() !== '') {
+    try { const p = JSON.parse(val); return Array.isArray(p) && p.length > 0 ? p : ['']; } catch { return [val]; }
+  }
+  return [''];
+};
+
 const Create = ({ availableYears = [], existingSubmissions = {}, defaultYear, isEditing = false }) => {
   const currentAcademicYear = getAcademicYearFromUrl(defaultYear);
   const formOptions = buildFormOptionsGrouped();
@@ -32,7 +42,7 @@ const Create = ({ availableYears = [], existingSubmissions = {}, defaultYear, is
     submitted_org_chart: submission?.submitted_org_chart || '',
     hei_website: submission?.hei_website || '',
     sas_website: submission?.sas_website || '',
-    social_media_contacts: submission?.social_media_contacts || [''],
+    social_media_contacts: toContactsArray(submission?.social_media_contacts),
     student_handbook: submission?.student_handbook || '',
     student_publication: submission?.student_publication || '',
     request_notes: ''
@@ -50,7 +60,7 @@ const Create = ({ availableYears = [], existingSubmissions = {}, defaultYear, is
         submitted_org_chart: yearSubmission.submitted_org_chart || '',
         hei_website: yearSubmission.hei_website || '',
         sas_website: yearSubmission.sas_website || '',
-        social_media_contacts: yearSubmission.social_media_contacts || [''],
+        social_media_contacts: toContactsArray(yearSubmission.social_media_contacts),
         student_handbook: yearSubmission.student_handbook || '',
         student_publication: yearSubmission.student_publication || '',
         request_notes: ''

@@ -15,7 +15,9 @@
  * Column structure is read from SECTION_COMPARISON_FIELDS (single source of truth).
  */
 
-import * as XLSX from 'xlsx-js-style';
+// xlsx-js-style is dynamically imported inside exportSummaryToExcel to avoid
+// Vite externalizing stream.Readable (a Node.js built-in) at module parse time,
+// which crashes the browser on every page load regardless of route.
 import { SECTION_COMPARISON_FIELDS } from '../Config/summaryView/comparisonConfig';
 import { summaryConfig } from '../Config/summaryView/summaryConfig';
 
@@ -115,12 +117,14 @@ const S_EMPTY = { fill: { fgColor: { rgb: 'FFFFFF' } }, border: BORDER };
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function addr(r, c) {
+// Note: addr and setCell receive XLSX as first arg because xlsx-js-style is
+// dynamically imported — there is no module-level XLSX variable.
+function addr(XLSX, r, c) {
   return XLSX.utils.encode_cell({ r, c });
 }
 
-function setCell(ws, r, c, value, style) {
-  const a = addr(r, c);
+function setCell(XLSX, ws, r, c, value, style) {
+  const a = addr(XLSX, r, c);
   ws[a] = { v: value ?? '', t: typeof value === 'number' ? 'n' : 's', s: style };
 }
 
@@ -253,7 +257,7 @@ function buildLeafDescriptors(sectionId, years, isComparing, showDelta = true) {
 // Main export
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function exportSummaryToExcel({
+export async function exportSummaryToExcel({
   sectionData,
   columnDefs,   // not used for structure — we use comparisonConfig directly
   sectionTitle,
@@ -264,10 +268,15 @@ export function exportSummaryToExcel({
 }) {
   if (!sectionData?.length) return;
 
+  // Lazy-load xlsx-js-style only when the user actually clicks Export.
+  // This prevents the Node.js stream.Readable crash at module init time.
+  const xlsxModule = await import('xlsx-js-style');
+  const XLSX = xlsxModule.default ?? xlsxModule;
+
   const config = SECTION_COMPARISON_FIELDS[activeSection];
   if (!config) {
     // Fallback: plain dump for sections not in comparisonConfig
-    fallbackExport({ sectionData, columnDefs, sectionTitle, selectedYears });
+    fallbackExport({ XLSX, sectionData, columnDefs, sectionTitle, selectedYears });
     return;
   }
 
@@ -295,15 +304,18 @@ export function exportSummaryToExcel({
     ? `AY ${selectedYears.join(' vs ')}`
     : `AY ${selectedYears[0] ?? ''}`;
 
-  setCell(ws, curRow, 0, titleText, S_TITLE);
-  for (let c = 1; c < totalCols; c++) setCell(ws, curRow, c, '', S_TITLE);
+  // Bind XLSX into helpers so call-sites stay clean.
+  const sc = (ws, r, c, v, s) => setCell(XLSX, ws, r, c, v, s);
+
+  sc(ws, curRow, 0, titleText, S_TITLE);
+  for (let c = 1; c < totalCols; c++) sc(ws, curRow, c, '', S_TITLE);
   addMerge(merges, curRow, 0, curRow, totalCols - 1);
   curRow++;
 
   // ── Row 1: Section title ─────────────────────────────────────────────────
   const fullSectionTitle = summaryConfig.getSection(activeSection)?.sectionTitle ?? sectionTitle;
-  setCell(ws, curRow, 0, fullSectionTitle, S_SECTION);
-  for (let c = 1; c < totalCols; c++) setCell(ws, curRow, c, '', S_SECTION);
+  sc(ws, curRow, 0, fullSectionTitle, S_SECTION);
+  for (let c = 1; c < totalCols; c++) sc(ws, curRow, c, '', S_SECTION);
   addMerge(merges, curRow, 0, curRow, totalCols - 1);
   curRow++;
 
@@ -320,11 +332,11 @@ export function exportSummaryToExcel({
     const hasSubGroupRow = isComparing && isGrouped;
     const identityRowSpanEnd = hasSubGroupRow ? curRow + 1 : curRow;
 
-    setCell(ws, curRow, 0, 'Seq No.',     S_IDENTITY_HEADER);
-    setCell(ws, curRow, 1, 'Name of HEI', S_IDENTITY_HEADER);
+    sc(ws, curRow, 0, 'Seq No.',     S_IDENTITY_HEADER);
+    sc(ws, curRow, 1, 'Name of HEI', S_IDENTITY_HEADER);
     if (hasSubGroupRow) {
-      setCell(ws, curRow + 1, 0, '', S_IDENTITY_HEADER);
-      setCell(ws, curRow + 1, 1, '', S_IDENTITY_HEADER);
+      sc(ws, curRow + 1, 0, '', S_IDENTITY_HEADER);
+      sc(ws, curRow + 1, 1, '', S_IDENTITY_HEADER);
       addMerge(merges, curRow, 0, identityRowSpanEnd, 0);
       addMerge(merges, curRow, 1, identityRowSpanEnd, 1);
     }
@@ -332,8 +344,8 @@ export function exportSummaryToExcel({
     for (const grp of headerGroups) {
       const colStart = IDENTITY_COLS + grp.start;
       const colEnd   = IDENTITY_COLS + grp.end;
-      setCell(ws, curRow, colStart, grp.label, grp.style);
-      for (let c = colStart + 1; c <= colEnd; c++) setCell(ws, curRow, c, '', grp.style);
+      sc(ws, curRow, colStart, grp.label, grp.style);
+      for (let c = colStart + 1; c <= colEnd; c++) sc(ws, curRow, c, '', grp.style);
       addMerge(merges, curRow, colStart, curRow, colEnd);
     }
     curRow++;
@@ -345,13 +357,13 @@ export function exportSummaryToExcel({
           // Delta group — no sub-groups, just blank the cols spanning leaf row
           const colStart = IDENTITY_COLS + grp.start;
           const colEnd   = IDENTITY_COLS + grp.end;
-          for (let c = colStart; c <= colEnd; c++) setCell(ws, curRow, c, '', grp.style);
+          for (let c = colStart; c <= colEnd; c++) sc(ws, curRow, c, '', grp.style);
         } else {
           for (const sub of grp.subGroups) {
             const colStart = IDENTITY_COLS + sub.start;
             const colEnd   = IDENTITY_COLS + sub.end;
-            setCell(ws, curRow, colStart, sub.label, sub.style);
-            for (let c = colStart + 1; c <= colEnd; c++) setCell(ws, curRow, c, '', sub.style);
+            sc(ws, curRow, colStart, sub.label, sub.style);
+            for (let c = colStart + 1; c <= colEnd; c++) sc(ws, curRow, c, '', sub.style);
             addMerge(merges, curRow, colStart, curRow, colEnd);
           }
         }
@@ -363,23 +375,23 @@ export function exportSummaryToExcel({
   // ── Leaf header row ───────────────────────────────────────────────────────
   if (!hasGroupRow) {
     // For flat single-year: identity headers are on the leaf row
-    setCell(ws, curRow, 0, 'Seq No.',     S_IDENTITY_HEADER);
-    setCell(ws, curRow, 1, 'Name of HEI', S_IDENTITY_HEADER);
+    sc(ws, curRow, 0, 'Seq No.',     S_IDENTITY_HEADER);
+    sc(ws, curRow, 1, 'Name of HEI', S_IDENTITY_HEADER);
   } else {
     // Already written above (or spanned) — write empty styled cells
     // only if identity cells were already merged vertically
     const alreadyMerged = hasGroupRow;
     if (!alreadyMerged || !(isComparing && isGrouped)) {
       // For single grouped: identity headers were written on the group row, span down
-      setCell(ws, curRow, 0, '', S_IDENTITY_HEADER);
-      setCell(ws, curRow, 1, '', S_IDENTITY_HEADER);
+      sc(ws, curRow, 0, '', S_IDENTITY_HEADER);
+      sc(ws, curRow, 1, '', S_IDENTITY_HEADER);
       addMerge(merges, curRow - 1, 0, curRow, 0);
       addMerge(merges, curRow - 1, 1, curRow, 1);
     }
   }
 
   for (let li = 0; li < leaves.length; li++) {
-    setCell(ws, curRow, IDENTITY_COLS + li, leaves[li].label, S_LEAF_HEADER);
+    sc(ws, curRow, IDENTITY_COLS + li, leaves[li].label, S_LEAF_HEADER);
   }
   curRow++;
 
@@ -389,8 +401,8 @@ export function exportSummaryToExcel({
   sectionData.forEach((row, idx) => {
     const rowStyle = idx % 2 === 0 ? S_DATA_ODD : S_DATA_EVEN;
 
-    setCell(ws, curRow, 0, idx + 1, S_SEQ);
-    setCell(ws, curRow, 1, row.hei_name ?? '', S_IDENTITY_DATA);
+    sc(ws, curRow, 0, idx + 1, S_SEQ);
+    sc(ws, curRow, 1, row.hei_name ?? '', S_IDENTITY_DATA);
 
     for (let li = 0; li < leaves.length; li++) {
       const leaf = leaves[li];
@@ -402,7 +414,7 @@ export function exportSummaryToExcel({
         val = formatVal(row[leaf.field]);
       }
 
-      setCell(ws, curRow, IDENTITY_COLS + li, val, rowStyle);
+      sc(ws, curRow, IDENTITY_COLS + li, val, rowStyle);
     }
 
     curRow++;
@@ -447,7 +459,7 @@ export function exportSummaryToExcel({
 // (shouldn't happen since all 15 sections are registered, but just in case)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function fallbackExport({ sectionData, columnDefs, sectionTitle, selectedYears }) {
+function fallbackExport({ XLSX, sectionData, columnDefs, sectionTitle, selectedYears }) {
   function flattenCols(cols) {
     const out = [];
     for (const col of cols) {

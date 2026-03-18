@@ -82,6 +82,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/settings', [App\Http\Controllers\SuperAdmin\SettingsController::class, 'index'])->name('superadmin.settings');
         Route::post('/settings', [App\Http\Controllers\SuperAdmin\SettingsController::class, 'store'])->name('superadmin.settings.store');
+        Route::post('/settings/publish-now', [App\Http\Controllers\SuperAdmin\SettingsController::class, 'publishNow'])->name('superadmin.settings.publish-now');
     });
 
     // Admin routes

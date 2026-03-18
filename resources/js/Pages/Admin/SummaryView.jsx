@@ -265,10 +265,10 @@ const SummaryView = ({
   }, [activeSection, isComparing]);
 
   // Export handler
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     const section = summaryConfig.getSection(activeSection);
     const sectionTitle = section?.sectionTitle ?? activeSection;
-    exportSummaryToExcel({
+    await exportSummaryToExcel({
       sectionData,
       columnDefs,
       sectionTitle,

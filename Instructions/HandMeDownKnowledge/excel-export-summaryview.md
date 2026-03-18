@@ -51,13 +51,35 @@ Freeze via `ws['!freeze'] = { xSplit: 2, ySplit: headerRowCount }`
 ```bash
 npm install xlsx-js-style
 ```
-Import: `import * as XLSX from 'xlsx-js-style'`
-This is a drop-in for `xlsx` that adds cell `.s` style support.
+`xlsx-js-style` is a drop-in for `xlsx` that adds cell `.s` style support.
+
+## ⚠️ Critical: Node.js `stream` Crash in Browser
+
+### Problem
+`xlsx-js-style` internally accesses `stream.Readable` (a Node.js built-in) at module parse time. Vite externalizes it for the browser, causing a fatal crash on **every page load** — not just the export page — because `app.jsx` uses `import.meta.glob('./Pages/**/*.jsx', { eager: true })`, which loads `SummaryView.jsx` (which imported `excelExport.js`) on every route.
+
+Error seen: `Module "stream" has been externalized for browser compatibility. Cannot access "stream.Readable" in client code.`
+
+### Fix Applied
+`xlsx-js-style` is **dynamically imported** inside `exportSummaryToExcel()` only when the user clicks Export. The module-level static import is removed.
+
+**`excelExport.js`:**
+- `export async function exportSummaryToExcel(...)` (now async)
+- First line of function body: `const xlsxModule = await import('xlsx-js-style'); const XLSX = xlsxModule.default ?? xlsxModule;`
+- `setCell` and `addr` helpers take `XLSX` as first arg
+- A local `const sc = (ws,r,c,v,s) => setCell(XLSX,ws,r,c,v,s)` alias keeps all call sites clean
+- `fallbackExport` receives `XLSX` as a destructured prop
+
+**`SummaryView.jsx`:**
+- `handleExport` is now `async`, calls `await exportSummaryToExcel(...)`
+
+### Why `?? xlsxModule` fallback
+Vite may wrap CJS modules with a `.default` property or expose them as the namespace directly — the fallback handles both shapes safely.
 
 ## Status
-**IMPLEMENTED** — pending `npm install xlsx-js-style` by user.
+**IMPLEMENTED AND WORKING.**
 
-## Known edge case / potential issues
+## Known Edge Cases / Potential Issues
 - Identity header merge logic: for single grouped sections, identity headers are written on the group label row (curRow 2) and merged down to the leaf header row. Check the merge doesn't double-fire.
 - `ws['!freeze']` syntax in xlsx-js-style — if freeze doesn't work try `ws['!sheetViews'] = [{ state: 'frozen', xSplit: 2, ySplit: headerRowCount, topLeftCell: encode_cell({r: headerRowCount, c: 2}) }]`
 - Delta values: `resolveDelta(row, yearAField, yearBField)` = `row[yearBField] - row[yearAField]`, returns `''` if either null
