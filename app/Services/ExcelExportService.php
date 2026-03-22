@@ -25,21 +25,24 @@ use App\Models\AnnexNBatch;
 use App\Models\AnnexOBatch;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Font;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExcelExportService
 {
-    // Colors matching the original CHED template style
-    private const COLOR_HEADER_BG  = 'FF1F3864'; // dark navy
-    private const COLOR_SECTION_BG = 'FF2E75B6'; // medium blue
-    private const COLOR_COL_HDR_BG = 'FFBDD7EE'; // light blue
-    private const COLOR_TAG_BG     = 'FFFFE699'; // yellow — marks machine-readable tag row
+    // Colors — A/B/C/D/E/N/O use CHED SASTOOL originals; F/G/H/M keep their existing scheme
+    private const COLOR_HEADER_BG  = 'FF1F3864'; // dark navy  — F/G/H/M column headers (existing)
+    private const COLOR_SECTION_BG = 'FF2E75B6'; // medium blue — F/G/H/M titles (existing)
+    private const COLOR_COL_HDR_BG = 'FFC5E0B3'; // light green — tabular column headers (CHED original)
+    private const COLOR_FIELD_BG   = 'FFDEEAF6'; // light blue  — Annex D field labels (CHED original)
+    private const COLOR_TAG_BG     = 'FFFFE699'; // yellow — machine-readable import tag row
     private const COLOR_WHITE      = 'FFFFFFFF';
-    private const COLOR_LOCKED_BG  = 'FFF2F2F2'; // light grey for locked/instruction cells
+    private const COLOR_LOCKED_BG  = 'FFF2F2F2'; // light grey — field cells in F/G/H/M sheets
 
     public function downloadTemplate(int $heiId, string $academicYear): StreamedResponse
     {
@@ -145,7 +148,7 @@ class ExcelExportService
         $ws->setCellValue('A1', 'SAS PROGRAMS AND SERVICES REPORT — IMPORT TEMPLATE');
         $ws->setCellValue('A2', 'Academic Year: ' . $ay);
         $ws->setCellValue('A4', 'HOW TO FILL IN THIS TEMPLATE');
-        $ws->setCellValue('A5', '1. Each sheet corresponds to one Annex form. Fill in data starting from row 5.');
+        $ws->setCellValue('A5', '1. Each sheet corresponds to one Annex form. Fill in data starting from row 8 (after the header rows).');
         $ws->setCellValue('A6', '2. Do NOT change the first row of any sheet — it is a machine-readable tag used during import.');
         $ws->setCellValue('A7', '3. Do NOT rename the sheet tabs.');
         $ws->setCellValue('A8', '4. Date fields must be in YYYY-MM-DD format.');
@@ -168,6 +171,18 @@ class ExcelExportService
 
     /**
      * Generic tabular sheet — handles A, B, C, C-1, E, I, I-1, J, K, L, L-1, N, N-1, O
+     *
+     * Header structure mirrors the original CHED SASTOOL template:
+     *   Row 1: [TAG] — yellow, machine-readable import tag
+     *   Row 2: ANNEX "X" — bold, plain black, merged
+     *   Row 3: LIST OF PROGRAMS/PROJECTS/ACTIVITIES — bold, merged
+     *   Row 4: form sub-title — bold, merged
+     *   Row 5: AY line placeholder — bold, merged
+     *   Row 6: spacer
+     *   Row 7: column headers — light green (C5E0B3), bold, size 10
+     *   Row 8+: data rows
+     *
+     * All tabular parsers use DATA_ROW_START = 8 to match this layout.
      */
     private function addTabularSheet(
         Spreadsheet $ss,
@@ -180,57 +195,66 @@ class ExcelExportService
         $ws = new Worksheet($ss, $tabName);
         $ss->addSheet($ws);
 
-        // Row 1: machine-readable tag
+        $lastColIdx = count($headers);
+        $lastCol    = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastColIdx);
+
+        // ── Page setup (Legal landscape, matching original) ───────────────
+        $ws->getPageSetup()
+            ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
+            ->setPaperSize(PageSetup::PAPERSIZE_LEGAL)
+            ->setFitToPage(true)
+            ->setFitToWidth(1)
+            ->setFitToHeight(0);
+        $ws->getPageMargins()->setTop(0.75)->setBottom(0.75)->setLeft(0.7)->setRight(0.7);
+
+        // ── Row 1: machine-readable tag ───────────────────────────────────
         $ws->setCellValue('A1', '[' . $tag . ']');
         $ws->getStyle('A1')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['argb' => 'FF000000']],
+            'font' => ['bold' => true, 'size' => 10],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_TAG_BG]],
         ]);
 
-        // Row 2: form title
-        $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
-        $ws->mergeCells('A2:' . $lastCol . '2');
-        $ws->setCellValue('A2', strtoupper($title));
-        $ws->getStyle('A2')->applyFromArray([
-            'font'      => ['bold' => true, 'color' => ['argb' => self::COLOR_WHITE]],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_SECTION_BG]],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-        ]);
+        // ── Rows 2–5: title block (plain bold, no fill) ───────────────────
+        foreach (['A2', 'A3', 'A4', 'A5'] as $cell) {
+            $ws->mergeCells($cell[0] . $cell[1] . ':' . $lastCol . $cell[1]);
+            $ws->getStyle($cell)->getFont()->setBold(true)->setSize(12);
+        }
+        $ws->setCellValue('A2', $tabName);
+        $ws->setCellValue('A3', 'LIST OF PROGRAMS/ PROJECTS/ ACTIVITIES');
+        $ws->setCellValue('A4', strtoupper($title));
 
-        // Row 3: instruction note
-        $ws->setCellValue('A3', 'DO NOT MODIFY ROW 1. Fill data from row 5 onward.');
-        $ws->getStyle('A3')->getFont()->setItalic(true)->setSize(9);
-        $ws->getStyle('A3')->getFill()->setFillType(Fill::FILL_SOLID)
-            ->getStartColor()->setARGB(self::COLOR_LOCKED_BG);
+        // ── Row 6: spacer ─────────────────────────────────────────────────
+        $ws->getRowDimension(6)->setRowHeight(4);
 
-        // Row 4: column headers
+        // ── Row 7: column headers — light green, bold, size 10 ───────────
         foreach ($headers as $i => $header) {
             $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
-            $ws->setCellValue($col . '4', $header);
+            $ws->setCellValue($col . '7', $header);
         }
-        $ws->getStyle('A4:' . $lastCol . '4')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['argb' => self::COLOR_WHITE]],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_HEADER_BG]],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
+        $ws->getStyle('A7:' . $lastCol . '7')->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 10],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_COL_HDR_BG]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
+        $ws->getRowDimension(7)->setRowHeight(30);
 
-        // Rows 5+: data
-        $rowNum = 5;
+        // ── Rows 8+: data ─────────────────────────────────────────────────
+        $rowNum = 8;
         foreach ($rows as $row) {
             foreach (array_values($row) as $i => $val) {
                 $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
                 $ws->setCellValue($col . $rowNum, $val ?? '');
+                $ws->getStyle($col . $rowNum)->getAlignment()->setWrapText(true);
             }
+            $ws->getRowDimension($rowNum)->setRowHeight(15.75);
             $rowNum++;
         }
 
-        // Auto-width columns
-        foreach (range(1, count($headers)) as $colIdx) {
+        foreach (range(1, $lastColIdx) as $colIdx) {
             $ws->getColumnDimensionByColumn($colIdx)->setAutoSize(true);
         }
 
-        $ws->getRowDimension(4)->setRowHeight(30);
-        $ws->freezePane('A5');
+        $ws->freezePane('A8');
     }
 
     private function addAnnexDSheet(Spreadsheet $ss, int $heiId, string $ay): void
@@ -240,59 +264,171 @@ class ExcelExportService
         $sub = AnnexDSubmission::where('hei_id', $heiId)->where('academic_year', $ay)
             ->whereIn('status', ['submitted', 'published', 'request'])->first();
 
-        $ws->setCellValue('A1', '[ANNEX_D]');
-        $this->styleTagRow($ws, 'A1');
-        $ws->setCellValue('A2', 'ANNEX D — UPDATES ON STUDENT HANDBOOK/MANUAL');
-        $this->styleTitleRow($ws, 'A2', 'B2');
-        $ws->setCellValue('A3', 'Fill in the VALUE column (Column B). YES/NO for checkbox fields.');
-        $ws->getStyle('A3')->getFont()->setItalic(true)->setSize(9);
+        // ── Page setup ────────────────────────────────────────────────────
+        $ws->getPageSetup()
+            ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
+            ->setPaperSize(PageSetup::PAPERSIZE_LEGAL)
+            ->setFitToPage(true)
+            ->setFitToWidth(1)
+            ->setFitToHeight(0);
+        $ws->getPageMargins()->setTop(0.75)->setBottom(0.75)->setLeft(0.7)->setRight(0.7);
 
-        $ws->getColumnDimension('A')->setWidth(55);
-        $ws->getColumnDimension('B')->setWidth(40);
+        // ── Column widths (matching original: A≈48, B≈27, C≈58) ──────────
+        $ws->getColumnDimension('A')->setWidth(47.9);
+        $ws->getColumnDimension('B')->setWidth(27.4);
+        $ws->getColumnDimension('C')->setWidth(57.6);
+
+        // ── Row 1: machine-readable tag (import contract — do not move) ───
+        $ws->setCellValue('A1', '[ANNEX_D]');
+        $ws->getStyle('A1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_TAG_BG]],
+        ]);
+
+        // ── Rows 2–4: title block (plain bold, no bg — matches original) ─
+        $ws->mergeCells('A2:B2');
+        $ws->setCellValue('A2', 'ANNEX "D"');
+        $ws->getStyle('A2')->getFont()->setBold(true)->setSize(12);
+
+        $ws->mergeCells('A3:B3');
+        $ws->setCellValue('A3', 'UPDATES ON STUDENT HANDBOOK/MANUAL');
+        $ws->getStyle('A3')->getFont()->setBold(true)->setSize(12);
+
+        $ws->mergeCells('A4:B4');
+        $ws->setCellValue('A4', 'As of Academic Year (AY) ' . $ay);
+        $ws->getStyle('A4')->getFont()->setBold(true)->setSize(12);
+
+        // ── Data rows 5–36: position-based parser contract ────────────────
+        //
+        // AnnexDParser reads col 2 (B) by $r++ from row 5. Row order here
+        // IS the import contract — do NOT reorder these entries.
+        //
+        // Each entry: [label text, isSectionHeader bool]
+        // Col A: light-blue bg (DEEAF6), matching original template field cells
+        // Col B: value — user fills in
+        // Col C: empty (mirrors original's wide C column)
 
         $fields = [
-            ['Version/Publication Date',             'version_publication_date',   $sub?->version_publication_date],
-            ['Officer-in-Charge',                    'officer_in_charge',          $sub?->officer_in_charge],
-            ['Handbook Committee',                   'handbook_committee',          $sub?->handbook_committee],
-            ['Dissemination: Orientation (YES/NO)',  'dissemination_orientation',  $sub ? ($sub->dissemination_orientation ? 'YES' : 'NO') : ''],
-            ['Orientation Date(s)',                  'orientation_dates',           $sub?->orientation_dates],
-            ['Mode of Delivery',                     'mode_of_delivery',            $sub?->mode_of_delivery],
-            ['Dissemination: Uploaded to Website (YES/NO)', 'dissemination_uploaded', $sub ? ($sub->dissemination_uploaded ? 'YES' : 'NO') : ''],
-            ['Dissemination: Others (YES/NO)',       'dissemination_others',        $sub ? ($sub->dissemination_others ? 'YES' : 'NO') : ''],
-            ['Dissemination: Others — specify',      'dissemination_others_text',   $sub?->dissemination_others_text],
-            ['Type: Digital Copy (YES/NO)',          'type_digital',                $sub ? ($sub->type_digital ? 'YES' : 'NO') : ''],
-            ['Type: Printed (YES/NO)',               'type_printed',                $sub ? ($sub->type_printed ? 'YES' : 'NO') : ''],
-            ['Type: Others (YES/NO)',                'type_others',                 $sub ? ($sub->type_others ? 'YES' : 'NO') : ''],
-            ['Type: Others — specify',               'type_others_text',            $sub?->type_others_text],
-            ['Has: Academic Policies (YES/NO)',      'has_academic_policies',       $sub ? ($sub->has_academic_policies ? 'YES' : 'NO') : ''],
-            ['Has: Admission Requirements (YES/NO)', 'has_admission_requirements', $sub ? ($sub->has_admission_requirements ? 'YES' : 'NO') : ''],
-            ['Has: Code of Conduct (YES/NO)',        'has_code_of_conduct',         $sub ? ($sub->has_code_of_conduct ? 'YES' : 'NO') : ''],
-            ['Has: Scholarships/Financial Assistance (YES/NO)', 'has_scholarships',$sub ? ($sub->has_scholarships ? 'YES' : 'NO') : ''],
-            ['Has: Student Publication (YES/NO)',    'has_student_publication',     $sub ? ($sub->has_student_publication ? 'YES' : 'NO') : ''],
-            ['Has: Housing Services (YES/NO)',       'has_housing_services',        $sub ? ($sub->has_housing_services ? 'YES' : 'NO') : ''],
-            ['Has: Disability Services (YES/NO)',    'has_disability_services',     $sub ? ($sub->has_disability_services ? 'YES' : 'NO') : ''],
-            ['Has: Student Council (YES/NO)',        'has_student_council',         $sub ? ($sub->has_student_council ? 'YES' : 'NO') : ''],
-            ['Has: Refund Policies (YES/NO)',        'has_refund_policies',         $sub ? ($sub->has_refund_policies ? 'YES' : 'NO') : ''],
-            ['Has: Drug Education (YES/NO)',         'has_drug_education',          $sub ? ($sub->has_drug_education ? 'YES' : 'NO') : ''],
-            ['Has: Foreign Students section (YES/NO)', 'has_foreign_students',     $sub ? ($sub->has_foreign_students ? 'YES' : 'NO') : ''],
-            ['Has: Disaster Management (YES/NO)',    'has_disaster_management',     $sub ? ($sub->has_disaster_management ? 'YES' : 'NO') : ''],
-            ['Has: Safe Spaces (YES/NO)',            'has_safe_spaces',             $sub ? ($sub->has_safe_spaces ? 'YES' : 'NO') : ''],
-            ['Has: Anti-Hazing (YES/NO)',            'has_anti_hazing',             $sub ? ($sub->has_anti_hazing ? 'YES' : 'NO') : ''],
-            ['Has: Anti-Bullying (YES/NO)',          'has_anti_bullying',           $sub ? ($sub->has_anti_bullying ? 'YES' : 'NO') : ''],
-            ['Has: Violence Against Women (YES/NO)', 'has_violence_against_women', $sub ? ($sub->has_violence_against_women ? 'YES' : 'NO') : ''],
-            ['Has: Gender-Fair Language (YES/NO)',   'has_gender_fair',             $sub ? ($sub->has_gender_fair ? 'YES' : 'NO') : ''],
-            ['Has: Others (YES/NO)',                 'has_others',                  $sub ? ($sub->has_others ? 'YES' : 'NO') : ''],
-            ['Has: Others — specify',               'has_others_text',             $sub?->has_others_text],
+            // row 5  — version_publication_date
+            ['Version/ Publication date:', false],
+            // row 6  — officer_in_charge
+            ['Officer-in-Charge:', false],
+            // row 7  — handbook_committee
+            ['Composition of the Student Handbook Committee:', false],
+            // row 8  — dissemination_orientation
+            ['Mode of Dissemination: Orientation (YES/NO)', false],
+            // row 9  — orientation_dates
+            ['Date/s of Orientation:', false],
+            // row 10 — mode_of_delivery
+            ['Mode of delivery (F2F/online or both):', false],
+            // row 11 — dissemination_uploaded
+            ['Dissemination: Uploaded in Website (YES/NO)', false],
+            // row 12 — dissemination_others
+            ['Dissemination: Others (YES/NO)', false],
+            // row 13 — dissemination_others_text
+            ['Dissemination: Others — specify:', false],
+            // row 14 — type_digital
+            ['Type of Student Handbook/Manual: Digital Copy (YES/NO)', false],
+            // row 15 — type_printed
+            ['Type of Student Handbook/Manual: Printed (YES/NO)', false],
+            // row 16 — type_others
+            ['Type of Student Handbook/Manual: Others (YES/NO)', false],
+            // row 17 — type_others_text
+            ['Type of Student Handbook/Manual: Others — specify:', false],
+            // row 18 — has_academic_policies (section header, value blank)
+            ['Contains the following information (check all applicable):', true],
+            // row 19 — has_admission_requirements
+            ['Academic and Institutional Policies (YES/NO)', false],
+            // row 20 — has_code_of_conduct
+            ['Admission Requirements (YES/NO)', false],
+            // row 21 — has_scholarships
+            ['Student Code of Conduct and Discipline (YES/NO)', false],
+            // row 22 — has_student_publication
+            ['Scholarships/Financial Assistance (YES/NO)', false],
+            // row 23 — has_housing_services
+            ['Student Publication (YES/NO)', false],
+            // row 24 — has_disability_services
+            ['Housing Services/Dormitories, if applicable (YES/NO)', false],
+            // row 25 — has_student_council
+            ['Services for Learners with Disabilities and Special Needs (YES/NO)', false],
+            // row 26 — has_refund_policies
+            ['Student Council/Government/Organizations (YES/NO)', false],
+            // row 27 — has_drug_education
+            ['Refund Policies (YES/NO)', false],
+            // row 28 — has_foreign_students
+            ['Drug Education, Prevention and Control (YES/NO)', false],
+            // row 29 — has_disaster_management
+            ['Foreign Students, if applicable (YES/NO)', false],
+            // row 30 — has_safe_spaces
+            ['Disaster Risk Reduction and Management (YES/NO)', false],
+            // row 31 — has_anti_hazing
+            ['Safe Spaces Act (YES/NO)', false],
+            // row 32 — has_anti_bullying
+            ['Anti-Hazing Act (YES/NO)', false],
+            // row 33 — has_violence_against_women
+            ['Anti-Bullying Act (YES/NO)', false],
+            // row 34 — has_gender_fair
+            ['Violence Against Women and Their Children (YES/NO)', false],
+            // row 35 — has_others
+            ['Gender-Fair Education (YES/NO)', false],
+            // row 36 — has_others_text
+            ['Others, please specify:', false],
         ];
 
-        foreach ($fields as $i => $field) {
+        $values = [
+            $sub?->version_publication_date,
+            $sub?->officer_in_charge,
+            $sub?->handbook_committee,
+            $sub ? ($sub->dissemination_orientation ? 'YES' : 'NO') : '',
+            $sub?->orientation_dates,
+            $sub?->mode_of_delivery,
+            $sub ? ($sub->dissemination_uploaded ? 'YES' : 'NO') : '',
+            $sub ? ($sub->dissemination_others ? 'YES' : 'NO') : '',
+            $sub?->dissemination_others_text,
+            $sub ? ($sub->type_digital ? 'YES' : 'NO') : '',
+            $sub ? ($sub->type_printed ? 'YES' : 'NO') : '',
+            $sub ? ($sub->type_others ? 'YES' : 'NO') : '',
+            $sub?->type_others_text,
+            '',  // row 18 is a section header label; value col intentionally blank
+            $sub ? ($sub->has_academic_policies ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_admission_requirements ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_code_of_conduct ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_scholarships ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_student_publication ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_housing_services ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_disability_services ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_student_council ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_refund_policies ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_drug_education ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_foreign_students ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_disaster_management ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_safe_spaces ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_anti_hazing ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_anti_bullying ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_violence_against_women ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_gender_fair ? 'YES' : 'NO') : '',
+            $sub ? ($sub->has_others ? 'YES' : 'NO') : '',
+            $sub?->has_others_text,
+        ];
+
+        foreach ($fields as $i => [$label, $isSectionHeader]) {
             $row = $i + 5;
-            $ws->setCellValue('A' . $row, $field[0]);
-            $ws->setCellValue('B' . $row, $field[2] ?? '');
-            $ws->getStyle('A' . $row)->getFill()->setFillType(Fill::FILL_SOLID)
-                ->getStartColor()->setARGB(self::COLOR_LOCKED_BG);
+            $ws->setCellValue('A' . $row, $label);
+            $ws->setCellValue('B' . $row, $values[$i] ?? '');
+
+            $ws->getStyle('A' . $row)->applyFromArray([
+                'font'      => ['bold' => $isSectionHeader, 'size' => 10],
+                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_FIELD_BG]],
+                'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
+            ]);
+            $ws->getStyle('B' . $row)->applyFromArray([
+                'font'      => ['size' => 10],
+                'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
+            ]);
+            $ws->getRowDimension($row)->setRowHeight(15.75);
         }
 
+        $ws->getPageSetup()->setPrintArea('A1:C36');
         $ws->freezePane('B5');
     }
 

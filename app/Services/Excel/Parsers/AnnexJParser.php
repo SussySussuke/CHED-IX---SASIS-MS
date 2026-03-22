@@ -11,7 +11,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  */
 class AnnexJParser extends BaseParser
 {
-    private const DATA_ROW_START = 5;
+    private const DATA_ROW_START = 8;
 
     public function sheetId(): string { return 'ANNEX_J'; }
     public function label(): string   { return 'Annex J - Health Services'; }

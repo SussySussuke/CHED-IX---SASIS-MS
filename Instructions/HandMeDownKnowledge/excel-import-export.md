@@ -14,6 +14,30 @@ Conflict resolution reuses the existing `CompareModal` pattern but as a new `Imp
 
 Persist step could not call existing controller `store()` methods directly — they return HTTP redirects, breaking the DB transaction. Instead, `ExcelPersistService` replicates the model-level overwrite/status logic from `BaseAnnexController` directly, per README rule (business logic in Services, not controllers).
 
+### Export Sheet Layout
+
+The exported template mirrors the original CHED SASTOOL visual design for printability while remaining machine-parseable for import.
+
+**Tabular sheets (A, B, C, C-1, E, I, I-1, J, K, L, L-1, N, N-1, O):**
+- Row 1: `[TAG]` — yellow background, machine-readable import tag
+- Rows 2–5: title block — annex name, "LIST OF PROGRAMS/PROJECTS/ACTIVITIES", form sub-title, AY placeholder (plain bold, no background fill)
+- Row 6: small spacer
+- Row 7: column headers — light green background (`C5E0B3`), matching original CHED template
+- Row 8+: data rows
+- All parsers use `DATA_ROW_START = 8`
+
+**Annex D (non-tabular):**
+- Row 1: `[ANNEX_D]` tag
+- Rows 2–4: title block (plain bold)
+- Rows 5–36: key-value field rows — col A = label (light blue `DEEAF6` background), col B = value
+- Parser reads col B by position (`$r++`) starting at row 5 — row order is the import contract, do not change it
+- Row 18 is a section header label; its col B value is intentionally blank (the parser still reads and stores it as empty)
+- Col C is present for visual width (matching original) but unused by parser
+
+**Page setup applied to all sheets:** Legal landscape, fit-to-1-page-wide.
+
+**Annex F, G, H, M** retain their existing navy/blue color scheme — they were not refactored in this pass.
+
 ## Output
 - `app/Services/ExcelImportService.php` — orchestrates parsing, conflict detection, session storage of pending state
 - `app/Services/ExcelExportService.php` — builds pre-filled xlsx from DB, streams as download
@@ -42,6 +66,9 @@ Persist step could not call existing controller `store()` methods directly — t
 - Annex G has three sub-tables (editorial board, other publications, programs) in a single sheet. Parser uses marker cells `[EDITORIAL_BOARD]`, `[OTHER_PUBLICATIONS]`, `[PROGRAMS]` to detect section boundaries. These markers must be preserved in the template.
 - PhpSpreadsheet may return dates as Excel serial floats, not strings. `BaseParser::date_()` handles both numeric serial and common string formats.
 - `TabularProgramParser` uses a `hasTargetGroup` constructor flag to handle the column shift between Annex C (no target_group) and A/B/C-1 (has target_group).
+- **Export layout and parser `DATA_ROW_START` are a coupled contract.** The tabular header block occupies rows 1–7, so data starts at row 8. Every tabular parser has `DATA_ROW_START = 8`. If the header row count ever changes in the export, all affected parsers must be updated together.
+- **Annex D parser reads by row position, not label text.** `AnnexDParser` increments `$r` once per field from row 5. The order of entries in the `$fields`/`$values` arrays in `addAnnexDSheet()` is the import contract — reordering breaks import silently with no errors thrown.
+- The original CHED SASTOOL template uses no background fill on title rows and `C5E0B3` (light green) on tabular column headers. The initial export used an invented navy/blue scheme that did not match the original.
 
 ## Decisions Made
 - MER forms excluded from import: they are structurally incompatible with a flat Excel layout and are filled online. Consistent with CHED/DepEd practice where tabular annexes use Excel and complex forms use web portals.
@@ -50,7 +77,9 @@ Persist step could not call existing controller `store()` methods directly — t
 - Pending import state stored in session between parse and confirm steps — avoids requiring file re-upload. Session key: `excel_import_pending`.
 - Template generated on-the-fly per export request, not stored as a static file — ensures it always reflects current DB data.
 - Signatures from original CHED template intentionally omitted in both template and import.
+- Export visual style corrected to match the original CHED SASTOOL template (plain bold title rows, light green headers, light blue Annex D field labels) so printed output is consistent with what CHED offices expect.
+- Annex F, G, H, M sheets intentionally left on their existing navy/blue scheme for now — they were not part of the visual correction pass and are still functional.
 
 ## To Be Fixed Soon
 - `ExcelPersistService::resolveStatus()` duplicates the overwrite/status logic from `BaseAnnexController`. If that logic ever changes in the controller, this service must be updated too. Should be extracted to a shared Action class to eliminate duplication.
-- `composer install` must be run manually after pulling — PHPSpreadsheet is declared in `composer.json` but not yet installed.
+- Annex F, G, H, M export sheets still use the invented navy/blue color scheme instead of matching the original CHED template. Should be corrected in the same pass as any future work on those sheets.

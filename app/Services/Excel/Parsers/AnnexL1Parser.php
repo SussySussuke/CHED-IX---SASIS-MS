@@ -11,7 +11,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  */
 class AnnexL1Parser extends BaseParser
 {
-    private const DATA_ROW_START = 5;
+    private const DATA_ROW_START = 8;
 
     public function sheetId(): string { return 'ANNEX_L1'; }
     public function label(): string   { return 'Annex L-1 - Foreign/International Student Services'; }

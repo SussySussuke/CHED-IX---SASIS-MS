@@ -11,11 +11,11 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Col 6: participants_face_to_face | Col 7: organizer | Col 8: remarks
  *
  * Annex C does NOT have target_group — columns shift left after col 3.
- * DATA_ROW_START = 5 (row 1: tag, row 2: title, row 3: academic year, row 4: headers)
+ * DATA_ROW_START = 8 (row 1: tag, rows 2-5: title block, row 6: spacer, row 7: headers)
  */
 class TabularProgramParser extends BaseParser
 {
-    private const DATA_ROW_START = 5;
+    private const DATA_ROW_START = 8;
 
     public function __construct(
         private readonly string $id,

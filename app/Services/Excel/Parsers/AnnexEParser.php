@@ -12,7 +12,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  */
 class AnnexEParser extends BaseParser
 {
-    private const DATA_ROW_START = 5;
+    private const DATA_ROW_START = 8;
 
     public function sheetId(): string { return 'ANNEX_E'; }
     public function label(): string   { return 'Annex E - Student Organizations'; }
