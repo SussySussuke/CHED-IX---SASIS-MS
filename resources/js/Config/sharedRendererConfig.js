@@ -377,10 +377,10 @@ export const MER4A_CONFIG = {
           minWidth: '300px',
         },
         {
-          field: 'evidence_file',
+          field: 'evidence_link',
           headerName: 'Evidence/Supporting Documents',
-          type: 'file',
-          minWidth: '250px',
+          type: 'link',
+          minWidth: '300px',
         },
         {
           field: 'status_compiled',
@@ -398,7 +398,7 @@ export const MER4A_CONFIG = {
       dataMapper: (entity) => ({
         id: entity.row_id || entity.id,
         requirement: entity.requirement,
-        evidence_file: entity.evidence_file ? (typeof entity.evidence_file === 'string' ? JSON.parse(entity.evidence_file) : entity.evidence_file) : null,
+        evidence_link: entity.evidence_link || null,
         status_compiled: entity.status_compiled || false,
         hei_remarks: entity.hei_remarks || '',
       })
@@ -414,10 +414,10 @@ export const MER4A_CONFIG = {
           minWidth: '300px',
         },
         {
-          field: 'evidence_file',
+          field: 'evidence_link',
           headerName: 'Evidence/Supporting Documents',
-          type: 'file',
-          minWidth: '250px',
+          type: 'link',
+          minWidth: '300px',
         },
         {
           field: 'status_compiled',
@@ -435,7 +435,7 @@ export const MER4A_CONFIG = {
       dataMapper: (entity) => ({
         id: entity.row_id || entity.id,
         requirement: entity.requirement,
-        evidence_file: entity.evidence_file ? (typeof entity.evidence_file === 'string' ? JSON.parse(entity.evidence_file) : entity.evidence_file) : null,
+        evidence_link: entity.evidence_link || null,
         status_compiled: entity.status_compiled || false,
         hei_remarks: entity.hei_remarks || '',
       })

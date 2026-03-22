@@ -6,6 +6,45 @@ import StatusBadge from '@/Components/Widgets/StatusBadge';
 import { IoEyeOutline, IoClose } from 'react-icons/io5';
 
 /**
+ * Renders old_values / new_values as a clean key-value table instead of raw JSON.
+ */
+function ValuesTable({ values }) {
+  if (!values || typeof values !== 'object') return null;
+
+  const formatValue = (val) => {
+    if (val === null || val === undefined) return <span className="italic text-gray-400">null</span>;
+    if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+    if (Array.isArray(val)) return val.join(', ');
+    if (typeof val === 'object') return JSON.stringify(val);
+    return String(val);
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+      <table className="w-full text-sm">
+        <tbody>
+          {Object.entries(values).map(([key, val], i) => (
+            <tr
+              key={key}
+              className={i % 2 === 0
+                ? 'bg-gray-50 dark:bg-gray-700/50'
+                : 'bg-white dark:bg-gray-800'}
+            >
+              <td className="px-4 py-2 font-medium text-gray-600 dark:text-gray-400 w-1/3 border-r border-gray-200 dark:border-gray-600">
+                {key}
+              </td>
+              <td className="px-4 py-2 text-gray-900 dark:text-white">
+                {formatValue(val)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
  * Shared Audit Logs Table Component
  * Used by both Admin and SuperAdmin audit log pages
  */
@@ -268,9 +307,7 @@ export default function AuditLogsTable({
                       <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-2">
                         Old Values
                       </h4>
-                      <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-xs overflow-x-auto max-h-64">
-                        {JSON.stringify(modalLog.old_values, null, 2)}
-                      </pre>
+                      <ValuesTable values={modalLog.old_values} />
                     </div>
                   )}
 
@@ -280,9 +317,7 @@ export default function AuditLogsTable({
                       <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-2">
                         New Values
                       </h4>
-                      <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-xs overflow-x-auto max-h-64">
-                        {JSON.stringify(modalLog.new_values, null, 2)}
-                      </pre>
+                      <ValuesTable values={modalLog.new_values} />
                     </div>
                   )}
                 </div>

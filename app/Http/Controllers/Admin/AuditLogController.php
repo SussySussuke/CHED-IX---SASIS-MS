@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AuditLogResource;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
 
@@ -34,24 +35,7 @@ class AuditLogController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $logs = $query->paginate(50)->through(function ($log) {
-            return [
-                'id' => $log->id,
-                'user_name' => $log->user_name,
-                'user_role' => $log->user_role,
-                'action' => $log->action,
-                'action_color' => $log->action_color,
-                'entity_type' => $log->entity_type,
-                'entity_type_color' => $log->entity_type_color,
-                'entity_name' => $log->entity_name,
-                'description' => $log->description,
-                'old_values' => $log->old_values,
-                'new_values' => $log->new_values,
-                'ip_address' => $log->ip_address,
-                'created_at' => $log->created_at->format('M d, Y h:i A'),
-                'created_at_relative' => $log->created_at->diffForHumans(),
-            ];
-        });
+        $logs = AuditLogResource::collection($query->paginate(50));
 
         // Get filter options
         $actions = AuditLog::whereIn('user_role', ['admin', 'system'])

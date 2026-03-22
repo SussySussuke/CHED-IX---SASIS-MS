@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTheme } from '../../Context/ThemeContext';
-import { IoCloudUpload, IoDocument, IoTrash, IoCheckmark, IoWarning } from 'react-icons/io5';
+import { IoCloudUpload, IoDocument, IoTrash, IoCheckmark, IoWarning, IoLink, IoOpenOutline } from 'react-icons/io5';
 
 /**
  * CustomTable Component - Future-proof table for fixed-row forms
@@ -155,6 +155,36 @@ const CustomTable = ({
               <IoCheckmark size={20} className="text-green-500" />
             ) : (
               <span className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>—</span>
+            )}
+          </div>
+        );
+
+      case 'link':
+        return (
+          <div className="px-2 py-1">
+            {value ? (
+              <a
+                href={value}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`
+                  flex items-center gap-2 px-3 py-2 rounded w-full
+                  transition-all duration-200
+                  ${isDark 
+                    ? 'bg-gray-700 hover:bg-gray-600 hover:shadow-lg text-blue-400 hover:text-blue-300' 
+                    : 'bg-gray-100 hover:bg-blue-50 hover:shadow-md text-blue-600 hover:text-blue-700'
+                  }
+                  cursor-pointer group
+                `}
+                title="Click to open link"
+              >
+                <IoOpenOutline size={18} className="flex-shrink-0" />
+                <span className="text-sm font-medium truncate">{value}</span>
+              </a>
+            ) : (
+              <div className={cellClasses}>
+                <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>No link</span>
+              </div>
             )}
           </div>
         );
@@ -370,6 +400,50 @@ const CustomTable = ({
                 ${column.readOnly ? 'opacity-60 cursor-not-allowed' : ''}
               `}></div>
             </label>
+          </div>
+        );
+
+      case 'link':
+        return (
+          <div className="px-2 py-1 space-y-1">
+            {/* Instruction text */}
+            {column.instruction && (
+              <p className={`text-xs ${isDark ? 'text-yellow-400' : 'text-yellow-700'} bg-yellow-500/10 rounded px-2 py-1`}>
+                {column.instruction}
+              </p>
+            )}
+            <div className={`
+              flex items-center gap-2 px-3 py-2 rounded border
+              ${isDark 
+                ? 'bg-gray-700 border-gray-600' 
+                : 'bg-white border-gray-300'
+              }
+            `}>
+              <IoLink size={16} className={isDark ? 'text-gray-400 flex-shrink-0' : 'text-gray-500 flex-shrink-0'} />
+              <input
+                type="url"
+                value={value || ''}
+                onChange={(e) => handleCellChange(row.id, column.field, e.target.value)}
+                placeholder={column.placeholder || 'Paste link here...'}
+                disabled={column.readOnly}
+                className={`
+                  flex-1 text-sm bg-transparent border-none outline-none
+                  ${isDark ? 'text-white placeholder-gray-400' : 'text-gray-900 placeholder-gray-400'}
+                  ${column.readOnly ? 'opacity-60 cursor-not-allowed' : ''}
+                `}
+              />
+              {value && (
+                <a
+                  href={value}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex-shrink-0 ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                  title="Open link"
+                >
+                  <IoOpenOutline size={16} />
+                </a>
+              )}
+            </div>
           </div>
         );
 

@@ -58,12 +58,12 @@ export const MER4A_CONFIG = {
           minWidth: '300px',
         },
         {
-          field: 'evidence_file',
+          field: 'evidence_link',
           headerName: 'Evidence/Supporting Documents',
-          type: 'file',
-          accept: '.pdf',
-          maxFileSize: 100, // Max file size in MB
-          minWidth: '250px',
+          type: 'link',
+          placeholder: 'Paste Google Drive link here...',
+          instruction: '📎 Upload your evidence to Google Drive, set sharing to "Anyone with the link can view", then paste the link here.',
+          minWidth: '300px',
         },
         {
           field: 'status_compiled',
@@ -84,7 +84,7 @@ export const MER4A_CONFIG = {
       dataMapper: (entity) => ({
         id: entity.row_id, // Map row_id from DB to id for frontend
         requirement: entity.requirement,
-        evidence_file: entity.evidence_file ? JSON.parse(entity.evidence_file) : null,
+        evidence_link: entity.evidence_link || null,
         status_compiled: entity.status_compiled || false,
         hei_remarks: entity.hei_remarks || '',
       })
@@ -121,12 +121,12 @@ export const MER4A_CONFIG = {
           minWidth: '300px',
         },
         {
-          field: 'evidence_file',
+          field: 'evidence_link',
           headerName: 'Evidence/Supporting Documents',
-          type: 'file',
-          accept: '.pdf',
-          maxFileSize: 100, // Max file size in MB
-          minWidth: '250px',
+          type: 'link',
+          placeholder: 'Paste Google Drive link here...',
+          instruction: '📎 Upload your evidence to Google Drive, set sharing to "Anyone with the link can view", then paste the link here.',
+          minWidth: '300px',
         },
         {
           field: 'status_compiled',
@@ -147,7 +147,7 @@ export const MER4A_CONFIG = {
       dataMapper: (entity) => ({
         id: entity.row_id, // Map row_id from DB to id for frontend
         requirement: entity.requirement,
-        evidence_file: entity.evidence_file ? JSON.parse(entity.evidence_file) : null,
+        evidence_link: entity.evidence_link || null,
         status_compiled: entity.status_compiled || false,
         hei_remarks: entity.hei_remarks || '',
       })
@@ -156,18 +156,10 @@ export const MER4A_CONFIG = {
 
   // Payload builder for submission
   buildPayload: (formData, tableData) => {
-    // Convert file objects to JSON strings for storage
-    const processFileData = (items) => {
-      return items.map(item => ({
-        ...item,
-        evidence_file: item.evidence_file ? JSON.stringify(item.evidence_file) : null,
-      }));
-    };
-
-    return {
+      return {
       academic_year: formData.academic_year,
-      sas_management_items: processFileData(tableData.sas_management_items || []),
-      guidance_counseling_items: processFileData(tableData.guidance_counseling_items || []),
+      sas_management_items: tableData.sas_management_items || [],
+      guidance_counseling_items: tableData.guidance_counseling_items || [],
       request_notes: formData.request_notes || '',
     };
   }

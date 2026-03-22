@@ -50,7 +50,7 @@ return new class extends Migration
             $table->unsignedBigInteger('mer4a_submission_id');
             $table->string('row_id')->comment('Stable identifier for the checklist row, e.g. sas_001');
             $table->text('requirement')->nullable()->comment('The checklist requirement text');
-            $table->string('evidence_file')->nullable()->comment('Path to uploaded evidence file');
+            $table->string('evidence_link', 2048)->nullable()->comment('Google Drive or external link to evidence document');
             $table->boolean('status_compiled')->default(false);
             $table->text('hei_remarks')->nullable();
             $table->timestamps();
@@ -70,7 +70,7 @@ return new class extends Migration
             $table->unsignedBigInteger('mer4a_submission_id');
             $table->string('row_id')->comment('Stable identifier for the checklist row, e.g. gc_001');
             $table->text('requirement')->nullable()->comment('The checklist requirement text');
-            $table->string('evidence_file')->nullable()->comment('Path to uploaded evidence file');
+            $table->string('evidence_link', 2048)->nullable()->comment('Google Drive or external link to evidence document');
             $table->boolean('status_compiled')->default(false);
             $table->text('hei_remarks')->nullable();
             $table->timestamps();

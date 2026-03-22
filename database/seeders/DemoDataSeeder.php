@@ -1558,6 +1558,19 @@ class DemoDataSeeder extends Seeder
             'admin_notes'     => null,
         ], $this->ts()));
 
+        $sasLinks = [
+            'sas_001' => 'https://drive.google.com/drive/folders/1A2B3C_sas_orgchart',
+            'sas_002' => 'https://drive.google.com/drive/folders/1A2B3C_sas_manual',
+            'sas_003' => 'https://drive.google.com/drive/folders/1A2B3C_sas_report',
+            'sas_004' => 'https://drive.google.com/drive/folders/1A2B3C_sas_budget',
+            'sas_005' => 'https://drive.google.com/drive/folders/1A2B3C_sas_grievance',
+            'sas_006' => null,
+            'sas_007' => 'https://drive.google.com/drive/folders/1A2B3C_sas_ssg',
+            'sas_008' => null,
+            'sas_009' => 'https://drive.google.com/drive/folders/1A2B3C_sas_moa',
+            'sas_010' => 'https://drive.google.com/drive/folders/1A2B3C_sas_pwd',
+        ];
+
         foreach ([
             ['sas_001', 'Approved SAS organizational structure and staffing pattern', true, 'BOR-approved; org chart posted in SAS office and website'],
             ['sas_002', 'Updated SAS operational manual / policies and procedures', true, 'Reviewed and re-approved for AY ' . $ay],
@@ -1574,7 +1587,7 @@ class DemoDataSeeder extends Seeder
                 'mer4a_submission_id' => $mer4a,
                 'row_id'              => $rowId,
                 'requirement'         => $requirement,
-                'evidence_file'       => null,
+                'evidence_link'       => $sasLinks[$rowId] ?? null,
                 'status_compiled'     => $compiled,
                 'hei_remarks'         => $remarks,
             ], $this->ts()));
@@ -1595,7 +1608,17 @@ class DemoDataSeeder extends Seeder
                 'mer4a_submission_id' => $mer4a,
                 'row_id'              => $rowId,
                 'requirement'         => $requirement,
-                'evidence_file'       => null,
+                'evidence_link'       => [
+                    'gc_001' => 'https://drive.google.com/drive/folders/1A2B3C_gc_counselors',
+                    'gc_002' => 'https://drive.google.com/drive/folders/1A2B3C_gc_office',
+                    'gc_003' => 'https://drive.google.com/drive/folders/1A2B3C_gc_program',
+                    'gc_004' => 'https://drive.google.com/drive/folders/1A2B3C_gc_testing',
+                    'gc_005' => null,
+                    'gc_006' => 'https://drive.google.com/drive/folders/1A2B3C_gc_records',
+                    'gc_007' => 'https://drive.google.com/drive/folders/1A2B3C_gc_moa',
+                    'gc_008' => null,
+                    'gc_009' => 'https://drive.google.com/drive/folders/1A2B3C_gc_mentalhealth',
+                ][$rowId] ?? null,
                 'status_compiled'     => $compiled,
                 'hei_remarks'         => $remarks,
             ], $this->ts()));

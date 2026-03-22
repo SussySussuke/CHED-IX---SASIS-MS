@@ -12,7 +12,7 @@ class MER4ASASManagementItem extends Model
         'mer4a_submission_id',
         'row_id',
         'requirement',
-        'evidence_file',
+        'evidence_link',
         'status_compiled',
         'hei_remarks',
     ];

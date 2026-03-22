@@ -63,7 +63,7 @@ class MER4AController extends BaseAnnexController
             'sas_management_items' => 'required|array',
             'sas_management_items.*.id' => 'required|string',
             'sas_management_items.*.requirement' => 'required|string',
-            'sas_management_items.*.evidence_file' => 'nullable|string', // JSON string
+            'sas_management_items.*.evidence_link' => 'nullable|url|max:2048',
             'sas_management_items.*.status_compiled' => 'boolean',
             'sas_management_items.*.hei_remarks' => 'nullable|string',
             
@@ -71,7 +71,7 @@ class MER4AController extends BaseAnnexController
             'guidance_counseling_items' => 'required|array',
             'guidance_counseling_items.*.id' => 'required|string',
             'guidance_counseling_items.*.requirement' => 'required|string',
-            'guidance_counseling_items.*.evidence_file' => 'nullable|string', // JSON string
+            'guidance_counseling_items.*.evidence_link' => 'nullable|url|max:2048',
             'guidance_counseling_items.*.status_compiled' => 'boolean',
             'guidance_counseling_items.*.hei_remarks' => 'nullable|string',
             
@@ -115,7 +115,7 @@ class MER4AController extends BaseAnnexController
                 $submission->sasManagementItems()->create([
                     'row_id' => $item['id'],
                     'requirement' => $item['requirement'],
-                    'evidence_file' => $item['evidence_file'], // Already JSON string from frontend
+                    'evidence_link' => $item['evidence_link'] ?? null,
                     'status_compiled' => $item['status_compiled'] ?? false,
                     'hei_remarks' => $item['hei_remarks'] ?? null,
                 ]);
@@ -126,7 +126,7 @@ class MER4AController extends BaseAnnexController
                 $submission->guidanceCounselingItems()->create([
                     'row_id' => $item['id'],
                     'requirement' => $item['requirement'],
-                    'evidence_file' => $item['evidence_file'], // Already JSON string from frontend
+                    'evidence_link' => $item['evidence_link'] ?? null,
                     'status_compiled' => $item['status_compiled'] ?? false,
                     'hei_remarks' => $item['hei_remarks'] ?? null,
                 ]);
