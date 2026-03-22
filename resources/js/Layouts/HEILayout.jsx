@@ -4,7 +4,7 @@ import Sidebar from '../Components/Common/Sidebar';
 import HEIHeader from '../Components/HEI/HEIHeader';
 import { PERMISSIONS } from '../Utils/permissions';
 import PermissionGate from '../Components/Common/PermissionGate';
-import { IoGrid, IoDocumentText, IoInformationCircle } from 'react-icons/io5';
+import { IoGrid, IoDocumentText, IoInformationCircle, IoCloudUpload } from 'react-icons/io5';
 import { usePage } from '@inertiajs/react';
 
 const HEILayout = ({ title, children, showHeader = true }) => {
@@ -24,6 +24,11 @@ const HEILayout = ({ title, children, showHeader = true }) => {
       href: `/hei/submissions/history${yearParam}`,
       label: 'Submissions',
       icon: <IoDocumentText />
+    },
+    {
+      href: '/hei/excel',
+      label: 'Import / Export',
+      icon: <IoCloudUpload />
     },
     {
       href: '/hei/about',

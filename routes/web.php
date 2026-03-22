@@ -36,6 +36,7 @@ use App\Http\Controllers\HEI\MER1Controller;
 use App\Http\Controllers\HEI\MER2Controller;
 use App\Http\Controllers\HEI\MER3Controller;
 use App\Http\Controllers\HEI\MER4AController;
+use App\Http\Controllers\HEI\ExcelController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes (no auth required)
@@ -344,6 +345,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/annex-o/{batch_id}/programs', [AnnexOController::class, 'getBatchPrograms'])->name('hei.annex-o.programs');
         Route::get('/annex-o/{batch_id}/edit', [AnnexOController::class, 'edit'])->name('hei.annex-o.edit');
         Route::post('/annex-o/{batch_id}/cancel', [AnnexOController::class, 'cancel'])->name('hei.annex-o.cancel');
+
+        // Excel Import / Export routes
+        Route::get('/excel', [ExcelController::class, 'page'])->name('hei.excel');
+        Route::get('/excel/export', [ExcelController::class, 'export'])->name('hei.excel.export');
+        Route::post('/excel/import', [ExcelController::class, 'import'])->name('hei.excel.import');
+        Route::post('/excel/import/confirm', [ExcelController::class, 'confirm'])->name('hei.excel.import.confirm');
 
         Route::get('/about', function () {
             return inertia('HEI/About');
