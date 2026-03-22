@@ -32,6 +32,7 @@ import {
   buildComparisonRows,
   buildComparisonColumns,
 } from '../../Config/summaryView/comparisonUtils';
+import { computeTotalsRow } from '../../Config/summaryView/summaryTotalsConfig';
 
 // Category label resolvers per section
 const CATEGORY_LABEL_MAP = {
@@ -61,23 +62,18 @@ const SummaryView = ({
   const [loading, setLoading]             = useState(false);
   const [drilldown, setDrilldown]         = useState(CLOSED_MODAL);
 
-  // selectedYears drives everything. Seeded from Inertia selectedYear on mount.
   const [selectedYears, setSelectedYears] = useState(
     selectedYear ? [selectedYear] : []
   );
 
-  // Cache of fetched data per year: { [year]: rowArray }
   const dataCache = useRef({});
 
   const isComparing = selectedYears.length > 1;
   const primaryYear = selectedYears[selectedYears.length - 1] ?? null;
 
-  // Whether to show delta (Δ) columns in comparison mode.
-  // Defaults to true; user can toggle off when they only want side-by-side data.
   const [showDelta, setShowDelta] = useState(true);
   const toggleShowDelta = useCallback(() => setShowDelta((prev) => !prev), []);
 
-  // Sync selectedYears when Inertia navigates (browser back/forward)
   useEffect(() => {
     if (selectedYear && !selectedYears.includes(selectedYear)) {
       setSelectedYears([selectedYear]);
@@ -85,10 +81,6 @@ const SummaryView = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]);
 
-  // Core fetch: loads all selected years for the active section.
-  // All sections now have a SECTION_FETCH_URLS entry (including 1A-Profile).
-  // No router.get() here — Inertia navigation would refresh the summaries prop
-  // and cause re-render loops that wipe comparison data.
   const fetchAllSelectedYears = useCallback(async (sectionId, years) => {
     if (years.length === 0) {
       setSectionData([]);
@@ -129,27 +121,19 @@ const SummaryView = ({
     }
   }, []);
 
-  // Section change — just update state; the useEffect handles the fetch
   const handleSectionChange = (sectionId) => {
     setActiveSection(sectionId);
   };
 
-  // Year selection change — local state only, no Inertia navigation
   const handleYearsChange = (years) => {
     setSelectedYears(years);
   };
 
-  // Re-fetch whenever years or section changes
   useEffect(() => {
     fetchAllSelectedYears(activeSection, selectedYears);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYears, activeSection]);
 
-  // Drilldown — works in BOTH single-year and comparison mode.
-  // In comparison mode, 'year' param tells us which year column was clicked.
-  // In single-year mode, year falls back to primaryYear via the ref below.
-  // We use a stable ref so the callback identity never changes — preventing
-  // unnecessary columnDefs rebuilds (and grid remounts) on every year toggle.
   const primaryYearRef = useRef(primaryYear);
   useEffect(() => { primaryYearRef.current = primaryYear; }, [primaryYear]);
 
@@ -162,7 +146,6 @@ const SummaryView = ({
     } else {
       setDrilldown({ isOpen: true, heiId, heiName, category, year: targetYear, zeroTargetCategory: null });
     }
-  // stable — no deps needed, reads primaryYear via ref
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -170,7 +153,6 @@ const SummaryView = ({
     const targetYear = primaryYearRef.current;
     if (!targetYear) return;
     setDrilldown({ isOpen: true, heiId, heiName, category: 'total', year: targetYear, zeroTargetCategory: null });
-  // stable — reads primaryYear via ref
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -180,10 +162,8 @@ const SummaryView = ({
     fetchAllSelectedYears(activeSection, selectedYears);
   }, [activeSection, selectedYears, fetchAllSelectedYears]);
 
-  // Column defs
   const columnDefs = useMemo(() => {
     if (isComparing) {
-      // Pass openDrilldown only for sections that have a drilldown registry entry
       const hasRegistry = Boolean(SECTION_DRILLDOWN_REGISTRY[activeSection]);
       return buildComparisonColumns(
         activeSection,
@@ -206,13 +186,18 @@ const SummaryView = ({
     }
 
     return section.getColumns(openDrilldown);
-  // selectedYears included because buildComparisonColumns needs the full year list
-  // showDelta included because toggling it changes which columns are returned
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection, isComparing, selectedYears, showDelta]);
 
-  // RecordsModal props — works for both single-year and comparison mode.
-  // drilldown.year stores which specific year was clicked (set by openDrilldown).
+  // ─── Grand Total pinned row ─────────────────────────────────────────────────
+  // Computed from the full sectionData (all rows), not the visible page.
+  // Returns null for sections with no meaningful numeric totals (boolean-flag
+  // sections like Admission, Discipline, SafetySecurity, and Profile).
+  const pinnedBottomRowData = useMemo(() => {
+    const totalsRow = computeTotalsRow(activeSection, sectionData, isComparing, selectedYears);
+    return totalsRow ? [totalsRow] : [];
+  }, [activeSection, sectionData, isComparing, selectedYears]);
+
   const modalProps = useMemo(() => {
     if (!drilldown.isOpen) return null;
     const registry = SECTION_DRILLDOWN_REGISTRY[activeSection];
@@ -257,14 +242,12 @@ const SummaryView = ({
     };
   }, [drilldown, activeSection]);
 
-  // Active tip text
   const activeTip = useMemo(() => {
     if (isComparing) return null;
     const registry = SECTION_DRILLDOWN_REGISTRY[activeSection];
     return registry?.tip ?? SECTION_TIPS[activeSection] ?? null;
   }, [activeSection, isComparing]);
 
-  // Export handler
   const handleExport = useCallback(async () => {
     const section = summaryConfig.getSection(activeSection);
     const sectionTitle = section?.sectionTitle ?? activeSection;
@@ -423,6 +406,7 @@ const SummaryView = ({
               key={`${activeSection}::${isComparing ? 'compare' : 'single'}`}
               rowData={sectionData}
               columnDefs={columnDefs}
+              pinnedBottomRowData={pinnedBottomRowData}
               height={gridConfig.height}
               paginationPageSize={gridConfig.paginationPageSize}
               paginationPageSizeSelector={gridConfig.paginationPageSizeSelector}
@@ -437,7 +421,7 @@ const SummaryView = ({
         )}
       </div>
 
-      {/* Drilldown Modal — works in both single-year and comparison mode */}
+      {/* Drilldown Modal */}
       {modalProps && (
         <RecordsModal
           {...modalProps}

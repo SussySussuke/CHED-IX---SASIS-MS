@@ -6,7 +6,7 @@ import { IoSearch, IoClose } from 'react-icons/io5';
 /**
  * Universal AG Grid Viewer Component
  * Read-only table optimized for viewing and displaying data
- * 
+ *
  * Features:
  * - Quick Filter (general search across all columns)
  * - Cell Selection with header highlight
@@ -16,22 +16,37 @@ import { IoSearch, IoClose } from 'react-icons/io5';
  * - Column Menu with filters
  * - Auto-height for small datasets
  * - Removes AG Grid's 150px minimum height restriction
- * 
- * @param {Object} props
- * @param {Array} props.rowData - Array of data objects
- * @param {Array} props.columnDefs - AG Grid column definitions
- * @param {number} props.paginationPageSize - Rows per page (default: 25)
- * @param {Array} props.paginationPageSizeSelector - Page size options (default: [25, 50, 100, 500])
- * @param {boolean} props.enableQuickFilter - Show search bar (default: true)
- * @param {string} props.quickFilterPlaceholder - Search placeholder (default: 'Search...')
- * @param {Object} props.gridOptions - Additional AG Grid options
- * @param {string} props.height - Grid height for normal mode (default: '600px')
- * @param {boolean} props.autoHeightForSmallData - Auto-switch to domLayout: 'autoHeight' for small datasets (default: true)
- * @param {number} props.autoHeightThreshold - Row count threshold for auto-height (default: 10)
+ * - Grand Total pinned bottom row (pass pinnedBottomRowData to enable)
+ *
+ * Grand Total row behaviour:
+ *   - Cells in the pinned-bottom row that have a cellRenderer (buttons, badges,
+ *     links) are intercepted: the guard renders plain formatted numbers / "—"
+ *     instead of the interactive widget. This prevents false affordances on the
+ *     totals row (e.g. drilldown buttons that have no HEI to drill into).
+ *   - Columns that have NO cellRenderer are left completely untouched. AG Grid's
+ *     default rendering handles them fine — and installing a renderer on those
+ *     columns (even one that returns undefined) wipes their output for all rows,
+ *     which is what caused the blank hei_name regression.
+ *   - The guard is applied transparently inside this component; no section
+ *     config or SummaryView column-def changes are required.
+ *
+ * @param {Object}  props
+ * @param {Array}   props.rowData
+ * @param {Array}   props.columnDefs
+ * @param {Array}   [props.pinnedBottomRowData]      - Grand total row(s); [] or omit to disable
+ * @param {number}  props.paginationPageSize
+ * @param {Array}   props.paginationPageSizeSelector
+ * @param {boolean} props.enableQuickFilter
+ * @param {string}  props.quickFilterPlaceholder
+ * @param {Object}  props.gridOptions
+ * @param {string}  props.height
+ * @param {boolean} props.autoHeightForSmallData
+ * @param {number}  props.autoHeightThreshold
  */
 const AGGridViewer = ({
   rowData = [],
   columnDefs = [],
+  pinnedBottomRowData = [],
   paginationPageSize = 25,
   paginationPageSizeSelector = [25, 50, 100, 500],
   enableQuickFilter = true,
@@ -43,32 +58,44 @@ const AGGridViewer = ({
 }) => {
   const gridRef = useRef(null);
   const [quickFilterText, setQuickFilterText] = React.useState('');
-  
-  // Use shared theme hook
+
   const theme = useAGGridTheme({ isEditor: false });
-  
-  // Inject CSS to remove min-height
   useAGGridMinHeightRemoval('viewer');
 
-  // Determine if we should use auto-height
   const shouldUseAutoHeight = useMemo(() => {
-    // Manual override via gridOptions takes precedence
-    if (gridOptions.domLayout === 'autoHeight') {
-      return true;
-    }
-    
-    // Auto-detection based on row count
-    if (autoHeightForSmallData && rowData.length <= autoHeightThreshold) {
-      return true;
-    }
-    
+    if (gridOptions.domLayout === 'autoHeight') return true;
+    if (autoHeightForSmallData && rowData.length <= autoHeightThreshold) return true;
     return false;
   }, [rowData.length, autoHeightForSmallData, autoHeightThreshold, gridOptions.domLayout]);
 
-  // Default grid options for viewer
+  // ─── Pinned-row cell renderer guard ────────────────────────────────────────
+  //
+  // Only wraps leaf columns that ALREADY have a cellRenderer. Columns without
+  // one are left completely alone — installing a renderer on them (even a
+  // pass-through) breaks AG Grid's default text rendering for all rows.
+  //
+  // The guard runs the original renderer for normal rows and substitutes a
+  // plain-text formatter for the pinned-bottom totals row.
+  const guardedColumnDefs = useMemo(() => {
+    if (pinnedBottomRowData.length === 0) return columnDefs;
+    return applyPinnedRowGuard(columnDefs);
+  }, [columnDefs, pinnedBottomRowData.length]);
+
+  // ─── Pinned row styling ─────────────────────────────────────────────────────
+  const getRowStyle = useCallback((params) => {
+    if (params.node.rowPinned === 'bottom') {
+      return {
+        fontWeight: '700',
+        borderTop: '2px solid #3b82f6',
+        background: 'var(--ag-header-background-color, #f8fafc)',
+      };
+    }
+    return undefined;
+  }, []);
+
   const defaultGridOptions = useMemo(() => {
     const options = {
-      theme, // theme is now stable and won't change on theme toggle
+      theme,
       enableCellTextSelection: true,
       ensureDomOrder: true,
       columnHoverHighlight: true,
@@ -86,8 +113,8 @@ const AGGridViewer = ({
         filter: true,
         floatingFilter: false,
       },
-      // Conditionally add pagination and domLayout
-      ...(shouldUseAutoHeight 
+      getRowStyle,
+      ...(shouldUseAutoHeight
         ? {
             domLayout: 'autoHeight',
             pagination: false,
@@ -100,11 +127,9 @@ const AGGridViewer = ({
       ),
       ...gridOptions,
     };
-    
     return options;
-  }, [theme, paginationPageSize, paginationPageSizeSelector, shouldUseAutoHeight, gridOptions]);
+  }, [theme, paginationPageSize, paginationPageSizeSelector, shouldUseAutoHeight, gridOptions, getRowStyle]);
 
-  // Quick filter handler
   const onQuickFilterChanged = useCallback((event) => {
     const value = event.target.value;
     setQuickFilterText(value);
@@ -113,7 +138,6 @@ const AGGridViewer = ({
     }
   }, []);
 
-  // Clear quick filter
   const clearQuickFilter = useCallback(() => {
     setQuickFilterText('');
     if (gridRef.current) {
@@ -121,28 +145,21 @@ const AGGridViewer = ({
     }
   }, []);
 
-  // Dynamic container style
   const containerStyle = useMemo(() => {
-    if (shouldUseAutoHeight) {
-      // Auto-height mode: no fixed height, let it grow naturally
-      return {};
-    }
-    // Normal mode: use the height prop
+    if (shouldUseAutoHeight) return {};
     return { height };
   }, [shouldUseAutoHeight, height]);
 
-  // Dynamic class name - apply auto-height class when needed
   const containerClassName = useMemo(() => {
     const baseClasses = "ag-theme-quartz rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700";
     const autoHeightClass = getAGGridAutoHeightClass('viewer');
-    return shouldUseAutoHeight 
+    return shouldUseAutoHeight
       ? `${baseClasses} ${autoHeightClass}`
       : baseClasses;
   }, [shouldUseAutoHeight]);
 
   return (
     <div className="space-y-2">
-      {/* Quick Filter Search Bar */}
       {enableQuickFilter && (
         <div className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <div className="relative w-full">
@@ -166,20 +183,75 @@ const AGGridViewer = ({
         </div>
       )}
 
-      {/* AG Grid */}
-      <div 
+      <div
         className={containerClassName}
         style={containerStyle}
       >
         <AgGridReact
           ref={gridRef}
           rowData={rowData}
-          columnDefs={columnDefs}
+          columnDefs={guardedColumnDefs}
+          pinnedBottomRowData={pinnedBottomRowData}
           {...defaultGridOptions}
         />
       </div>
     </div>
   );
 };
+
+// ─── Pinned-row guard utility ─────────────────────────────────────────────────
+
+/**
+ * Recursively walks columnDefs and wraps each leaf column's cellRenderer,
+ * but ONLY if the column already has one. Columns without a cellRenderer
+ * are returned unchanged — AG Grid's default rendering must not be disturbed.
+ *
+ * For pinned-bottom rows, the guard replaces the original renderer with a
+ * plain-text formatter (number → toLocaleString, null → "—", string → as-is).
+ * For all other rows, the original renderer is called normally.
+ */
+function applyPinnedRowGuard(defs) {
+  if (!Array.isArray(defs)) return defs;
+
+  return defs.map((def) => {
+    // Column group — recurse into children, leave the group itself untouched
+    if (def.children) {
+      return { ...def, children: applyPinnedRowGuard(def.children) };
+    }
+
+    // Leaf column WITH a renderer — wrap it
+    if (typeof def.cellRenderer === 'function') {
+      const originalRenderer = def.cellRenderer;
+      return {
+        ...def,
+        cellRenderer: (params) => {
+          if (params.node.rowPinned === 'bottom') {
+            return renderPinnedCell(params.value);
+          }
+          return originalRenderer(params);
+        },
+      };
+    }
+
+    // Leaf column WITHOUT a renderer — return as-is, do NOT install anything.
+    // Installing even a pass-through renderer here breaks AG Grid's built-in
+    // text rendering for ALL rows in that column (not just the pinned one).
+    return def;
+  });
+}
+
+/**
+ * Renders a value for the grand-total pinned row.
+ * Plain text only — no buttons, no badges, no links.
+ */
+function renderPinnedCell(value) {
+  if (value === null || value === undefined) {
+    return <span style={{ color: '#9ca3af' }}>—</span>;
+  }
+  if (typeof value === 'number') {
+    return <span style={{ fontWeight: 700 }}>{value.toLocaleString()}</span>;
+  }
+  return <span style={{ fontWeight: 700 }}>{String(value)}</span>;
+}
 
 export default AGGridViewer;
