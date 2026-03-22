@@ -333,7 +333,7 @@ class ExcelExportService
         $row = 9;
         foreach ($batch?->activities ?? [] as $act) {
             $ws->setCellValue('A' . $row, $act->activity);
-            $ws->setCellValue('B' . $row, $act->date?->format('Y-m-d') ?? '');
+            $ws->setCellValue('B' . $row, $act->date ?? '');
             $ws->setCellValue('C' . $row, $act->status);
             $row++;
         }
@@ -443,7 +443,7 @@ class ExcelExportService
         $nextRow++;
         foreach ($sub?->programs ?? [] as $prog) {
             $ws->setCellValue('A' . $nextRow, $prog->title_of_program);
-            $ws->setCellValue('B' . $nextRow, $prog->implementation_date?->format('Y-m-d') ?? '');
+            $ws->setCellValue('B' . $nextRow, $prog->implementation_date ?? '');
             $ws->setCellValue('C' . $nextRow, $prog->implementation_venue);
             $ws->setCellValue('D' . $nextRow, $prog->target_group_of_participants);
             $nextRow++;
@@ -747,7 +747,7 @@ class ExcelExportService
         $batch = AnnexN1Batch::with('sportsPrograms')->where('hei_id', $heiId)->where('academic_year', $ay)
             ->whereIn('status', ['submitted', 'published', 'request'])->first();
         return $batch?->sportsPrograms->map(fn($p) => [
-            $p->program_title, $p->sport_type, $p->implementation_date?->format('Y-m-d') ?? '',
+            $p->program_title, $p->sport_type, $p->implementation_date ?? '',
             $p->venue, $p->participants_count, $p->organizer, $p->remarks,
         ])->toArray() ?? [];
     }
