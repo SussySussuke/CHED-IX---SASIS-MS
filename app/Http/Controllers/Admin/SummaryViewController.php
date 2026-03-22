@@ -53,7 +53,7 @@ class SummaryViewController extends Controller
         $selectedYear   = $request->query('year') ?? ($availableYears[count($availableYears) - 1] ?? null);
 
         return response()->json([
-            'data'           => $selectedYear ? $this->profile->getRows($selectedYear) : [],
+            'data'           => $selectedYear ? $this->profile->getRows($selectedYear, fullFields: true) : [],
             'availableYears' => $availableYears,
             'selectedYear'   => $selectedYear,
         ]);

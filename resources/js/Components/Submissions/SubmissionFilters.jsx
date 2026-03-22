@@ -49,15 +49,12 @@ export default function SubmissionFilters({
     const formSelectOptions = useMemo(() => {
         if (mode === 'hei') {
             // HEI: Show all possible forms with grouping
+            // 'All Forms' lives in its own top-level group so it is never
+            // visually nested under 'Institutional Forms' as a peer of '1A - Profile'.
             const grouped = buildFormOptionsGrouped();
-            // Add "All Forms" at the beginning without a group
-            const allFormsGroup = grouped[0];
             return [
-                {
-                    ...allFormsGroup,
-                    options: [{ value: 'all', label: 'All Forms' }, ...allFormsGroup.options]
-                },
-                ...grouped.slice(1)
+                { group: '', options: [{ value: 'all', label: 'All Forms' }] },
+                ...grouped
             ];
         } else {
             // Admin: Build grouped structure from actual submissions

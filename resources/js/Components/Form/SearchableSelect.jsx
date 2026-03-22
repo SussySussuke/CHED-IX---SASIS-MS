@@ -118,16 +118,18 @@ export default function SearchableSelect({
 
         return filteredOptions.map((group, groupIndex) => (
             <div key={groupIndex}>
-                {/* Group Header */}
-                <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                    {group.group}
-                </div>
+                {/* Group Header — omit when group label is intentionally blank */}
+                {group.group && (
+                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        {group.group}
+                    </div>
+                )}
                 {/* Group Options */}
                 {group.options.map((option) => (
                     <div
                         key={option.value}
                         onClick={() => handleSelect(option.value)}
-                        className={`pl-8 pr-4 py-2 text-sm cursor-pointer transition-colors ${
+                        className={`${group.group ? 'pl-8' : 'px-4'} pr-4 py-2 text-sm cursor-pointer transition-colors ${
                             option.value === value
                                 ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                                 : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600'
