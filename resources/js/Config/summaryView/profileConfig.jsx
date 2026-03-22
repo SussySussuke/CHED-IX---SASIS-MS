@@ -33,12 +33,22 @@ export const profileConfig = {
     {
       headerName: 'Org Chart',
       field: 'submitted_org_chart',
-      width: 130,
+      width: 150,
       filter: 'agTextColumnFilter',
       cellStyle: { textAlign: 'center' },
       cellRenderer: (params) => {
         if (!params.value) return <span className="text-gray-400">—</span>;
-        return params.value.toUpperCase();
+        return (
+          <a
+            href={params.value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 dark:text-blue-400 hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            View Chart
+          </a>
+        );
       },
     },
     {

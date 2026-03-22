@@ -347,7 +347,7 @@ class DemoDataSeeder extends Seeder
             'population_female'     => $pop['female'],
             'population_intersex'   => $pop['intersex'],
             'population_total'      => $pop['total'],
-            'submitted_org_chart'   => 'yes',
+            'submitted_org_chart'   => 'https://drive.google.com/file/d/demo_org_chart_' . strtolower($hei->code) . '_' . str_replace('-', '_', $ay) . '/view',
             'hei_website'           => 'https://www.' . strtolower(str_replace([' ', "'"], ['-', ''], $hei->name)) . '.edu.ph',
             'sas_website'           => 'https://sas.' . strtolower(str_replace([' ', "'"], ['-', ''], $hei->name)) . '.edu.ph',
             'social_media_contacts' => json_encode([
