@@ -217,16 +217,11 @@ class DashboardController extends Controller
             CacheService::TTL_SHORT, // 5 minutes
             function () use ($heiId, $academicYear, $limit) {
                 $activities = [];
-                
-                // Collect recent submissions from Summary
-                $summaryActivities = DB::table('summary')
-                    ->where('hei_id', $heiId)
-                    ->where('academic_year', $academicYear)
-                    ->select('updated_at', 'status', DB::raw("'Summary' as form_name"))
-                    ->get();
-                
+
                 // Collect from ALL form types (Summary + MER + Annexes) using FormConfigService
+                // Note: getAllFormTypes() already includes SUMMARY — do NOT pre-query 'summary' separately.
                 $allFormTypes = FormConfigService::getAllFormTypes();
+                $summaryActivities = collect();
                 
                 foreach ($allFormTypes as $code => $config) {
                     $modelClass = $config['model'];

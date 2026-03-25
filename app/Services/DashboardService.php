@@ -216,9 +216,10 @@ class DashboardService
         $performance = [];
 
         foreach ($heis as $hei) {
-            $completed = 0;
+            $completed    = 0;
+            $missingCount = 0;
 
-            foreach ($allForms as $config) {
+            foreach ($allForms as $code => $config) {
                 try {
                     $table = (new $config['model'])->getTable();
 
@@ -229,9 +230,11 @@ class DashboardService
                         ->exists()
                     ) {
                         $completed++;
+                    } else {
+                        $missingCount++;
                     }
                 } catch (\Exception $e) {
-                    continue;
+                    $missingCount++;
                 }
             }
 
@@ -243,6 +246,7 @@ class DashboardService
                 'completionRate' => round(($completed / $totalForms) * 100, 1),
                 'completedForms' => $completed,
                 'totalForms'     => $totalForms,
+                'missingForms'   => $missingCount,
             ];
         }
 

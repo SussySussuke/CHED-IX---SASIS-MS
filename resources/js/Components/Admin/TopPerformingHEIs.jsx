@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { IoClose, IoSearch } from 'react-icons/io5';
+import { router } from '@inertiajs/react';
 
 const TopPerformingHEIs = ({ heis, allHEIs = [] }) => {
   const [showModal, setShowModal] = useState(false);
@@ -50,9 +51,14 @@ const TopPerformingHEIs = ({ heis, allHEIs = [] }) => {
     hei.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleCardClick = (heiId) => {
+    router.visit(`/admin/submissions/${heiId}`);
+  };
+
   const HEICard = ({ hei, index, showRank = true }) => (
-    <div 
-      className="group relative bg-gradient-to-r from-gray-50 to-white dark:from-gray-700/50 dark:to-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
+    <div
+      onClick={() => handleCardClick(hei.id)}
+      className="group relative bg-gradient-to-r from-gray-50 to-white dark:from-gray-700/50 dark:to-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all cursor-pointer"
     >
       {/* Rank Badge */}
       {showRank && (
@@ -86,6 +92,11 @@ const TopPerformingHEIs = ({ heis, allHEIs = [] }) => {
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {hei.completedForms}/{hei.totalForms} forms
               </span>
+              {hei.missingForms > 0 && (
+                <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                  {hei.missingForms} missing
+                </span>
+              )}
             </div>
             <div className="relative bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
               <div 

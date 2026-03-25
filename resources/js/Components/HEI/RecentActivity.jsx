@@ -1,29 +1,8 @@
 import React from 'react';
+import EmptyState from '../Common/EmptyState';
 
 const RecentActivity = ({ activities = [] }) => {
-  // Default activities if none provided
-  const defaultActivities = [
-    {
-      id: 1,
-      title: 'Annex B Published',
-      date: '2 days ago',
-      status: 'published'
-    },
-    {
-      id: 2,
-      title: 'Annex F Submitted',
-      date: '3 days ago',
-      status: 'submitted'
-    },
-    {
-      id: 3,
-      title: 'Annex A Published',
-      date: '5 days ago',
-      status: 'published'
-    }
-  ];
-
-  const activityList = activities.length > 0 ? activities : defaultActivities;
+  const activityList = activities;
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -40,13 +19,21 @@ const RecentActivity = ({ activities = [] }) => {
     }
   };
 
+  const activityIcon = (
+    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+
   if (activityList.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <h3 className="font-bold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
-          No recent activity yet
-        </p>
+        <EmptyState
+          icon={activityIcon}
+          title="No recent activity"
+          message="Activity will appear here once you start submitting forms."
+        />
       </div>
     );
   }
