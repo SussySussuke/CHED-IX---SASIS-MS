@@ -13,7 +13,8 @@ class AnnexJProgram extends Model
         'batch_id',
         'title_of_program',
         'organizer',
-        'number_of_participants',
+        'participants_online',
+        'participants_face_to_face',
         'remarks',
     ];
 

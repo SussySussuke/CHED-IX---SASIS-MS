@@ -10,10 +10,11 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *       male (YES/NO) | female (YES/NO) | coed (YES/NO) | others | remarks
  *
  * Validation: at least one of male/female/coed must be YES, or others must be filled.
+ * Row 8 is a two-row structural header (Male/Female/Coed sub-headers) — data starts at row 9.
  */
 class AnnexLParser extends BaseParser
 {
-    private const DATA_ROW_START = 8;
+    private const DATA_ROW_START = 9;
 
     public function sheetId(): string { return 'ANNEX_L'; }
     public function label(): string   { return 'Annex L - Student Housing'; }

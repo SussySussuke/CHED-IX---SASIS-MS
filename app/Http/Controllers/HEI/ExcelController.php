@@ -54,6 +54,17 @@ class ExcelController extends Controller
         );
     }
 
+    public function exportEmpty(Request $request): StreamedResponse
+    {
+        $request->validate([
+            'academic_year' => ['required', 'string', 'regex:/^\d{4}-\d{4}$/'],
+        ]);
+
+        return $this->exportService->downloadEmptyTemplate(
+            $request->query('academic_year')
+        );
+    }
+
     // ── Import — Step 1: Parse & detect conflicts ──────────────────────────
 
     public function import(ImportExcelRequest $request): JsonResponse

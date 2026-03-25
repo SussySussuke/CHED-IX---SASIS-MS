@@ -134,6 +134,7 @@ All annexes seeded with `status = 'submitted'`. Each follows the batch → child
 - AY dates are bounded per year via `AY_DATES` — faker date generation stays within the academic year range.
 - HEIs #2–#5 are seeded inside `createHeiAndUsers()` before it returns HEI #1. Refactoring this method will affect seeding order.
 - Partial HEI coverage is controlled solely by which seeder methods `seedYearPartialX` calls — the data shape is identical to full HEIs.
+- `seedAnnexJ()` originally inserted a single `number_of_participants` total. After the schema fix (see `annex-j-participant-split.md`), it now inserts `participants_online` + `participants_face_to_face` using a fixed 30/70 split from the original total values.
 
 ## Decisions Made
 

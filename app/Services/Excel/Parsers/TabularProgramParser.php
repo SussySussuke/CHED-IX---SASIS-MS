@@ -10,17 +10,16 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Col 4: target_group (A/B/C-1 only) | Col 5: participants_online
  * Col 6: participants_face_to_face | Col 7: organizer | Col 8: remarks
  *
- * Annex C does NOT have target_group — columns shift left after col 3.
- * DATA_ROW_START = 8 (row 1: tag, rows 2-5: title block, row 6: spacer, row 7: headers)
+ * Annex C/C-1 have no header sub-row → dataRowStart = 8
+ * Annex A/B   have a cosmetic sub-row at row 8 → dataRowStart = 9
  */
 class TabularProgramParser extends BaseParser
 {
-    private const DATA_ROW_START = 8;
-
     public function __construct(
         private readonly string $id,
         private readonly string $labelText,
-        private readonly bool $hasTargetGroup,
+        private readonly bool   $hasTargetGroup,
+        private readonly int    $dataRowStart = 8,
     ) {}
 
     public function sheetId(): string { return $this->id; }
@@ -35,7 +34,7 @@ class TabularProgramParser extends BaseParser
 
         $maxRow = $ws->getHighestDataRow();
 
-        for ($r = self::DATA_ROW_START; $r <= $maxRow; $r++) {
+        for ($r = $this->dataRowStart; $r <= $maxRow; $r++) {
             if ($this->isRowBlank($ws, $r, 1, $maxCol)) continue;
 
             $anyData = true;
@@ -55,7 +54,6 @@ class TabularProgramParser extends BaseParser
             $org     = $this->str($ws, $r, $col++);
             $remarks = $this->str($ws, $r, $col++);
 
-            // Validate required fields
             if (!$title) {
                 $errors[] = ['row' => $r, 'field' => 'title', 'message' => 'Title is required.'];
             }
@@ -72,15 +70,15 @@ class TabularProgramParser extends BaseParser
                 $errors[] = ['row' => $r, 'field' => 'organizer', 'message' => 'Organizer is required.'];
             }
 
-            if ($title || $date || $org) { // partial row — still record it even if invalid
+            if ($title || $date || $org) {
                 $row = [
-                    'title'                    => $title ?? '',
-                    'venue'                    => $venue ?? '',
-                    'implementation_date'      => $date ?? '',
-                    'participants_online'      => $online,
+                    'title'                     => $title ?? '',
+                    'venue'                     => $venue ?? '',
+                    'implementation_date'       => $date ?? '',
+                    'participants_online'       => $online,
                     'participants_face_to_face' => $f2f,
-                    'organizer'                => $org ?? '',
-                    'remarks'                  => $remarks,
+                    'organizer'                 => $org ?? '',
+                    'remarks'                   => $remarks,
                 ];
                 if ($this->hasTargetGroup) {
                     $row['target_group'] = $targetGroup ?? '';

@@ -8,10 +8,12 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Annex I — Scholarships/Financial Assistance
  * Cols: scholarship_name | type | category_intended_beneficiaries
  *       number_of_beneficiaries | remarks
+ *
+ * Row 8 is a cosmetic sub-row (header examples) — data starts at row 9.
  */
 class AnnexIParser extends BaseParser
 {
-    private const DATA_ROW_START = 8;
+    private const DATA_ROW_START = 9;
 
     public function sheetId(): string { return 'ANNEX_I'; }
     public function label(): string   { return 'Annex I - Scholarships/Financial Assistance'; }

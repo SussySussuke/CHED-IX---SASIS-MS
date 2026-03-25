@@ -8,10 +8,12 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Annex O — Community Involvement / Outreach Programs
  * Cols: title_of_program | date_conducted | number_of_beneficiaries
  *       type_of_community_service | community_population_served
+ *
+ * Row 8 is a cosmetic sub-row (header examples) — data starts at row 9.
  */
 class AnnexOParser extends BaseParser
 {
-    private const DATA_ROW_START = 8;
+    private const DATA_ROW_START = 9;
 
     public function sheetId(): string { return 'ANNEX_O'; }
     public function label(): string   { return 'Annex O - Community Involvement/Outreach'; }

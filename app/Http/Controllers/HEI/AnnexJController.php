@@ -56,10 +56,11 @@ class AnnexJController extends BaseAnnexController
 
         foreach ($validated['programs'] as $program) {
             $batch->programs()->create([
-                'title_of_program' => $program['title_of_program'],
-                'organizer' => $program['organizer'],
-                'number_of_participants' => ($program['participants_online'] ?? 0) + ($program['participants_face_to_face'] ?? 0),
-                'remarks' => $program['remarks'] ?? null,
+                'title_of_program'         => $program['title_of_program'],
+                'organizer'                => $program['organizer'],
+                'participants_online'      => $program['participants_online'] ?? 0,
+                'participants_face_to_face' => $program['participants_face_to_face'] ?? 0,
+                'remarks'                  => $program['remarks'] ?? null,
             ]);
         }
 

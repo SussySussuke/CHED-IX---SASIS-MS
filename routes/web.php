@@ -349,6 +349,7 @@ Route::middleware('auth')->group(function () {
         // Excel Import / Export routes
         Route::get('/excel', [ExcelController::class, 'page'])->name('hei.excel');
         Route::get('/excel/export', [ExcelController::class, 'export'])->name('hei.excel.export');
+        Route::get('/excel/export/blank', [ExcelController::class, 'exportEmpty'])->name('hei.excel.export.blank');
         Route::post('/excel/import', [ExcelController::class, 'import'])->name('hei.excel.import');
         Route::post('/excel/import/confirm', [ExcelController::class, 'confirm'])->name('hei.excel.import.confirm');
 

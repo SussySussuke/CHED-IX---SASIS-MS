@@ -8,10 +8,12 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Annex K — Safety and Security Committees
  * Cols: committee_name | committee_head_name | members_composition
  *       programs_projects_activities_trainings | remarks
+ *
+ * Row 8 is a cosmetic sub-row (header examples) — data starts at row 9.
  */
 class AnnexKParser extends BaseParser
 {
-    private const DATA_ROW_START = 8;
+    private const DATA_ROW_START = 9;
 
     public function sheetId(): string { return 'ANNEX_K'; }
     public function label(): string   { return 'Annex K - Safety and Security Committees'; }

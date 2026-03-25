@@ -9,10 +9,12 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Cols: name_of_accredited | years_of_existence | accredited_since
  *       faculty_adviser | president_and_officers | specialization
  *       fee_collected | programs_projects_activities
+ *
+ * Row 8 is a cosmetic sub-row (header examples) — data starts at row 9.
  */
 class AnnexEParser extends BaseParser
 {
-    private const DATA_ROW_START = 8;
+    private const DATA_ROW_START = 9;
 
     public function sheetId(): string { return 'ANNEX_E'; }
     public function label(): string   { return 'Annex E - Student Organizations'; }

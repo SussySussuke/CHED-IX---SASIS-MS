@@ -1,85 +1,100 @@
 # Excel Import / Export
 
 ## Input
-HEI users need to download a pre-filled Excel template of their current submissions, fill it offline, and re-import it. The original CHED SASTOOL_FINAL.xlsx had 25 sheets (SRC, M&ER1–4, Table of Annexes, Annex A–O). Existing system has 24 forms (SUMMARY, MER1–4A, Annex A–O plus C-1, I-1, L-1, N-1 variants). Signatures in the original template are to be ignored. Importing must handle: empty sheets, conflicts with existing data, and bad/malformed data.
+HEI users download a pre-filled Excel template of their current submissions, fill it offline, and re-import it. The original CHED SASTOOL_FINAL.xlsx (25 sheets) is the visual reference. The system has 24 forms (SUMMARY, MER1–4A, Annex A–O plus C-1, I-1, L-1, N-1 variants). Signatures are ignored. Import must handle empty sheets, conflicts with existing data, and malformed data.
 
 ## Process
-Established that not all 25 original sheets are importable — MER1/2/3/4A and SRC were excluded (complex structured forms, online-only). All 19 Annex forms (A, B, C, C-1, D, E, F, G, H, I, I-1, J, K, L, L-1, M, N, N-1, O) are both exportable and importable.
+MER1/2/3/4A and SRC are excluded from import — structurally incompatible with flat Excel. All 19 Annex forms (A, B, C, C-1, D, E, F, G, H, I, I-1, J, K, L, L-1, M, N, N-1, O) are both exportable and importable.
 
-Sheet identity is determined by a machine-readable tag in cell A1 (e.g. `[ANNEX_A]`), not the tab name, since users can rename tabs.
+Sheet identity is determined by a machine-readable tag in cell A1 (e.g. `[ANNEX_A]`), not the tab name.
 
-Two-step import: (1) parse + conflict-detect → return summary to frontend, (2) user resolves conflicts one at a time, then confirms → persist in single DB transaction.
+Two-step import: (1) parse + conflict-detect → return summary to frontend, (2) user resolves conflicts sequentially → persist in single DB transaction. Conflict resolution is summary-level only (existing status + date vs incoming row count).
 
-Conflict resolution reuses the existing `CompareModal` pattern but as a new `ImportConflictModal` since the existing one is single-annex and comparison-only; here multiple conflicts step through sequentially with approve/skip per sheet. Summary-level comparison only (existing status + date vs incoming row count) — no field-by-field diff.
-
-Persist step could not call existing controller `store()` methods directly — they return HTTP redirects, breaking the DB transaction. Instead, `ExcelPersistService` replicates the model-level overwrite/status logic from `BaseAnnexController` directly, per README rule (business logic in Services, not controllers).
+Persist step calls model layer directly — controller `store()` methods return HTTP redirects and cannot be called inside a DB transaction.
 
 ### Export Sheet Layout
 
-The exported template mirrors the original CHED SASTOOL visual design for printability while remaining machine-parseable for import.
+All sheets use the original CHED SASTOOL visual design. **All title blocks are centered, plain bold, no fill.**
+
+**Color scheme (all sheets):**
+- Import tag row: yellow `FFE699`
+- Column/table headers: light green `C5E0B3`, bold black text
+- Key-value field labels (D, F, G, H): light blue `DEEAF6`, bold text
+- Title rows: no fill
 
 **Tabular sheets (A, B, C, C-1, E, I, I-1, J, K, L, L-1, N, N-1, O):**
-- Row 1: `[TAG]` — yellow background, machine-readable import tag
-- Rows 2–5: title block — annex name, "LIST OF PROGRAMS/PROJECTS/ACTIVITIES", form sub-title, AY placeholder (plain bold, no background fill)
+- Row 1: `[TAG]` — yellow, machine-readable
+- Row 2: `ANNEX "X"` — formatted as the original (all-caps, quoted letter)
+- Row 3: `LIST OF PROGRAMS/ PROJECTS/ ACTIVITIES`
+- Row 4: form subtitle (all-caps)
+- Row 5: `As of Academic Year (AY) YYYY-YYYY`
 - Row 6: small spacer
-- Row 7: column headers — light green background (`C5E0B3`), matching original CHED template
-- Row 8+: data rows
-- All parsers use `DATA_ROW_START = 8`
+- Row 7: column headers — light green `C5E0B3`
+- Row 8+: data rows — `DATA_ROW_START = 8`
 
-**Annex D (non-tabular):**
+**Annex D (non-tabular, key-value form):**
 - Row 1: `[ANNEX_D]` tag
-- Rows 2–4: title block (plain bold)
-- Rows 5–36: key-value field rows — col A = label (light blue `DEEAF6` background), col B = value
-- Parser reads col B by position (`$r++`) starting at row 5 — row order is the import contract, do not change it
-- Row 18 is a section header label; its col B value is intentionally blank (the parser still reads and stores it as empty)
-- Col C is present for visual width (matching original) but unused by parser
+- Rows 2–4: title block (`ANNEX "D"`, subtitle, AY line), centered, no fill
+- Row 5: blank (matches original)
+- Rows 6–7: Version/Publication date — label merged A:B (light blue), value in col C
+- Rows 8–9: Officer-in-Charge — same pattern
+- Rows 10–11: Handbook Committee — same pattern
+- Row 12: two-column section headers — Mode of Dissemination (left) | Type of Handbook (right)
+- Rows 13–18: two-column layout — col A = label, col B = value (dissemination); col B = label, col C = value (type, rows 13–16 only)
+- Row 19: spacer; Row 20: "Contains the following information" section header (merged A:C)
+- Rows 21–39: checkbox items — label merged A:B, value in col C
+- Print area: `A1:C39`
+- **Parser reads by explicit (row, col) — not sequential `$r++`.** Top 3 fields: col C rows 6/8/10. Dissemination: col B rows 13–18. Type: col C rows 13–16. Checkboxes: col C rows 21–39.
 
-**Page setup applied to all sheets:** Legal landscape, fit-to-1-page-wide.
+**Annex F:** Tag row 1, title block rows 3–6 (`ANNEX "F"`, list of programs, student discipline, AY), spacer row 7, activity table header row 8, data row 9+, key-value fields (committee/procedure/complaint desk) below activity table.
 
-**Annex F, G, H, M** retain their existing navy/blue color scheme — they were not refactored in this pass.
+**Annex G:** Tag row 1, title block rows 2–4 (`ANNEX "G"`, R.A. 7079 subtitle, AY), key-value fields rows 5+, then `[EDITORIAL_BOARD]`, `[OTHER_PUBLICATIONS]`, `[PROGRAMS]` sub-tables with light green headers.
+
+**Annex H:** Tag row 1, title block rows 2–4 (`ANNEX "H"`, list of admission services, AY), spacer row 5, table header row 6, data rows 7+.
+
+**Annex M:** Tag row 1, title block rows 2–4 (`ANNEX "M"`, HEIs' initiatives subtitle, AY), spacer row 5, `[STATISTICS]` tag row 6, column headers row 7, data row 8+. `[SERVICES]` sub-table follows statistics data.
+
+**Page setup all sheets:** Legal landscape, fit-to-1-page-wide.
 
 ## Output
-- `app/Services/ExcelImportService.php` — orchestrates parsing, conflict detection, session storage of pending state
-- `app/Services/ExcelExportService.php` — builds pre-filled xlsx from DB, streams as download
-- `app/Services/ExcelPersistService.php` — saves parsed payloads, handles overwrite/status logic directly on models
-- `app/Services/Excel/Parsers/BaseParser.php` — shared cell/date/bool/blank helpers
-- `app/Services/Excel/Parsers/ParseResult.php` — immutable result DTO (sheetId, label, payload, errors, isEmpty)
-- `app/Services/Excel/Parsers/TabularProgramParser.php` — reused by A, B, C, C-1 (same column layout, `hasTargetGroup` flag)
-- Individual parsers: AnnexDParser through AnnexOParser (15 files)
+- `app/Services/ExcelExportService.php` — builds pre-filled xlsx, streams as download
+- `app/Services/ExcelImportService.php` — orchestrates parsing, conflict detection, session storage
+- `app/Services/ExcelPersistService.php` — saves parsed payloads directly on models
+- `app/Services/Excel/Parsers/BaseParser.php` — shared cell/date/bool helpers
+- `app/Services/Excel/Parsers/ParseResult.php` — immutable result DTO
+- `app/Services/Excel/Parsers/TabularProgramParser.php` — reused by A, B, C, C-1
+- `app/Services/Excel/Parsers/AnnexDParser.php` — explicit row/col reads (not `$r++`)
+- Individual parsers: AnnexEParser through AnnexOParser (14 files)
 - `app/Http/Controllers/HEI/ExcelController.php` — page(), export(), import(), confirm()
 - `app/Http/Requests/HEI/ImportExcelRequest.php` — file validation (xlsx/xls, max 10MB)
-- `resources/js/Pages/HEI/ExcelImport.jsx` — export download + import upload with parse result review UI
+- `resources/js/Pages/HEI/ExcelImport.jsx` — export download + import upload UI
 - `resources/js/Components/Submissions/ImportConflictModal.jsx` — step-through conflict resolver
-- `resources/js/Layouts/HEILayout.jsx` — added Import/Export nav link
-- `routes/web.php` — 4 new HEI routes, ExcelController imported
-- `composer.json` — `phpoffice/phpspreadsheet ^3.0` added
 
 ## Relevant Files
-- All files listed above
 - `app/Http/Controllers/HEI/BaseAnnexController.php` — source of truth for overwrite/status logic that ExcelPersistService mirrors
 - `app/Models/AnnexHAdmissionService.php` — `PREDEFINED_SERVICES` constant used by both AnnexHParser and ExcelExportService
 - `app/Models/AnnexMStatistic.php` — `STRUCTURE` constant used by AnnexMParser for fixed matrix rows
+- `TEMPLATE_SASTOOL_FINAL.xlsx` — the original CHED template; sole visual reference for layout, colors, and title text
 
 ## Key Discoveries
-- All controller `store()` methods return `redirect()->route(...)`, not JSON — they cannot be called inside a DB transaction without triggering a redirect mid-loop. Must call model layer directly.
-- Annex M stores `year_data` as JSON (array cast). Export flattens it to `AY YYYY-YYYY Enrollment` / `AY YYYY-YYYY Graduates` column headers. Parser reads these headers dynamically by regex to reconstruct the array.
-- Annex G has three sub-tables (editorial board, other publications, programs) in a single sheet. Parser uses marker cells `[EDITORIAL_BOARD]`, `[OTHER_PUBLICATIONS]`, `[PROGRAMS]` to detect section boundaries. These markers must be preserved in the template.
-- PhpSpreadsheet may return dates as Excel serial floats, not strings. `BaseParser::date_()` handles both numeric serial and common string formats.
-- `TabularProgramParser` uses a `hasTargetGroup` constructor flag to handle the column shift between Annex C (no target_group) and A/B/C-1 (has target_group).
-- **Export layout and parser `DATA_ROW_START` are a coupled contract.** The tabular header block occupies rows 1–7, so data starts at row 8. Every tabular parser has `DATA_ROW_START = 8`. If the header row count ever changes in the export, all affected parsers must be updated together.
-- **Annex D parser reads by row position, not label text.** `AnnexDParser` increments `$r` once per field from row 5. The order of entries in the `$fields`/`$values` arrays in `addAnnexDSheet()` is the import contract — reordering breaks import silently with no errors thrown.
-- The original CHED SASTOOL template uses no background fill on title rows and `C5E0B3` (light green) on tabular column headers. The initial export used an invented navy/blue scheme that did not match the original.
+- Controller `store()` methods return `redirect()->route(...)` — cannot be called inside a DB transaction. Model layer must be called directly in ExcelPersistService.
+- Annex M `year_data` is JSON. Export flattens to `AY YYYY-YYYY Enrollment/Graduates` headers; parser reconstructs via regex on those headers.
+- Annex G has three sub-tables in one sheet; parser uses `[EDITORIAL_BOARD]`, `[OTHER_PUBLICATIONS]`, `[PROGRAMS]` marker cells as section boundaries — these must be preserved in the export.
+- PhpSpreadsheet may return dates as Excel serial floats. `BaseParser::date_()` handles both.
+- The old export used an invented navy/blue color scheme not present in the original CHED template. All sheets now use the original: `C5E0B3` green headers, `DEEAF6` blue field labels.
+- Annex D's two-column dissemination/type layout means values are split across col B (left side) and col C (right side). The parser cannot use a simple `$r++` loop — explicit (row, col) reads are required.
+- `getFont()->setBold()->setSize()` does not set alignment. Title rows appeared left-aligned until switched to `applyFromArray` with `HORIZONTAL_CENTER`.
+- Annex H and M had a row collision: the AY line and the first table header were both assigned to row 4. Fixed by pushing the table header down and adjusting all subsequent row offsets.
+- The title block annex name must be formatted as `ANNEX "X"` (all-caps, quoted) to match the original. The tab name format (`Annex A`) is different and must be transformed on export via regex.
+- The AY line (`As of Academic Year (AY) YYYY-YYYY`) was missing entirely from all tabular sheets. It was added as row 5 in the title block.
 
 ## Decisions Made
-- MER forms excluded from import: they are structurally incompatible with a flat Excel layout and are filled online. Consistent with CHED/DepEd practice where tabular annexes use Excel and complex forms use web portals.
-- Empty sheets silently skipped, not errored — standard ETL behavior.
-- Sheets with any row-level error are entirely excluded from import, not partially imported. User must fix and re-upload. Prevents partial/corrupt data entering the system.
-- Pending import state stored in session between parse and confirm steps — avoids requiring file re-upload. Session key: `excel_import_pending`.
-- Template generated on-the-fly per export request, not stored as a static file — ensures it always reflects current DB data.
-- Signatures from original CHED template intentionally omitted in both template and import.
-- Export visual style corrected to match the original CHED SASTOOL template (plain bold title rows, light green headers, light blue Annex D field labels) so printed output is consistent with what CHED offices expect.
-- Annex F, G, H, M sheets intentionally left on their existing navy/blue scheme for now — they were not part of the visual correction pass and are still functional.
+- MER forms excluded from import — structurally incompatible with flat Excel; filled online.
+- Empty sheets silently skipped; sheets with any row-level error excluded entirely (no partial imports).
+- Pending import state stored in session between parse and confirm steps (`excel_import_pending`).
+- Template generated on-the-fly per export request — always reflects current DB data.
+- Signatures intentionally omitted from both export template and import.
+- The export Excel file is a standalone printable document. It does not need to follow system UI conventions — it follows the original CHED SASTOOL layout instead.
 
 ## To Be Fixed Soon
-- `ExcelPersistService::resolveStatus()` duplicates the overwrite/status logic from `BaseAnnexController`. If that logic ever changes in the controller, this service must be updated too. Should be extracted to a shared Action class to eliminate duplication.
-- Annex F, G, H, M export sheets still use the invented navy/blue color scheme instead of matching the original CHED template. Should be corrected in the same pass as any future work on those sheets.
+- `ExcelPersistService::resolveStatus()` duplicates overwrite/status logic from `BaseAnnexController`. Should be extracted to a shared Action class.

@@ -171,10 +171,10 @@ class ExcelImportService
     private function buildParsers(): array
     {
         $parsers = [
-            new TabularProgramParser('ANNEX_A',  'Annex A - Information and Orientation Services', hasTargetGroup: true),
-            new TabularProgramParser('ANNEX_B',  'Annex B - Guidance and Counseling Services',     hasTargetGroup: true),
-            new TabularProgramParser('ANNEX_C',  'Annex C - Career and Job Placement Services',    hasTargetGroup: false),
-            new TabularProgramParser('ANNEX_C1', 'Annex C-1 - Economic Enterprise Development',    hasTargetGroup: true),
+            new TabularProgramParser('ANNEX_A',  'Annex A - Information and Orientation Services', hasTargetGroup: true,  dataRowStart: 9),
+            new TabularProgramParser('ANNEX_B',  'Annex B - Guidance and Counseling Services',     hasTargetGroup: true,  dataRowStart: 9),
+            new TabularProgramParser('ANNEX_C',  'Annex C - Career and Job Placement Services',    hasTargetGroup: false, dataRowStart: 8),
+            new TabularProgramParser('ANNEX_C1', 'Annex C-1 - Economic Enterprise Development',    hasTargetGroup: true,  dataRowStart: 8),
             new AnnexDParser(),
             new AnnexEParser(),
             new AnnexFParser(),

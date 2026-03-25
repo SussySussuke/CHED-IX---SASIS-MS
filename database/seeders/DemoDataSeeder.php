@@ -1031,12 +1031,16 @@ class DemoDataSeeder extends Seeder
         ];
 
         foreach (($allPrograms[$ay] ?? $allPrograms['2025-2026']) as [$title, $organizer, $participants]) {
+            // Split total participants roughly 30% online / 70% face-to-face for realistic demo data
+            $online = (int) round($participants * 0.3);
+            $f2f    = $participants - $online;
             DB::table('annex_j_programs')->insert(array_merge([
-                'batch_id'               => $batchId,
-                'title_of_program'       => $title,
-                'organizer'              => $organizer,
-                'number_of_participants' => $participants,
-                'remarks'                => null,
+                'batch_id'                  => $batchId,
+                'title_of_program'          => $title,
+                'organizer'                 => $organizer,
+                'participants_online'       => $online,
+                'participants_face_to_face' => $f2f,
+                'remarks'                   => null,
             ], $this->ts()));
         }
     }

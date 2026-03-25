@@ -61,9 +61,22 @@ class AnnexMParser extends BaseParser
                 if ($this->isRowBlank($ws, $r, 1, max(3, count($yearColumns) + 2))) continue;
 
                 $anyData    = true;
-                $category   = $this->str($ws, $r, 1);
+                $category    = $this->str($ws, $r, 1);
                 $subcategory = $this->str($ws, $r, 2);
-                $isSubtotal = strtolower(trim((string) $this->cell($ws, $r, 1))) === 'sub-total';
+
+                // Skip placeholder rows — exported when a category has no predefined
+                // subcategories (e.g. B, D). They have a category but blank subcategory
+                // and no numeric data, so they carry no information.
+                if (!$subcategory) {
+                    $hasAnyNumeric = false;
+                    foreach ($yearColumns as $col => $meta) {
+                        if ($this->int_($ws, $r, $col) !== 0) { $hasAnyNumeric = true; break; }
+                    }
+                    if (!$hasAnyNumeric) continue;
+                }
+
+                // Sub-Total is written in col 2 (subcategory), not col 1 (category).
+                $isSubtotal = strtolower(trim((string) ($subcategory ?? ''))) === 'sub-total';
 
                 $yearData = [];
                 foreach ($yearColumns as $col => $meta) {

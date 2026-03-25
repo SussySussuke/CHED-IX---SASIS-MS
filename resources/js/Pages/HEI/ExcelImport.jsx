@@ -37,6 +37,12 @@ export default function ExcelImport({ availableYears, defaultYear }) {
     window.location.href = `/hei/excel/export?academic_year=${encodeURIComponent(academicYear)}`;
   };
 
+  const handleExportBlank = () => {
+    window.location.href = `/hei/excel/export/blank?academic_year=${encodeURIComponent(academicYear)}`;
+  };
+
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+
   // ── Import Step 1: upload & parse ───────────────────────────────────────
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -198,14 +204,63 @@ export default function ExcelImport({ availableYears, defaultYear }) {
                 Empty sheets are included so you can fill them in offline and re-import later.
                 Signatures are not included.
               </p>
-              <button
-                onClick={handleExport}
-                className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium
-                           bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-              >
-                <IoDownload className="w-4 h-4" />
-                Download Template ({academicYear})
-              </button>
+              <div className="mt-4 relative inline-block">
+                {/* Split button: primary action + chevron toggle */}
+                <div className="flex rounded-lg overflow-visible shadow-sm">
+                  <button
+                    onClick={handleExport}
+                    className="flex items-center gap-2 px-5 py-2.5 font-medium rounded-l-lg
+                               bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                  >
+                    <IoDownload className="w-4 h-4" />
+                    Download Template ({academicYear})
+                  </button>
+                  <button
+                    onClick={() => setExportMenuOpen(o => !o)}
+                    className="px-2.5 py-2.5 font-medium rounded-r-lg border-l border-blue-500
+                               bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                    aria-label="More download options"
+                  >
+                    <svg className={`w-4 h-4 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`}
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Dropdown */}
+                {exportMenuOpen && (
+                  <div className="absolute left-0 mt-1 w-56 rounded-lg border shadow-lg z-10
+                                  bg-white dark:bg-gray-800
+                                  border-gray-200 dark:border-gray-700">
+                    <button
+                      onClick={() => { handleExport(); setExportMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left
+                                 text-gray-700 dark:text-gray-200
+                                 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-lg transition-colors"
+                    >
+                      <IoDownload className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">Pre-filled</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">With your existing data</p>
+                      </div>
+                    </button>
+                    <div className="border-t border-gray-100 dark:border-gray-700" />
+                    <button
+                      onClick={() => { handleExportBlank(); setExportMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left
+                                 text-gray-700 dark:text-gray-200
+                                 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-b-lg transition-colors"
+                    >
+                      <IoDownload className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">Blank template</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Empty — no existing data</p>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
