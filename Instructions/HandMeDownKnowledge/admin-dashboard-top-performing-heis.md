@@ -61,6 +61,12 @@
 - No animation library added — CSS transitions on `max-width`, `width`, and `opacity` are sufficient and hardware-accelerated.
 - Form rows in breakdown click to `/admin/submissions/{heiId}?year={year}` — the submissions show page does not yet filter by year from the URL, so the year param is passed but not consumed. Left as-is; the show page sorts by year descending so the relevant year is visible at top.
 
+### Session 3 — Split-modal dead space bugfix
+1. Left pane had `width: 400px` + `flex-shrink-0` — it was capped at 400px and could not grow to fill remaining space when the right panel opened.
+2. Outer shell was `maxWidth: 72rem` (~1152px); right pane took 320px, divider 1px — left pane only claimed 400px, leaving ~430px of unclaimed dead space.
+3. Fixed by making the left pane `flex-1 min-w-0` so it fills all remaining space after the right pane's fixed width. `min-w-0` prevents flex overflow on long HEI names.
+4. Reduced outer `maxWidth` from `72rem` to `64rem` — better fit for typical 16:9 viewports without dead air at any common resolution.
+
 ## To Be Fixed Soon
 - `RecentSubmissionsTable.jsx` still uses `window.location.href` for navigation instead of `router.visit()`. Should be migrated for consistency.
 - `Admin/Submissions/Show` does not consume the `?year` query param to pre-filter or scroll to the selected year. The URL carries the year but the page ignores it.

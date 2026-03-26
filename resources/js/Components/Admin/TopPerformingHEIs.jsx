@@ -371,14 +371,13 @@ const TopPerformingHEIs = ({ heis, allHEIs = [], selectedYear }) => {
                     <div
                         className="relative flex overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full transition-all duration-300 ease-in-out"
                         style={{
-                            maxWidth: activeHei ? '72rem' : '42rem',
+                            maxWidth: activeHei ? '64rem' : '42rem',
                             maxHeight: '85vh',
                         }}
                     >
                         {/* ── Left pane: HEI list ──────────────────────── */}
                         <div
-                            className="flex flex-col overflow-hidden flex-shrink-0 transition-all duration-300 ease-in-out"
-                            style={{ width: activeHei ? '400px' : '100%' }}
+                            className="flex flex-col overflow-hidden flex-1 min-w-0 transition-all duration-300 ease-in-out"
                         >
                             {/* Header */}
                             <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
