@@ -6,16 +6,11 @@ const RecentActivity = ({ activities = [] }) => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'published':
-        return 'bg-green-500';
-      case 'submitted':
-        return 'bg-blue-500';
-      case 'request':
-        return 'bg-orange-500';
-      case 'draft':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-gray-500';
+      case 'published':  return 'bg-green-500';
+      case 'submitted':  return 'bg-blue-500';
+      case 'request':    return 'bg-orange-500';
+      case 'draft':      return 'bg-yellow-500';
+      default:           return 'bg-gray-500';
     }
   };
 
@@ -42,9 +37,13 @@ const RecentActivity = ({ activities = [] }) => {
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <h3 className="font-bold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
       <div className="space-y-3">
-        {activityList.map((activity) => (
-          <div key={activity.id} className="flex gap-3">
-            <div className={`w-2 h-2 ${getStatusColor(activity.status)} rounded-full mt-2`}></div>
+        {activityList.map((activity, index) => (
+          <div
+            key={activity.id}
+            className="flex gap-3 animate-enter"
+            style={{ animationDelay: `${index * 60}ms` }}
+          >
+            <div className={`w-2 h-2 ${getStatusColor(activity.status)} rounded-full mt-2 flex-shrink-0`} />
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900 dark:text-white">
                 {activity.title}

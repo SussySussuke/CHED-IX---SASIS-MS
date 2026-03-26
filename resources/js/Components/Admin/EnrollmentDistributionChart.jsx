@@ -1,14 +1,10 @@
 import React from 'react';
 import DonutChart from './DonutChart';
 
-const EnrollmentDistributionChart = ({ data }) => {
-  // Format total dynamically
+const EnrollmentDistributionChart = ({ data, style = {} }) => {
   const formatTotal = (num) => {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(2) + 'M';
-    } else if (num >= 1000) {
-      return (num / 1000).toFixed(1) + 'K';
-    }
+    if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+    if (num >= 1000)    return (num / 1000).toFixed(1)    + 'K';
     return num.toLocaleString();
   };
 
@@ -16,24 +12,24 @@ const EnrollmentDistributionChart = ({ data }) => {
     {
       key: 'SUC',
       label: 'SUC',
-      colorLight: 'rgba(239, 68, 68, 0.9)',
-      colorDark: 'rgba(185, 28, 28, 0.95)',
-      legendColor: 'bg-red-500'
+      colorLight:  'rgba(239, 68, 68, 0.9)',
+      colorDark:   'rgba(185, 28, 28, 0.95)',
+      legendColor: 'bg-red-500',
     },
     {
       key: 'LUC',
       label: 'LUC',
-      colorLight: 'rgba(234, 179, 8, 0.9)',
-      colorDark: 'rgba(161, 98, 7, 0.95)',
-      legendColor: 'bg-yellow-500'
+      colorLight:  'rgba(234, 179, 8, 0.9)',
+      colorDark:   'rgba(161, 98, 7, 0.95)',
+      legendColor: 'bg-yellow-500',
     },
     {
       key: 'Private',
       label: 'Private',
-      colorLight: 'rgba(59, 130, 246, 0.9)',
-      colorDark: 'rgba(29, 78, 216, 0.95)',
-      legendColor: 'bg-blue-500'
-    }
+      colorLight:  'rgba(59, 130, 246, 0.9)',
+      colorDark:   'rgba(29, 78, 216, 0.95)',
+      legendColor: 'bg-blue-500',
+    },
   ];
 
   const legendItemFormatter = (config, value, percentage) => (
@@ -62,6 +58,7 @@ const EnrollmentDistributionChart = ({ data }) => {
       chartConfig={chartConfig}
       centerLabelFormatter={formatTotal}
       legendItemFormatter={legendItemFormatter}
+      style={style}
     />
   );
 };

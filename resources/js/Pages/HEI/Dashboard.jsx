@@ -7,51 +7,74 @@ import QuickActions from '../../Components/HEI/QuickActions';
 import NeedHelp from '../../Components/HEI/NeedHelp';
 import RecentActivity from '../../Components/HEI/RecentActivity';
 
+// Thin wrapper that applies the shared entrance animation with a stagger delay.
+// Per CSS best practices: only animate compositor-only properties (opacity + transform)
+// to avoid layout thrashing. The `animate-enter` keyframe lives in tailwind.config.js.
+// className prop allows forwarding grid column spans so layout is never broken.
+const AnimatedSection = ({ children, delay = 0, className = '' }) => (
+  <div
+    className={`animate-enter ${className}`}
+    style={{ animationDelay: `${delay}ms` }}
+  >
+    {children}
+  </div>
+);
+
 const Dashboard = ({ hei, academicYears, selectedYear, stats, checklist, deadline, recentActivities }) => {
-  // Calculate progress percentage
-  const progressPercentage = stats.totalForms > 0 
-    ? Math.round((stats.submitted / stats.totalForms) * 100) 
+  const progressPercentage = stats.totalForms > 0
+    ? Math.round((stats.submitted / stats.totalForms) * 100)
     : 0;
 
   return (
     <HEILayout title="HEI Dashboard">
       <div className="space-y-6">
         {/* Page Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Dashboard
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Overview of your submissions for AY {selectedYear}
-          </p>
-        </div>
+        <AnimatedSection delay={0}>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Dashboard
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              Overview of your submissions for AY {selectedYear}
+            </p>
+          </div>
+        </AnimatedSection>
 
         {/* Deadline Alert */}
         {deadline && (
-          <DeadlineAlert 
-            deadline={deadline} 
-            progressPercentage={progressPercentage} 
-          />
+          <AnimatedSection delay={60}>
+            <DeadlineAlert
+              deadline={deadline}
+              progressPercentage={progressPercentage}
+            />
+          </AnimatedSection>
         )}
 
         {/* Stats Grid */}
-        <DashboardStats stats={stats} />
+        <AnimatedSection delay={120}>
+          <DashboardStats stats={stats} />
+        </AnimatedSection>
 
-        {/* Main Content Grid */}
+        {/* Main Content Grid — grid is on this container, column spans go on AnimatedSection */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Submission Checklist - Takes 2 columns on large screens */}
-          <div className="lg:col-span-2">
-            <SubmissionChecklist 
-              checklist={checklist} 
-              selectedYear={selectedYear} 
+          <AnimatedSection delay={180} className="lg:col-span-2">
+            <SubmissionChecklist
+              checklist={checklist}
+              selectedYear={selectedYear}
             />
-          </div>
+          </AnimatedSection>
 
-          {/* Sidebar - Takes 1 column on large screens */}
+          {/* Sidebar */}
           <div className="space-y-6">
-            <QuickActions checklist={checklist} selectedYear={selectedYear} />
-            <RecentActivity activities={recentActivities} />
-            <NeedHelp />
+            <AnimatedSection delay={240}>
+              <QuickActions checklist={checklist} selectedYear={selectedYear} />
+            </AnimatedSection>
+            <AnimatedSection delay={300}>
+              <RecentActivity activities={recentActivities} />
+            </AnimatedSection>
+            <AnimatedSection delay={360}>
+              <NeedHelp />
+            </AnimatedSection>
           </div>
         </div>
       </div>

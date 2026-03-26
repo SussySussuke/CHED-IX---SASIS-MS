@@ -222,3 +222,23 @@ php artisan test
 php artisan test --filter=FeatureTest
 composer require laravel/sanctum
 php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
+
+
+UI — LOADING STATES
+--------------------
+Prefer reactive/optimistic UI. Components should render structure immediately; data fills in after.
+
+NEVER render null or a blank div while data loads — users read blank screens as broken.
+NEVER use a spinner for content loading — spinners are only for point actions (save, approve, reject).
+
+Skeleton screens MUST:
+- Render immediately on mount, before any fetch resolves
+- Mirror the real layout (same row count estimate, same positional hierarchy)
+- Use Tailwind `animate-pulse` (built-in, no library needed)
+- Be replaced by real content once data resolves, or by an inline error message on failure
+
+All async fetch calls inside useEffect MUST use AbortController.
+Cancel on unmount and on dependency change to prevent stale state and memory leaks.
+
+Optimistic updates — preferred for low-failure-rate actions (approve, status toggle):
+update UI immediately, roll back only on error. Not yet implemented; adopt incrementally.

@@ -1,28 +1,69 @@
 import React from 'react';
+import { router } from '@inertiajs/react';
 import StatusBadge from '../Widgets/StatusBadge';
 
-const RecentSubmissionsTable = ({ submissions }) => {
-  // Map annex display names to filter values
+// Skeleton shown while submissions prop is undefined/null
+const RecentSubmissionsSkeleton = () => (
+  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 animate-pulse">
+    <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+      <div className="h-3 w-56 bg-gray-200 dark:bg-gray-700 rounded" />
+    </div>
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead className="bg-gray-50 dark:bg-gray-700/50">
+          <tr>
+            {['HEI', 'Form', 'Submitted', 'Status', 'Action'].map(h => (
+              <th key={h} className="px-6 py-3">
+                <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded" />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <tr key={i}>
+              <td className="px-6 py-4">
+                <div className="space-y-1.5">
+                  <div className="h-3 w-36 bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div className="h-2.5 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+                </div>
+              </td>
+              <td className="px-6 py-4"><div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded" /></td>
+              <td className="px-6 py-4"><div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded" /></td>
+              <td className="px-6 py-4"><div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" /></td>
+              <td className="px-6 py-4 text-right"><div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded ml-auto" /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+const RecentSubmissionsTable = ({ submissions, style = {} }) => {
+  if (!submissions) return <RecentSubmissionsSkeleton />;
+
   const getAnnexFilterValue = (annexName) => {
     if (annexName === 'Summary') return 'SUMMARY';
-    // Extract letter from "Annex X" format
     const match = annexName.match(/Annex ([A-O])/);
     return match ? match[1] : '';
   };
 
   const handleViewDetails = (submission) => {
-    const annexFilter = getAnnexFilterValue(submission.annex);
     const params = new URLSearchParams({
-      annex: annexFilter,  // Changed from 'form' to 'annex'
+      annex:  getAnnexFilterValue(submission.annex),
       status: submission.status,
-      year: submission.academic_year
+      year:   submission.academic_year,
     });
-    
-    window.location.href = `/admin/submissions/${submission.hei_id}?${params.toString()}`;
+    router.visit(`/admin/submissions/${submission.hei_id}?${params.toString()}`);
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+    <div
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 animate-fade-up"
+      style={style}
+    >
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
           Recent Submissions
@@ -36,54 +77,42 @@ const RecentSubmissionsTable = ({ submissions }) => {
         <table className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-700/50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                HEI
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Form
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Submitted
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Action
-              </th>
+              {['HEI', 'Form', 'Submitted', 'Status', 'Action'].map(header => (
+                <th
+                  key={header}
+                  className={`px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${header === 'Action' ? 'text-right' : 'text-left'}`}
+                >
+                  {header}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {submissions.map((submission) => (
-              <tr 
-                key={submission.id} 
+            {submissions.map((submission, i) => (
+              <tr
+                key={submission.id}
                 className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                style={{
+                  animation: `fadeUp 0.35s ease-out ${i * 40}ms both`,
+                }}
               >
                 <td className="px-6 py-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {submission.hei_name}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {submission.hei_code}
-                    </p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{submission.hei_name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{submission.hei_code}</p>
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {submission.annex}
-                  </span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{submission.annex}</span>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {submission.submitted_at}
-                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{submission.submitted_at}</span>
                 </td>
                 <td className="px-6 py-4">
                   <StatusBadge status={submission.status} />
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button 
+                  <button
                     onClick={() => handleViewDetails(submission)}
                     className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                   >
@@ -97,8 +126,8 @@ const RecentSubmissionsTable = ({ submissions }) => {
       </div>
 
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
-        <a 
-          href="/admin/submissions" 
+        <a
+          href="/admin/submissions"
           className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
         >
           View all submissions →

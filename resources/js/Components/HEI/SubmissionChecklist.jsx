@@ -6,23 +6,19 @@ import { getFormName } from '../../Config/formConfig';
 const SubmissionChecklist = ({ checklist, selectedYear }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter checklist based on search query
   const filteredChecklist = useMemo(() => {
     if (!searchQuery.trim()) return checklist;
 
     const query = searchQuery.toLowerCase();
 
     return checklist.filter((item) => {
-      // Get form display name
       const formName = getFormName(item.annex);
-      
-      const fullFormText = item.annex === 'SUMMARY' 
+      const fullFormText = item.annex === 'SUMMARY'
         ? formName
         : item.annex.startsWith('MER')
           ? formName
           : `Annex ${item.annex}: ${formName}`;
 
-      // Search in: annex identifier, annex name, and status
       return (
         item.annex.toLowerCase().includes(query) ||
         formName.toLowerCase().includes(query) ||
@@ -32,9 +28,8 @@ const SubmissionChecklist = ({ checklist, selectedYear }) => {
     });
   }, [checklist, searchQuery]);
 
-  const clearSearch = () => {
-    setSearchQuery('');
-  };
+  const clearSearch = () => setSearchQuery('');
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -44,7 +39,7 @@ const SubmissionChecklist = ({ checklist, selectedYear }) => {
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Track your progress for AY {selectedYear}
         </p>
-        
+
         {/* Search Bar */}
         <div className="mt-4">
           <div className="relative w-full">
@@ -70,15 +65,21 @@ const SubmissionChecklist = ({ checklist, selectedYear }) => {
 
       <div className="p-6 space-y-2">
         {filteredChecklist.length > 0 ? (
-          filteredChecklist.map((item) => (
-            <ChecklistCard
+          filteredChecklist.map((item, index) => (
+            // Stagger each checklist item: cap at 600 ms so long lists don't feel sluggish
+            <div
               key={item.annex}
-              annex={item.annex}
-              status={item.status}
-              recordCount={item.recordCount}
-              lastUpdated={item.lastUpdated}
-              selectedYear={selectedYear}
-            />
+              className="animate-enter"
+              style={{ animationDelay: `${Math.min(index * 30, 600)}ms` }}
+            >
+              <ChecklistCard
+                annex={item.annex}
+                status={item.status}
+                recordCount={item.recordCount}
+                lastUpdated={item.lastUpdated}
+                selectedYear={selectedYear}
+              />
+            </div>
           ))
         ) : (
           <div className="text-center py-8">

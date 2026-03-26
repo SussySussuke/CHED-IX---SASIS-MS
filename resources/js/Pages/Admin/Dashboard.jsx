@@ -2,9 +2,9 @@ import React from 'react';
 import AdminLayout from '../../Layouts/AdminLayout';
 import StatCard from '../../Components/Widgets/StatCard';
 import InfoBox from '../../Components/Widgets/InfoBox';
-import { 
+import {
   IoHourglassOutline,
-  IoBarChart
+  IoBarChart,
 } from 'react-icons/io5';
 import AdminYearHeader from '../../Components/Admin/AdminYearHeader';
 import EnrollmentDistributionChart from '../../Components/Admin/EnrollmentDistributionChart';
@@ -13,19 +13,29 @@ import RecentSubmissionsTable from '../../Components/Admin/RecentSubmissionsTabl
 import TopPerformingHEIs from '../../Components/Admin/TopPerformingHEIs';
 import FormCompletionChart from '../../Components/Admin/FormCompletionChart';
 
+// Utility: inline style for staggered fade-up entrance.
+// Each dashboard section gets a slightly later delay so they cascade in
+// rather than all popping in simultaneously.
+const fadeUp = (delayMs) => ({
+  animationName:     'fadeUp',
+  animationDuration: '0.4s',
+  animationTimingFunction: 'ease-out',
+  animationFillMode: 'both',
+  animationDelay:    `${delayMs}ms`,
+});
+
 const Dashboard = ({ academicYears, selectedYear, stats }) => {
   return (
     <AdminLayout title="Admin Dashboard" pendingCount={stats.pendingReviews}>
-      {/* Academic Year Header - Full Width */}
+      {/* Academic Year Header */}
       <AdminYearHeader
         academicYears={academicYears}
         selectedYear={selectedYear}
       />
-      
-      {/* MAIN COLUMN */}
+
       <div className="p-6 space-y-6">
         {/* Page Title */}
-        <div>
+        <div style={fadeUp(0)}>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Admin Dashboard
           </h1>
@@ -40,43 +50,58 @@ const Dashboard = ({ academicYears, selectedYear, stats }) => {
             type="warning"
             title="Pending Reviews"
             message={`You have ${stats.pendingReviews} pending review request(s) that require attention.`}
+            style={fadeUp(60)}
           />
         )}
 
-        {/* MAIN ROW: Responsive - stacks on mobile, side-by-side on desktop */}
+        {/* MAIN ROW */}
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* LEFT COLUMN - Mobile: full width, Desktop: 2/3 */}
+          {/* LEFT COLUMN */}
           <div className="w-full lg:w-2/3 flex flex-col gap-6">
-            {/* ROW: 2 StatCards - Responsive grid */}
+            {/* StatCards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <StatCard
                 title="Pending Reviews"
                 value={stats.pendingReviews}
                 icon={<IoHourglassOutline />}
                 color="yellow"
+                style={fadeUp(80)}
               />
               <StatCard
                 title="Total Completion Percentage"
                 value={`${stats.completionRate}%`}
                 icon={<IoBarChart />}
                 color="purple"
+                style={fadeUp(140)}
               />
             </div>
 
-            {/* ROW: 2 Pie Charts - Responsive grid */}
+            {/* Pie Charts */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <EnrollmentDistributionChart data={stats.enrollmentByType} />
-              <HEITypeDistributionChart data={stats.heisByType} />
+              <EnrollmentDistributionChart
+                data={stats.enrollmentByType}
+                style={fadeUp(200)}
+              />
+              <HEITypeDistributionChart
+                data={stats.heisByType}
+                style={fadeUp(260)}
+              />
             </div>
 
-            {/* Recent Activities Table */}
-            <RecentSubmissionsTable submissions={stats.recentSubmissions} />
+            {/* Recent Submissions */}
+            <RecentSubmissionsTable
+              submissions={stats.recentSubmissions}
+              style={fadeUp(320)}
+            />
           </div>
 
-          {/* RIGHT COLUMN - Mobile: full width, Desktop: 1/3 */}
+          {/* RIGHT COLUMN */}
           <div className="w-full lg:w-1/3 flex flex-col gap-6">
             {/* Quick Actions */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <div
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4"
+              style={fadeUp(100)}
+            >
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                 Quick Actions
               </h2>
@@ -117,13 +142,17 @@ const Dashboard = ({ academicYears, selectedYear, stats }) => {
               </div>
             </div>
 
-            {/* Top Performing HEIs - Fixed height with scroll */}
-            <div style={{ maxHeight: '400px' }}>
-              <TopPerformingHEIs heis={stats.topHEIs} allHEIs={stats.allHEIs} selectedYear={selectedYear} />
+            {/* Top Performing HEIs */}
+            <div style={{ maxHeight: '400px', ...fadeUp(180) }}>
+              <TopPerformingHEIs
+                heis={stats.topHEIs}
+                allHEIs={stats.allHEIs}
+                selectedYear={selectedYear}
+              />
             </div>
 
-            {/* Form Completion Rate - Fixed height with scroll */}
-            <div style={{ maxHeight: '450px' }}>
+            {/* Form Completion Rate */}
+            <div style={{ maxHeight: '450px', ...fadeUp(260) }}>
               <FormCompletionChart data={stats.formCompletion} />
             </div>
           </div>
