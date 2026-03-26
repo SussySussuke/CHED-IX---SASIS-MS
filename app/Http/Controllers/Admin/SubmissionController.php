@@ -9,12 +9,15 @@ use App\Models\CHEDRemark;
 use App\Models\HEI;
 use App\Models\Summary;
 use App\Services\CacheService;
+use App\Services\DashboardService;
 use App\Services\FormConfigService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class SubmissionController extends Controller
 {
+    public function __construct(private DashboardService $dashboardService) {}
+
     /**
      * Show all HEIs with submission stats
      */
@@ -584,6 +587,24 @@ class SubmissionController extends Controller
         }
 
         return response()->json($data);
+    }
+
+    /**
+     * Returns per-form completion breakdown for a single HEI + year.
+     * Used by the dashboard quick-view panel — JSON only.
+     */
+    public function formBreakdown(Request $request, int $heiId): \Illuminate\Http\JsonResponse
+    {
+        $hei  = HEI::findOrFail($heiId);
+        $year = $request->query('year', $this->dashboardService->getCurrentAcademicYear());
+
+        $breakdown = $this->dashboardService->getHeiFormBreakdown($hei->id, $year);
+
+        return response()->json([
+            'hei'       => ['id' => $hei->id, 'name' => $hei->name, 'code' => $hei->code],
+            'year'      => $year,
+            'breakdown' => $breakdown,
+        ]);
     }
 
     private function getPendingRequestsCount(int $heiId): int

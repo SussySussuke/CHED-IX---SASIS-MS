@@ -309,4 +309,42 @@ class DashboardService
 
         return "{$startYear}-07-01";
     }
+
+    /**
+     * Per-form completion breakdown for a single HEI in a given academic year.
+     * Returns ordered list of all forms with their completion status.
+     */
+    public function getHeiFormBreakdown(int $heiId, string $academicYear): array
+    {
+        $allForms      = FormConfigService::getAllFormTypes();
+        $priorityOrder = FormConfigService::getPriorityOrder();
+        $breakdown     = [];
+
+        foreach ($priorityOrder as $code) {
+            if (!isset($allForms[$code])) {
+                continue;
+            }
+
+            $config = $allForms[$code];
+
+            try {
+                $table     = (new $config['model'])->getTable();
+                $completed = DB::table($table)
+                    ->where('hei_id', $heiId)
+                    ->where('academic_year', $academicYear)
+                    ->whereIn('status', ['submitted', 'published'])
+                    ->exists();
+            } catch (\Exception $e) {
+                $completed = false;
+            }
+
+            $breakdown[] = [
+                'code'      => $code,
+                'name'      => $config['name'],
+                'completed' => $completed,
+            ];
+        }
+
+        return $breakdown;
+    }
 }

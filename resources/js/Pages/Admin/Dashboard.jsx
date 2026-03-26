@@ -119,7 +119,7 @@ const Dashboard = ({ academicYears, selectedYear, stats }) => {
 
             {/* Top Performing HEIs - Fixed height with scroll */}
             <div style={{ maxHeight: '400px' }}>
-              <TopPerformingHEIs heis={stats.topHEIs} allHEIs={stats.allHEIs} />
+              <TopPerformingHEIs heis={stats.topHEIs} allHEIs={stats.allHEIs} selectedYear={selectedYear} />
             </div>
 
             {/* Form Completion Rate - Fixed height with scroll */}

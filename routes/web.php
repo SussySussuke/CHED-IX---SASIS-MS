@@ -98,6 +98,7 @@ Route::middleware('auth')->group(function () {
         // Submission routes
         Route::get('/submissions', [App\Http\Controllers\Admin\SubmissionController::class, 'index'])->name('admin.submissions.index');
         Route::get('/submissions/{heiId}', [App\Http\Controllers\Admin\SubmissionController::class, 'show'])->name('admin.submissions.show');
+        Route::get('/submissions/{heiId}/form-breakdown', [App\Http\Controllers\Admin\SubmissionController::class, 'formBreakdown'])->name('admin.submissions.form-breakdown');
         Route::get('/submissions/{annexType}/{batchId}/data', [App\Http\Controllers\Admin\SubmissionController::class, 'getBatchData'])->name('admin.submissions.batch-data');
         Route::post('/submissions/{id}/approve', [App\Http\Controllers\Admin\SubmissionController::class, 'approve'])->name('admin.submissions.approve');
         Route::post('/submissions/{id}/reject', [App\Http\Controllers\Admin\SubmissionController::class, 'reject'])->name('admin.submissions.reject');
