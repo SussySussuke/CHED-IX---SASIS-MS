@@ -169,7 +169,7 @@ class MER4FormBuilder
                 'participants_online' => $program->participants_online,
                 'organizer' => $program->organizer,
                 'hei_remarks' => $program->remarks,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -203,7 +203,7 @@ class MER4FormBuilder
                 'participants_online' => $program->participants_online,
                 'organizer' => $program->organizer,
                 'hei_remarks' => $program->remarks,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -236,7 +236,7 @@ class MER4FormBuilder
                 'participants_online' => $program->participants_online,
                 'organizer' => $program->organizer,
                 'hei_remarks' => $program->remarks,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -270,7 +270,7 @@ class MER4FormBuilder
                 'participants_online' => $program->participants_online,
                 'organizer' => $program->organizer,
                 'hei_remarks' => $program->remarks,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -337,7 +337,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => true,
                 'hei_remarks' => null,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ]
         ];
@@ -367,7 +367,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => null,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -397,7 +397,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => null,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -453,7 +453,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => true,
                 'hei_remarks' => null,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ]
         ];
@@ -482,7 +482,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => $service->remarks,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -511,7 +511,7 @@ class MER4FormBuilder
                 'face_to_face' => false,
                 'online' => false,
                 'hei_remarks' => $scholarship->remarks ?? null,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -543,7 +543,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => $service->remarks ?? null,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -573,7 +573,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => $program->remarks,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -601,7 +601,7 @@ class MER4FormBuilder
                 'face_to_face' => false,
                 'online' => false,
                 'hei_remarks' => $committee->remarks ?? null,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -631,7 +631,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => $house->remarks,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -663,7 +663,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => $service->remarks ?? null,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -694,7 +694,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => $service->remarks,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -726,7 +726,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => $activity->remarks,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -759,7 +759,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => $program->remarks ?? null,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();
@@ -791,7 +791,7 @@ class MER4FormBuilder
                 'face_to_face' => true,
                 'online' => false,
                 'hei_remarks' => null,
-                'ched_remark' => $remark?->is_best_practice ?? null,
+                'ched_remark' => $remark?->remark_text ?? null,
                 'ched_remark_id' => $remark?->id,
             ];
         })->toArray();

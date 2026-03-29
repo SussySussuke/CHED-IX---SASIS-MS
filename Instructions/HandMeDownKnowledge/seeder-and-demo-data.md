@@ -126,6 +126,12 @@ All annexes seeded with `status = 'submitted'`. Each follows the batch → child
 | `app/Models/User.php` | `account_type` enum: `superadmin`, `admin`, `hei` |
 | `app/Models/HEI.php` | `uii`, `name`, `type`, `code`, `is_active` |
 
+## CHEDRemark Schema Note
+
+`ched_remarks.is_best_practice` (boolean, default false) no longer exists. It was replaced by `remark_text` (nullable string) via migration `2026_03_29_000001`. No demo `ched_remarks` rows are seeded — this table is admin-generated only. Any future seeding of `ched_remarks` rows must use `remark_text` (a string such as `'Compliant'`) instead of `is_best_practice` (boolean).
+
+---
+
 ## Key Discoveries
 
 - All annex seeder methods now handle 3 AY keys (`2024-2025`, `2025-2026`, `2026-2027`). Any unmatched AY falls back to `2025-2026` data silently.

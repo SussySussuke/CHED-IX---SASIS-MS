@@ -80,7 +80,7 @@ const MERTableComponent = ({ formData, config }) => {
           online: row.online || false,
           evidence: evidenceTitle,
           hei_remarks: row.hei_remarks || '',
-          ched_remarks: row.ched_remark !== null ? row.ched_remark : false,
+          ched_remarks: row.ched_remark ?? '',
           is_missing: row.is_missing || false,
           _annex_type: service.annex_type,
           _row_id: row.id,
@@ -169,6 +169,39 @@ const MERTableComponent = ({ formData, config }) => {
     );
   };
 
+  const CHEDRemarksCellRenderer = (params) => {
+    const { value, data } = params;
+
+    if (data.is_missing) {
+      return <div className="px-2 text-gray-400 dark:text-gray-500 text-sm">-</div>;
+    }
+
+    return (
+      <div className="px-2 flex items-center h-full">
+        <input
+          type="text"
+          defaultValue={value || ''}
+          disabled={data.is_missing}
+          onBlur={(e) => {
+            const newVal = e.target.value;
+            if (newVal === (value || '')) return;
+            setTableDataByAnnex(prev => {
+              const updated = { ...prev };
+              const annexRows = updated[data._annex_type]?.rows;
+              if (!annexRows) return prev;
+              const row = annexRows.find(r => r.id === data.id);
+              if (row) row.ched_remarks = newVal;
+              return { ...updated };
+            });
+            setHasChanges(true);
+          }}
+          className="w-full text-sm bg-transparent border-0 border-b border-transparent focus:border-blue-400 focus:outline-none text-gray-800 dark:text-gray-200 placeholder-gray-400"
+          placeholder="Add remark…"
+        />
+      </div>
+    );
+  };
+
   // Column Definitions
   const getColumnDefs = (annexType) => [
     {
@@ -222,36 +255,22 @@ const MERTableComponent = ({ formData, config }) => {
     },
     {
       headerName: 'CHED Remarks / Observations',
-      headerTooltip: '✅ = model/s of practice / best practice / innovative practices',
       field: 'ched_remarks',
-      width: 220,
-      cellRenderer: CheckboxCellRenderer,
-      cellClass: 'ag-cell-center',
+      width: 240,
+      cellRenderer: CHEDRemarksCellRenderer,
+      cellClass: 'ag-cell-left',
     },
   ];
 
-  // Handle cell clicks for checkbox toggling and evidence viewing
+  // Handle cell clicks for evidence viewing
   const handleCellClicked = (params, annexType) => {
     const target = params.event.target;
     const element = target.closest('[data-action]');
-    
+
     if (!element) return;
-    
-    const action = element.getAttribute('data-action');
-    const rowId = element.getAttribute('data-row-id');
-    
-    if (action === 'toggle-ched-remark') {
-      // Toggle the checkbox
-      const newData = { ...tableDataByAnnex };
-      const row = newData[annexType].rows.find(r => r.id === rowId);
-      
-      if (row && !row.is_missing) {
-        row.ched_remarks = !row.ched_remarks;
-        setTableDataByAnnex(newData);
-        setHasChanges(true);
-      }
-    } else if (action === 'view-evidence') {
-      // Open evidence modal
+
+    if (element.getAttribute('data-action') === 'view-evidence') {
+      const rowId = element.getAttribute('data-row-id');
       const row = tableDataByAnnex[annexType].rows.find(r => r.id === rowId);
       if (row) {
         setSelectedEvidence({
@@ -285,7 +304,7 @@ const MERTableComponent = ({ formData, config }) => {
               batch_id: row._batch_id,
               hei_id: row._hei_id,
               academic_year: row._academic_year,
-              is_best_practice: row.ched_remarks || false,
+              remark_text: row.ched_remarks || null,
             });
           }
         });

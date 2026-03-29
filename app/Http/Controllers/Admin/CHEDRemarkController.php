@@ -10,7 +10,7 @@ class CHEDRemarkController extends Controller
 {
     public function __construct(private readonly CHEDRemarkService $remarkService) {}
 
-    public function toggle(Request $request)
+    public function setRemark(Request $request)
     {
         $request->validate([
             'annex_type'    => 'required|string',
@@ -18,36 +18,8 @@ class CHEDRemarkController extends Controller
             'batch_id'      => 'required|string',
             'hei_id'        => 'required|integer',
             'academic_year' => 'required|string',
-        ]);
-
-        $remark = $this->remarkService->toggleRemark(
-            $request->annex_type,
-            $request->row_id,
-            $request->batch_id,
-            $request->hei_id,
-            $request->academic_year
-        );
-
-        return response()->json([
-            'success' => true,
-            'remark' => [
-                'id' => $remark->id,
-                'is_best_practice' => $remark->is_best_practice,
-                'remarked_at' => $remark->remarked_at->format('Y-m-d H:i:s'),
-            ],
-        ]);
-    }
-
-    public function setRemark(Request $request)
-    {
-        $request->validate([
-            'annex_type'      => 'required|string',
-            'row_id'          => 'required|integer',
-            'batch_id'        => 'required|string',
-            'hei_id'          => 'required|integer',
-            'academic_year'   => 'required|string',
-            'is_best_practice' => 'required|boolean',
-            'admin_notes'     => 'nullable|string',
+            'remark_text'   => 'nullable|string',
+            'admin_notes'   => 'nullable|string',
         ]);
 
         $remark = $this->remarkService->setRemark(
@@ -56,7 +28,7 @@ class CHEDRemarkController extends Controller
             $request->batch_id,
             $request->hei_id,
             $request->academic_year,
-            $request->is_best_practice,
+            $request->remark_text,
             $request->admin_notes
         );
 
@@ -64,7 +36,7 @@ class CHEDRemarkController extends Controller
             'success' => true,
             'remark' => [
                 'id' => $remark->id,
-                'is_best_practice' => $remark->is_best_practice,
+                'remark_text' => $remark->remark_text,
                 'admin_notes' => $remark->admin_notes,
                 'remarked_at' => $remark->remarked_at->format('Y-m-d H:i:s'),
             ],
@@ -74,14 +46,14 @@ class CHEDRemarkController extends Controller
     public function batchSave(Request $request)
     {
         $request->validate([
-            'remarks'                      => 'required|array',
-            'remarks.*.annex_type'         => 'required|string',
-            'remarks.*.row_id'             => 'required|integer',
-            'remarks.*.batch_id'           => 'required|string',
-            'remarks.*.hei_id'             => 'required|integer',
-            'remarks.*.academic_year'      => 'required|string',
-            'remarks.*.is_best_practice'   => 'required|boolean',
-            'remarks.*.admin_notes'        => 'nullable|string',
+            'remarks'                   => 'required|array',
+            'remarks.*.annex_type'      => 'required|string',
+            'remarks.*.row_id'          => 'required|integer',
+            'remarks.*.batch_id'        => 'required|string',
+            'remarks.*.hei_id'          => 'required|integer',
+            'remarks.*.academic_year'   => 'required|string',
+            'remarks.*.remark_text'     => 'nullable|string',
+            'remarks.*.admin_notes'     => 'nullable|string',
         ]);
 
         $remarks = $this->remarkService->batchSetRemarks($request->remarks);
@@ -110,7 +82,7 @@ class CHEDRemarkController extends Controller
                     'annex_type' => $remark->annex_type,
                     'row_id' => $remark->row_id,
                     'batch_id' => $remark->batch_id,
-                    'is_best_practice' => $remark->is_best_practice,
+                    'remark_text' => $remark->remark_text,
                     'admin_notes' => $remark->admin_notes,
                     'remarked_at' => $remark->remarked_at->format('Y-m-d H:i:s'),
                     'remarked_by' => $remark->remarkedBy->name,

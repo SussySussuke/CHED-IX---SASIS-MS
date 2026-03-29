@@ -14,7 +14,7 @@ class CHEDRemark extends Model
         'batch_id',
         'hei_id',
         'academic_year',
-        'is_best_practice',
+        'remark_text',
         'admin_notes',
         'remarked_by',
         'remarked_at',
@@ -22,7 +22,6 @@ class CHEDRemark extends Model
     ];
 
     protected $casts = [
-        'is_best_practice' => 'boolean',
         'is_archived' => 'boolean',
         'remarked_at' => 'datetime',
     ];
@@ -82,11 +81,6 @@ class CHEDRemark extends Model
         $this->update(['is_archived' => true]);
     }
 
-    public function toggle()
-    {
-        $this->update(['is_best_practice' => !$this->is_best_practice]);
-    }
-
     public static function getRemarkForRow($annexType, $rowId)
     {
         return self::active()
@@ -94,7 +88,7 @@ class CHEDRemark extends Model
             ->first();
     }
 
-    public static function setRemarkForRow($annexType, $rowId, $batchId, $heiId, $academicYear, $isBestPractice, $adminId)
+    public static function setRemarkForRow($annexType, $rowId, $batchId, $heiId, $academicYear, $remarkText, $adminId)
     {
         return self::updateOrCreate(
             [
@@ -106,7 +100,7 @@ class CHEDRemark extends Model
             [
                 'hei_id' => $heiId,
                 'academic_year' => $academicYear,
-                'is_best_practice' => $isBestPractice,
+                'remark_text' => $remarkText,
                 'remarked_by' => $adminId,
                 'remarked_at' => now(),
             ]
@@ -128,12 +122,11 @@ class CHEDRemark extends Model
 
         return [
             'total' => $remarks->count(),
-            'best_practices' => $remarks->where('is_best_practice', true)->count(),
-            'needs_improvement' => $remarks->where('is_best_practice', false)->count(),
+            'with_remarks' => $remarks->whereNotNull('remark_text')->count(),
             'by_annex' => $remarks->groupBy('annex_type')->map(function ($group) {
                 return [
                     'total' => $group->count(),
-                    'best_practices' => $group->where('is_best_practice', true)->count(),
+                    'with_remarks' => $group->whereNotNull('remark_text')->count(),
                 ];
             }),
         ];

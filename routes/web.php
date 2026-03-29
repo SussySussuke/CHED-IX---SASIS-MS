@@ -164,7 +164,6 @@ Route::middleware('auth')->group(function () {
             Route::get('/form3/{heiId}/{academicYear}', [App\Http\Controllers\Admin\MER4FormController::class, 'form3Load'])->name('admin.mer4.form3.load');
 
             // CHED Remarks API routes
-            Route::post('/remarks/toggle', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'toggle'])->name('admin.mer4.remarks.toggle');
             Route::post('/remarks/set', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'setRemark'])->name('admin.mer4.remarks.set');
             Route::post('/remarks/batch', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'batchSave'])->name('admin.mer4.remarks.batch');
             Route::get('/remarks/{heiId}/{academicYear}', [App\Http\Controllers\Admin\CHEDRemarkController::class, 'getRemarks'])->name('admin.mer4.remarks.get');
