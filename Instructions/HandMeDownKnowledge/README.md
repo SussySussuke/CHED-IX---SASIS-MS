@@ -24,6 +24,7 @@ This feature is the most complex in the system. Multiple files cover it from dif
 
 | File | What It Covers | Read When... |
 |------|----------------|--------------|
+| `recordsmodal-category-searchable-select.md` | `MultiCategoryCell` checkbox → `SearchableSelect` single-select; `usePortal` prop added to `SearchableSelect` to escape AG Grid stacking context clipping | You're touching category assignment in `RecordsModal`, `SearchableSelect` portal behaviour, or any dropdown inside an AG Grid cell |
 | `year-comparison-feature.md` | **Core comparison mode architecture** — `YearMultiSelect`, `buildComparisonColumns`, `buildComparisonRows`, `openDrilldown` signature, `RecordsModal`, CSRF fix, all resolved bugs | You're touching comparison mode, drilldown modal, or `SummaryView.jsx` at all. |
 | `summaryView-comparison-drilldown.md` | Deep dive on drilldown clickability in comparison mode — zero-total inert state, `buildLeafCol`, `comparisonConfig.js` field clickability, `__missing` year gap bug | You're fixing/adding clickable cells in comparison mode or the zero-total guard logic. |
 | `summaryview-grand-total-row.md` | Pinned "Grand Total" row — `computeTotalsRow`, `SECTION_NUMERIC_FIELDS`, `applyPinnedRowGuard`, which sections are excluded | You're touching the grand total row, `AGGridViewer.jsx` pinned rows, or section totals logic. |

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { IoChevronDown, IoClose } from 'react-icons/io5';
 
 /**
@@ -12,6 +13,7 @@ import { IoChevronDown, IoClose } from 'react-icons/io5';
  * @param {string} placeholder - Placeholder text (default: "Select...")
  * @param {string} label - Label text (optional)
  * @param {string} className - Additional container classes
+ * @param {boolean} usePortal - Render dropdown via portal (use when inside AG Grid cells or modals with overflow:hidden)
  */
 export default function SearchableSelect({
     value,
@@ -20,10 +22,12 @@ export default function SearchableSelect({
     placeholder = "Select...",
     label,
     className = "",
-    disabled = false
+    disabled = false,
+    usePortal = false,
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [dropdownStyle, setDropdownStyle] = useState({});
     const containerRef = useRef(null);
     const inputRef = useRef(null);
 
@@ -85,12 +89,22 @@ export default function SearchableSelect({
         };
     }, [isOpen]);
 
-    // Focus input when dropdown opens
+    // Focus input when dropdown opens; also compute portal position
     useEffect(() => {
         if (isOpen && inputRef.current) {
             inputRef.current.focus();
         }
-    }, [isOpen]);
+        if (isOpen && usePortal && containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            setDropdownStyle({
+                position: 'fixed',
+                top: rect.bottom + 4,
+                left: rect.left,
+                width: rect.width,
+                zIndex: 99999,
+            });
+        }
+    }, [isOpen, usePortal]);
 
     const handleSelect = (optionValue) => {
         onChange(optionValue);
@@ -215,11 +229,17 @@ export default function SearchableSelect({
                 </div>
 
                 {/* Dropdown Options */}
-                {isOpen && (
-                    <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-700 border-2 border-blue-300 dark:border-blue-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-                        {isGrouped ? renderGroupedOptions() : renderFlatOptions()}
-                    </div>
-                )}
+                {isOpen && (() => {
+                    const menu = (
+                        <div
+                            className={`bg-white dark:bg-gray-700 border-2 border-blue-300 dark:border-blue-600 rounded-lg shadow-xl max-h-60 overflow-y-auto${usePortal ? '' : ' absolute z-50 w-full mt-2'}`}
+                            style={usePortal ? dropdownStyle : undefined}
+                        >
+                            {isGrouped ? renderGroupedOptions() : renderFlatOptions()}
+                        </div>
+                    );
+                    return usePortal ? ReactDOM.createPortal(menu, document.body) : menu;
+                })()}
             </div>
         </div>
     );

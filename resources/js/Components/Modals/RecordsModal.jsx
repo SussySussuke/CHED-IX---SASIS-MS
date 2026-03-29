@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { IoClose, IoRefresh, IoCheckmark, IoTrash, IoListOutline, IoArrowBack } from 'react-icons/io5';
+import { IoClose, IoRefresh, IoCheckmark, IoListOutline, IoArrowBack } from 'react-icons/io5';
 import AGGridViewer from '../Common/AGGridViewer';
+import SearchableSelect from '../Form/SearchableSelect';
 
 const RecordsModal = ({
   isOpen,
@@ -112,78 +113,71 @@ const RecordsModal = ({
 
   // ── Multi-checkbox cell renderer ──────────────────────────────────────────
 
+  const RESET_VALUE = '__reset__';
+
+  // Build select options: reset sentinel first, then real categories
+  const selectOptions = React.useMemo(() => [
+    { value: RESET_VALUE, label: '— Reset to keyword matching' },
+    ...categoryOptions,
+  ], [categoryOptions]);
+
   const MultiCategoryCell = ({ record, rowKey, currentAssigned }) => {
     const state = rowStates[rowKey] ?? {};
 
-    // Derive the initial checked state from what the server returned,
-    // but never include 'uncategorized' or 'total' — those aren't real override targets.
+    // Use only the first valid assigned category (single-select going forward)
     const validAssigned = (currentAssigned ?? []).filter(
       c => categoryOptions.some(o => o.value === c)
     );
+    const initialValue = validAssigned[0] ?? RESET_VALUE;
 
-    const [checked, setChecked] = useState(() => new Set(validAssigned));
+    const [selected, setSelected] = useState(initialValue);
 
-    // Re-sync if a fresh fetch happened (rowStates reset → state.selected cleared)
+    // Re-sync when a fresh fetch resets rowStates
     useEffect(() => {
       if (!state.saved) {
-        setChecked(new Set(validAssigned));
+        setSelected(initialValue);
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [rowStates]);
 
     if (state.saved) {
-      const labels = state.selected?.length
-        ? state.selected.map(v => categoryOptions.find(o => o.value === v)?.label ?? v).join(', ')
+      const savedVal = state.selected?.[0];
+      const label = savedVal
+        ? (categoryOptions.find(o => o.value === savedVal)?.label ?? savedVal)
         : 'Reset to keyword matching';
       return (
         <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1 py-1">
           <IoCheckmark className="w-3.5 h-3.5 flex-shrink-0" />
-          {labels}
+          {label}
         </span>
       );
     }
 
-    const toggle = (value) => {
-      setChecked(prev => {
-        const next = new Set(prev);
-        next.has(value) ? next.delete(value) : next.add(value);
-        return next;
-      });
+    const isDirty = selected !== initialValue;
+
+    const handleChange = (value) => {
+      setSelected(value);
     };
 
-    const isDirty = (() => {
-      const a = [...checked].sort().join(',');
-      const b = [...validAssigned].sort().join(',');
-      return a !== b;
-    })();
+    // Derive the array to send: empty = reset, otherwise single-element
+    const categoriesToSave = selected === RESET_VALUE ? [] : [selected];
 
     return (
       <div className="py-1.5 space-y-1">
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-          {categoryOptions.map(opt => (
-            <label
-              key={opt.value}
-              className="flex items-center gap-1 cursor-pointer text-xs text-gray-700 dark:text-gray-300
-                         hover:text-gray-900 dark:hover:text-white select-none"
-            >
-              <input
-                type="checkbox"
-                className="rounded border-gray-300 dark:border-gray-600 text-blue-600
-                           focus:ring-blue-500 focus:ring-offset-0 h-3 w-3"
-                checked={checked.has(opt.value)}
-                onChange={() => toggle(opt.value)}
-                disabled={state.saving}
-              />
-              <span>{opt.label}</span>
-            </label>
-          ))}
-        </div>
+        <SearchableSelect
+          value={selected}
+          onChange={handleChange}
+          options={selectOptions}
+          placeholder="Select category..."
+          disabled={state.saving}
+          usePortal
+        />
 
         {isDirty && (
           <div className="flex items-center gap-2 pt-0.5">
             <button
               disabled={state.saving}
-              onClick={() => handleSave(record, [...checked])}
+              onClick={() => handleSave(record, categoriesToSave)}
               className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded
                          bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors"
             >
@@ -192,25 +186,7 @@ const RecordsModal = ({
                 : <IoCheckmark className="w-3 h-3" />}
               Save
             </button>
-            {checked.size === 0 && (
-              <span className="text-xs text-amber-600 dark:text-amber-400">
-                Saving with no selection resets to keyword matching.
-              </span>
-            )}
           </div>
-        )}
-
-        {/* Reset to keyword matching button (only when record has an existing override) */}
-        {validAssigned.length > 0 && !isDirty && (
-          <button
-            disabled={state.saving}
-            onClick={() => handleSave(record, [])}
-            className="flex items-center gap-1 text-xs text-red-500 dark:text-red-400
-                       hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50 transition-colors"
-          >
-            <IoTrash className="w-3 h-3" />
-            Reset to keyword matching
-          </button>
         )}
 
         {state.error && (
@@ -338,8 +314,8 @@ const RecordsModal = ({
               <div className={`px-5 py-3 border-b ${accentBg}`}>
                 <p className={`text-sm ${accentText}`}>
                   {isMiscellaneous
-                    ? 'These activities did not match any keyword category. Check one or more categories in the "Assign Categories" column, then click Save.'
-                    : 'Check or uncheck categories in the "Assign Categories" column to override keyword matching. Save to apply. Reset to revert to automatic matching.'}
+                    ? 'These activities did not match any keyword category. Select a category from the dropdown in the "Assign Categories" column, then click Save.'
+                    : 'Select a category from the dropdown in the "Assign Categories" column to override keyword matching. Choose "Reset" to revert to automatic matching.'}
                 </p>
               </div>
             )}
@@ -377,13 +353,8 @@ const RecordsModal = ({
                     gridOptions={{
                       rowHeight: undefined,
                       getRowHeight: (params) => {
+                        if (canRecategorize) return 80;
                         const cats = params.data?.assigned_categories;
-                        // When recategorize is on, rows need more height for the checkbox list
-                        if (canRecategorize) {
-                          const optCount = categoryOptions.length;
-                          // checkboxes wrap into roughly 2 lines for 7 options at this width
-                          return optCount > 4 ? 80 : 60;
-                        }
                         if (!cats || cats.length <= 1) return 40;
                         return cats.length * 28 + 12;
                       },
