@@ -24,8 +24,10 @@ use App\Models\AnnexN1Batch;
 use App\Models\AnnexNBatch;
 use App\Models\AnnexOBatch;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Font;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
@@ -143,7 +145,8 @@ class ExcelExportService
                 4 => 'YES / NO',
                 5 => 'YES / NO',
                 6 => 'YES / NO',
-            ]
+            ],
+            yesNoCols: [4, 5, 6],  // Male / Female / Coed — dropdown applied per data row
         );
         $this->addTabularSheet($spreadsheet, 'ANNEX_L1', 'Annex L-1', 'Foreign/International Student Services',
             ['Service Name', 'Type of Service', 'Target Nationality', 'Students Served', 'Officer-in-Charge', 'Remarks'],
@@ -239,6 +242,7 @@ class ExcelExportService
         array $subRow = [],
         array $subRowMerges = [],
         string $headerColor = self::COLOR_COL_HDR_BG,
+        array $yesNoCols = [],  // 1-based column indexes that should get a YES/NO dropdown
     ): void {
         $ws = new Worksheet($ss, $tabName);
         $ss->addSheet($ws);
@@ -331,12 +335,16 @@ class ExcelExportService
         $rowNum = empty($subRow) ? 8 : 9;
         foreach ($rows as $row) {
             foreach (array_values($row) as $i => $val) {
-                $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
+                $colIdx = $i + 1;
+                $col    = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                 $ws->setCellValue($col . $rowNum, $val ?? '');
                 $ws->getStyle($col . $rowNum)->applyFromArray([
                     'font'      => ['name' => 'Arial', 'size' => 10],
                     'alignment' => ['wrapText' => true],
                 ]);
+                if (in_array($colIdx, $yesNoCols, true)) {
+                    $this->applyYesNoDropdown($ws, $col . $rowNum);
+                }
             }
             $ws->getRowDimension($rowNum)->setRowHeight(15.75);
             $rowNum++;
@@ -365,171 +373,221 @@ class ExcelExportService
             ->setFitToHeight(0);
         $ws->getPageMargins()->setTop(0.75)->setBottom(0.75)->setLeft(0.7)->setRight(0.7);
 
-        // ── Column widths (matching original: A≈48, B≈27, C≈58) ──────────
+        // ── Column widths matching original template ───────────────────────
         $ws->getColumnDimension('A')->setWidth(47.9);
         $ws->getColumnDimension('B')->setWidth(27.4);
         $ws->getColumnDimension('C')->setWidth(57.6);
 
-        // ── Row 1: machine-readable tag (import contract — do not move) ───
+        // ── Row 1: machine-readable tag ───────────────────────────────────
         $ws->setCellValue('A1', '[ANNEX_D]');
         $ws->getStyle('A1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 10],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_TAG_BG]],
         ]);
 
-        // ── Rows 2–4: title block (plain bold, centered, no bg — matches original) ─
-        foreach (['A2:C2', 'A4:C4'] as $range) {
-            $ws->mergeCells($range);
-            $ws->getStyle(explode(':', $range)[0])->applyFromArray([
-                'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial'],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            ]);
-        }
-        foreach (['A3:C3'] as $range) {
-            $ws->mergeCells($range);
-            $ws->getStyle(explode(':', $range)[0])->applyFromArray([
-                'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial', 'color' => ['argb' => self::COLOR_TITLE_BLUE]],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            ]);
-        }
-        $ws->mergeCells('A5:C5');
+        // ── Rows 2–4: title block (mirrors original exactly) ──────────────
+        $ws->mergeCells('A2:C2');
+        $ws->mergeCells('A3:C3');
+        $ws->mergeCells('A4:C4');
+        $ws->getStyle('A2')->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial'],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $ws->getStyle('A3')->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial', 'color' => ['argb' => self::COLOR_TITLE_BLUE]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $ws->getStyle('A4')->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial'],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
         $ws->setCellValue('A2', 'ANNEX "D"');
         $ws->setCellValue('A3', 'UPDATES ON STUDENT HANDBOOK/MANUAL');
         $ws->setCellValue('A4', 'As of Academic Year (AY) ' . $ay);
-        // Row 5 intentionally blank (matches original SASTOOL Annex D layout)
 
-        // ── Data rows 5–36: position-based parser contract ────────────────
+        // ── New column layout (label | dropdown | text-overflow) ──────────
+        // Col A = label text (merged A:B for checkbox rows, full A:C for text fields)
+        // Col B = YES/NO dropdown for all checkbox fields  (parser reads bool_() col 2)
+        // Col C = free-text / overflow (orientation dates, delivery mode, others text)
         //
-        // AnnexDParser reads col 2 (B) by $r++ from row 5. Row order here
-        // IS the import contract — do NOT reorder these entries.
-        //
-        // Each entry: [label text, isSectionHeader bool]
-        // Col A: light-blue bg (DEEAF6), matching original template field cells
-        // Col B: value — user fills in
-        // Col C: empty (mirrors original's wide C column)
+        // Column widths: A=55 (label), B=12 (dropdown), C=65 (text/overflow)
+        $ws->getColumnDimension('A')->setWidth(55);
+        $ws->getColumnDimension('B')->setWidth(12);
+        $ws->getColumnDimension('C')->setWidth(65);
 
-        $fields = [
-            // row 5  — version_publication_date
-            ['Version/ Publication date:', false],
-            // row 6  — officer_in_charge
-            ['Officer-in-Charge:', false],
-            // row 7  — handbook_committee
-            ['Composition of the Student Handbook Committee:', false],
-            // row 8  — dissemination_orientation
-            ['Mode of Dissemination: Orientation (YES/NO)', false],
-            // row 9  — orientation_dates
-            ['Date/s of Orientation:', false],
-            // row 10 — mode_of_delivery
-            ['Mode of delivery (F2F/online or both):', false],
-            // row 11 — dissemination_uploaded
-            ['Dissemination: Uploaded in Website (YES/NO)', false],
-            // row 12 — dissemination_others
-            ['Dissemination: Others (YES/NO)', false],
-            // row 13 — dissemination_others_text
-            ['Dissemination: Others — specify:', false],
-            // row 14 — type_digital
-            ['Type of Student Handbook/Manual: Digital Copy (YES/NO)', false],
-            // row 15 — type_printed
-            ['Type of Student Handbook/Manual: Printed (YES/NO)', false],
-            // row 16 — type_others
-            ['Type of Student Handbook/Manual: Others (YES/NO)', false],
-            // row 17 — type_others_text
-            ['Type of Student Handbook/Manual: Others — specify:', false],
-            // row 18 — has_academic_policies (section header, value blank)
-            ['Contains the following information (check all applicable):', true],
-            // row 19 — has_admission_requirements
-            ['Academic and Institutional Policies (YES/NO)', false],
-            // row 20 — has_code_of_conduct
-            ['Admission Requirements (YES/NO)', false],
-            // row 21 — has_scholarships
-            ['Student Code of Conduct and Discipline (YES/NO)', false],
-            // row 22 — has_student_publication
-            ['Scholarships/Financial Assistance (YES/NO)', false],
-            // row 23 — has_housing_services
-            ['Student Publication (YES/NO)', false],
-            // row 24 — has_disability_services
-            ['Housing Services/Dormitories, if applicable (YES/NO)', false],
-            // row 25 — has_student_council
-            ['Services for Learners with Disabilities and Special Needs (YES/NO)', false],
-            // row 26 — has_refund_policies
-            ['Student Council/Government/Organizations (YES/NO)', false],
-            // row 27 — has_drug_education
-            ['Refund Policies (YES/NO)', false],
-            // row 28 — has_foreign_students
-            ['Drug Education, Prevention and Control (YES/NO)', false],
-            // row 29 — has_disaster_management
-            ['Foreign Students, if applicable (YES/NO)', false],
-            // row 30 — has_safe_spaces
-            ['Disaster Risk Reduction and Management (YES/NO)', false],
-            // row 31 — has_anti_hazing
-            ['Safe Spaces Act (YES/NO)', false],
-            // row 32 — has_anti_bullying
-            ['Anti-Hazing Act (YES/NO)', false],
-            // row 33 — has_violence_against_women
-            ['Anti-Bullying Act (YES/NO)', false],
-            // row 34 — has_gender_fair
-            ['Violence Against Women and Their Children (YES/NO)', false],
-            // row 35 — has_others
-            ['Gender-Fair Education (YES/NO)', false],
-            // row 36 — has_others_text
-            ['Others, please specify:', false],
+        $fieldStyle = [
+            'font'      => ['size' => 10, 'name' => 'Arial'],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_FIELD_BG]],
+            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+        $boldFieldStyle = array_merge_recursive($fieldStyle, ['font' => ['bold' => true]]);
+        $valueStyle = [
+            'font'      => ['size' => 10, 'name' => 'Arial'],
+            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+        $yn = fn(?bool $v): string => $v ? 'YES' : 'NO';
+
+        // ── Rows 5–10: text fields (unchanged — label+value merged A:C) ───
+        // AnnexDParser reads these via str() + stripPrefix, col 1. No change needed.
+        $ws->mergeCells('A5:C5');
+        $ws->setCellValue('A5', 'Version/ Publication date: ' . ($sub?->version_publication_date ?? ''));
+        $ws->getStyle('A5')->applyFromArray($fieldStyle);
+        $ws->getRowDimension(5)->setRowHeight(15.75);
+        $ws->getRowDimension(6)->setRowHeight(4);
+
+        $ws->mergeCells('A7:C7');
+        $ws->getRowDimension(7)->setRowHeight(4);
+        $ws->mergeCells('A8:C8');
+        $ws->setCellValue('A8', 'Officer-in-Charge: ' . ($sub?->officer_in_charge ?? ''));
+        $ws->getStyle('A8')->applyFromArray($fieldStyle);
+        $ws->getRowDimension(8)->setRowHeight(15.75);
+
+        $ws->mergeCells('A9:C9');
+        $ws->getRowDimension(9)->setRowHeight(4);
+        $ws->mergeCells('A10:C10');
+        $ws->setCellValue('A10', 'Composition of the Student Handbook Committee: ' . ($sub?->handbook_committee ?? ''));
+        $ws->getStyle('A10')->applyFromArray($fieldStyle);
+        $ws->getRowDimension(10)->setRowHeight(25.5);
+        $ws->getRowDimension(11)->setRowHeight(4);
+
+        // ── Row 12: section headers ────────────────────────────────────────
+        $ws->mergeCells('A12:B12');
+        $ws->setCellValue('A12', 'Mode of Dissemination');
+        $ws->setCellValue('C12', 'Type of Student Handbook/Manual:');
+        $ws->getStyle('A12')->applyFromArray($boldFieldStyle);
+        $ws->getStyle('C12')->applyFromArray($boldFieldStyle);
+        $ws->getRowDimension(12)->setRowHeight(15.75);
+
+        // ── Rows 13–18: dissemination (col A label, col B dropdown) ──────
+        // and type (col C label, col B dropdown — but type only has rows 13–14)
+        //
+        // New layout per row:
+        //   Col A (label, merged A only for checkbox rows)
+        //   Col B = YES/NO dropdown — parser reads bool_(ws, r, 2)
+        //   Col C = type label / text value
+        //
+        // Dissemination checkboxes: rows 13, 17, 18 → col B dropdown
+        // Dissemination text rows: 14 (orientation dates), 15+16 (delivery mode) → merged A:B, value in C
+        // Type checkboxes: rows 13, 14 → col C label + col B is SHARED with dissem
+        //   — we can't put two dropdowns in col B for the same row.
+        //   Solution: type gets its own dropdown column D (narrow, hidden-ish)
+        //   Parser reads: dissem_checkbox = bool_(ws,r,2)  type_checkbox = bool_(ws,r,4)
+
+        // Add col D for type dropdowns
+        $ws->getColumnDimension('D')->setWidth(10);
+
+        // Row 13: Orientation (A) | dissem dropdown (B) | Digital Copy label (C) | type dropdown (D)
+        $ws->setCellValue('A13', 'Orientation');
+        $ws->setCellValue('B13', $yn($sub?->dissemination_orientation));
+        $this->applyYesNoDropdown($ws, 'B13');
+        $ws->setCellValue('C13', 'Digital Copy');
+        $ws->setCellValue('D13', $yn($sub?->type_digital));
+        $this->applyYesNoDropdown($ws, 'D13');
+        $ws->getStyle('A13')->applyFromArray($fieldStyle);
+        $ws->getStyle('B13')->applyFromArray($valueStyle);
+        $ws->getStyle('C13')->applyFromArray($fieldStyle);
+        $ws->getStyle('D13')->applyFromArray($valueStyle);
+        $ws->getRowDimension(13)->setRowHeight(15.75);
+
+        // Row 14: Date/s of Orientation label (A) | value (B merged to C — text) | Printed label (C→ already used) | type dropdown (D)
+        // Compromise: orientation date label in A, value in B (the dropdown col is vacated for text rows)
+        $ws->setCellValue('A14', 'Date/s of Orientation:');
+        $ws->setCellValue('B14', $sub?->orientation_dates ?? '');
+        $ws->setCellValue('C14', 'Printed');
+        $ws->setCellValue('D14', $yn($sub?->type_printed));
+        $this->applyYesNoDropdown($ws, 'D14');
+        $ws->getStyle('A14')->applyFromArray($fieldStyle);
+        $ws->getStyle('B14')->applyFromArray($valueStyle);
+        $ws->getStyle('C14')->applyFromArray($fieldStyle);
+        $ws->getStyle('D14')->applyFromArray($valueStyle);
+        $ws->getRowDimension(14)->setRowHeight(15.75);
+
+        // Row 15: Mode of delivery label (A) | type_others label (C) | type_others dropdown (D)
+        $ws->setCellValue('A15', 'Mode of delivery (F2F/online or both):');
+        $ws->setCellValue('B15', $sub?->mode_of_delivery ?? '');
+        $ws->setCellValue('C15', 'Others, please specify:');
+        $ws->setCellValue('D15', $yn($sub?->type_others));
+        $this->applyYesNoDropdown($ws, 'D15');
+        $ws->getStyle('A15')->applyFromArray($fieldStyle);
+        $ws->getStyle('B15')->applyFromArray($valueStyle);
+        $ws->getStyle('C15')->applyFromArray($fieldStyle);
+        $ws->getStyle('D15')->applyFromArray($valueStyle);
+        $ws->getRowDimension(15)->setRowHeight(15.75);
+
+        // Row 16: type_others_text value in C
+        $ws->setCellValue('C16', $sub?->type_others_text ?? '');
+        $ws->getStyle('C16')->applyFromArray($valueStyle);
+        $ws->getRowDimension(16)->setRowHeight(15.75);
+
+        // Row 17: Uploaded in Website (A) | dropdown (B)
+        $ws->setCellValue('A17', 'Uploaded in Website');
+        $ws->setCellValue('B17', $yn($sub?->dissemination_uploaded));
+        $this->applyYesNoDropdown($ws, 'B17');
+        $ws->getStyle('A17')->applyFromArray($fieldStyle);
+        $ws->getStyle('B17')->applyFromArray($valueStyle);
+        $ws->getRowDimension(17)->setRowHeight(15.75);
+
+        // Row 18: Others, please specify (A) | dropdown (B) | specify text (C)
+        $ws->setCellValue('A18', 'Others, please specify:');
+        $ws->setCellValue('B18', $yn($sub?->dissemination_others));
+        $this->applyYesNoDropdown($ws, 'B18');
+        $ws->setCellValue('C18', $sub?->dissemination_others_text ?? '');
+        $ws->getStyle('A18')->applyFromArray($fieldStyle);
+        $ws->getStyle('B18')->applyFromArray($valueStyle);
+        $ws->getStyle('C18')->applyFromArray($valueStyle);
+        $ws->getRowDimension(18)->setRowHeight(15.75);
+
+        // ── Row 19: spacer ────────────────────────────────────────────────
+        $ws->getRowDimension(19)->setRowHeight(4);
+
+        // ── Row 20: section header ────────────────────────────────────────
+        $ws->mergeCells('A20:D20');
+        $ws->setCellValue('A20', 'Contains the following information (check all applicable items/information):');
+        $ws->getStyle('A20')->applyFromArray($boldFieldStyle);
+        $ws->getRowDimension(20)->setRowHeight(25.5);
+
+        // ── Rows 21–38: label (A:C merged) | YES/NO dropdown (D) ──────────
+        // Parser reads: bool_(ws, r, 4) — col D, NOT checkbox_() anymore.
+        // Row 39 = free-text for has_others_text (no dropdown, merged A:D).
+        $checkboxItems = [
+            21 => [$sub?->has_academic_policies,      'Academic and Institutional Policies'],
+            22 => [$sub?->has_admission_requirements,  'Admission requirements'],
+            23 => [$sub?->has_code_of_conduct,         'Student Code of Conduct and Discipline'],
+            24 => [$sub?->has_scholarships,            'scholarships/financial assistance'],
+            25 => [$sub?->has_student_publication,     'student publication'],
+            26 => [$sub?->has_housing_services,        'housing services/dormitories (if applicable)'],
+            27 => [$sub?->has_disability_services,     'services for learners with disabilities and special needs'],
+            28 => [$sub?->has_student_council,         'student council/government/organizations'],
+            29 => [$sub?->has_refund_policies,         'Refund policies'],
+            30 => [$sub?->has_drug_education,          'Drug Education, prevention and control'],
+            31 => [$sub?->has_foreign_students,        'Foreign students (if applicable)'],
+            32 => [$sub?->has_disaster_management,     'Disaster Risk Reduction and Management'],
+            33 => [$sub?->has_safe_spaces,             'Safe Spaces Act'],
+            34 => [$sub?->has_anti_hazing,             'Anti-Hazing Act'],
+            35 => [$sub?->has_anti_bullying,           'Anti-Bullying Act'],
+            36 => [$sub?->has_violence_against_women,  'Violence against women and their children'],
+            37 => [$sub?->has_gender_fair,             'Gender-fair education'],
+            38 => [$sub?->has_others,                  'Others, please specify'],
         ];
 
-        $values = [
-            $sub?->version_publication_date,
-            $sub?->officer_in_charge,
-            $sub?->handbook_committee,
-            $sub ? ($sub->dissemination_orientation ? 'YES' : 'NO') : '',
-            $sub?->orientation_dates,
-            $sub?->mode_of_delivery,
-            $sub ? ($sub->dissemination_uploaded ? 'YES' : 'NO') : '',
-            $sub ? ($sub->dissemination_others ? 'YES' : 'NO') : '',
-            $sub?->dissemination_others_text,
-            $sub ? ($sub->type_digital ? 'YES' : 'NO') : '',
-            $sub ? ($sub->type_printed ? 'YES' : 'NO') : '',
-            $sub ? ($sub->type_others ? 'YES' : 'NO') : '',
-            $sub?->type_others_text,
-            '',  // row 18 is a section header label; value col intentionally blank
-            $sub ? ($sub->has_academic_policies ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_admission_requirements ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_code_of_conduct ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_scholarships ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_student_publication ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_housing_services ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_disability_services ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_student_council ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_refund_policies ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_drug_education ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_foreign_students ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_disaster_management ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_safe_spaces ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_anti_hazing ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_anti_bullying ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_violence_against_women ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_gender_fair ? 'YES' : 'NO') : '',
-            $sub ? ($sub->has_others ? 'YES' : 'NO') : '',
-            $sub?->has_others_text,
-        ];
-
-        foreach ($fields as $i => [$label, $isSectionHeader]) {
-            $row = $i + 5;
-            $ws->setCellValue('A' . $row, $label);
-            $ws->setCellValue('B' . $row, $values[$i] ?? '');
-
-            $ws->getStyle('A' . $row)->applyFromArray([
-                'font'      => ['bold' => $isSectionHeader, 'size' => 10],
-                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_FIELD_BG]],
-                'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
-            ]);
-            $ws->getStyle('B' . $row)->applyFromArray([
-                'font'      => ['size' => 10],
-                'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
-            ]);
-            $ws->getRowDimension($row)->setRowHeight(15.75);
+        foreach ($checkboxItems as $r => [$val, $label]) {
+            $ws->mergeCells('A' . $r . ':C' . $r);
+            $ws->setCellValue('A' . $r, $label);
+            $ws->setCellValue('D' . $r, $yn($val));
+            $this->applyYesNoDropdown($ws, 'D' . $r);
+            $ws->getStyle('A' . $r)->applyFromArray($fieldStyle);
+            $ws->getStyle('D' . $r)->applyFromArray($valueStyle);
+            $ws->getRowDimension($r)->setRowHeight(15.75);
         }
 
-        $ws->getPageSetup()->setPrintArea('A1:C36');
-        $ws->freezePane('B5');
+        // Row 39: free-text for has_others_text
+        $ws->mergeCells('A39:D39');
+        $ws->setCellValue('A39', $sub?->has_others_text ?? '');
+        $ws->getStyle('A39')->applyFromArray($valueStyle);
+        $ws->getRowDimension(39)->setRowHeight(15.75);
+
+        $ws->getPageSetup()->setPrintArea('A1:D39');
+        $ws->freezePane('A21');
     }
 
     private function addAnnexFSheet(Spreadsheet $ss, int $heiId, string $ay): void
@@ -630,59 +688,157 @@ class ExcelExportService
             ->where('hei_id', $heiId)->where('academic_year', $ay)
             ->whereIn('status', ['submitted', 'published', 'request'])->first();
 
+        // ── Page setup ────────────────────────────────────────────────────
+        $ws->getPageSetup()
+            ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
+            ->setPaperSize(PageSetup::PAPERSIZE_LEGAL)
+            ->setFitToPage(true)->setFitToWidth(1)->setFitToHeight(0);
+        $ws->getPageMargins()->setTop(0.75)->setBottom(0.75)->setLeft(0.7)->setRight(0.7);
+
+        // ── Column widths matching the original ───────────────────────────
+        $ws->getColumnDimension('A')->setWidth(40);
+        $ws->getColumnDimension('B')->setWidth(40);
+        $ws->getColumnDimension('C')->setWidth(35);
+        $ws->getColumnDimension('D')->setWidth(35);
+
+        // ── Row 1: machine-readable tag ───────────────────────────────────
         $ws->setCellValue('A1', '[ANNEX_G]');
         $this->styleTagRow($ws, 'A1');
-        foreach (['A2:D2', 'A4:D4'] as $range) {
-            $ws->mergeCells($range);
-            $ws->getStyle(explode(':', $range)[0])->applyFromArray([
-                'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial'],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            ]);
-        }
-        foreach (['A3:D3'] as $range) {
+
+        // ── Rows 2–5: title block matching original exactly ─────────────────
+        // Original: Row 1=ANNEX G, Row 2=blank, Row 3=RA 7079 title,
+        //           Row 4=CAMPUS JOURNALISM..., Row 5=AY
+        // We shift by 1 because row 1 is our tag.
+        $ws->mergeCells('A2:D2');
+        $ws->getStyle('A2')->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial'],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        foreach (['A3:D3', 'A4:D4'] as $range) {
             $ws->mergeCells($range);
             $ws->getStyle(explode(':', $range)[0])->applyFromArray([
                 'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial', 'color' => ['argb' => self::COLOR_TITLE_BLUE]],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             ]);
         }
+        $ws->mergeCells('A5:D5');
+        $ws->getStyle('A5')->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial'],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
         $ws->setCellValue('A2', 'ANNEX "G"');
-        $ws->setCellValue('A3', 'IMPLEMENTATION OF REPUBLIC ACT (R.A.) NO. 7079 / CAMPUS JOURNALISM ACT OF 1991');
-        $ws->setCellValue('A4', 'As of Academic Year (AY) ' . $ay);
+        $ws->setCellValue('A3', 'IMPLEMENTATION OF REPUBLIC ACT (R.A.) NO. 7079');
+        $ws->setCellValue('A4', 'CAMPUS JOURNALISM ACT OF 1991');
+        $ws->setCellValue('A5', 'As of Academic Year (AY) ' . $ay);
         $ws->getRowDimension(2)->setRowHeight(22);
+        $ws->getRowDimension(6)->setRowHeight(4); // spacer
 
-        $fields = [
-            ['Official School Name',         $sub?->official_school_name],
-            ['Student Publication Name',      $sub?->student_publication_name],
-            ['Publication Fee per Student',   $sub?->publication_fee_per_student],
-            ['Frequency: Monthly (YES/NO)',   $sub ? ($sub->frequency_monthly ? 'YES' : 'NO') : ''],
-            ['Frequency: Quarterly (YES/NO)', $sub ? ($sub->frequency_quarterly ? 'YES' : 'NO') : ''],
-            ['Frequency: Annual (YES/NO)',    $sub ? ($sub->frequency_annual ? 'YES' : 'NO') : ''],
-            ['Frequency: Per Semester (YES/NO)', $sub ? ($sub->frequency_per_semester ? 'YES' : 'NO') : ''],
-            ['Frequency: Others (YES/NO)',    $sub ? ($sub->frequency_others ? 'YES' : 'NO') : ''],
-            ['Frequency: Others — specify',  $sub?->frequency_others_specify],
-            ['Type: Newsletter (YES/NO)',     $sub ? ($sub->publication_type_newsletter ? 'YES' : 'NO') : ''],
-            ['Type: Gazette (YES/NO)',        $sub ? ($sub->publication_type_gazette ? 'YES' : 'NO') : ''],
-            ['Type: Magazine (YES/NO)',       $sub ? ($sub->publication_type_magazine ? 'YES' : 'NO') : ''],
-            ['Type: Others (YES/NO)',         $sub ? ($sub->publication_type_others ? 'YES' : 'NO') : ''],
-            ['Type: Others — specify',       $sub?->publication_type_others_specify],
-            ['Adviser Name',                  $sub?->adviser_name],
-            ['Adviser Position/Designation', $sub?->adviser_position_designation],
+        $fieldStyle = [
+            'font'      => ['bold' => true, 'size' => 10, 'name' => 'Arial'],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_FIELD_BG]],
+            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+        $valueStyle = [
+            'font'      => ['size' => 10, 'name' => 'Arial'],
+            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+        $yn = fn(?bool $v): string => $v ? 'YES' : 'NO';
+
+        // ── New column layout for Annex G ─────────────────────────────────
+        // Col A = Circulation Period label  Col B = freq YES/NO dropdown
+        // Col C = Type of Publication label Col D = type YES/NO dropdown
+        // Parser reads: frequency = bool_(ws, r, 2)  publication_type = bool_(ws, r, 4)
+        $ws->getColumnDimension('A')->setWidth(35);
+        $ws->getColumnDimension('B')->setWidth(10);
+        $ws->getColumnDimension('C')->setWidth(35);
+        $ws->getColumnDimension('D')->setWidth(10);
+
+        // ── Row 7: Name of School (A) | Publication Fee (C) ──────────────
+        // Parser reads: official_school_name = str(ws, 7, 1) strips prefix
+        //               publication_fee_per_student = str(ws, 7, 3) strips prefix
+        $ws->mergeCells('A7:B7');
+        $ws->setCellValue('A7', 'Name of Official School/ Institutional Student Publication: ' . ($sub?->official_school_name ?? ''));
+        $ws->mergeCells('C7:D7');
+        $ws->setCellValue('C7', 'Publication Fee per student: ' . ($sub?->publication_fee_per_student ?? ''));
+        $ws->getStyle('A7')->applyFromArray($fieldStyle);
+        $ws->getStyle('C7')->applyFromArray($fieldStyle);
+        $ws->getRowDimension(7)->setRowHeight(15.75);
+
+        // ── Row 8: Student Publication Name (A:D merged) ──────────────────
+        // Parser reads: student_publication_name = str(ws, 8, 1) strips prefix.
+        $ws->mergeCells('A8:D8');
+        $ws->setCellValue('A8', 'Name of Student Publication: ' . ($sub?->student_publication_name ?? ''));
+        $ws->getStyle('A8')->applyFromArray($fieldStyle);
+        $ws->getRowDimension(8)->setRowHeight(15.75);
+
+        // ── Row 9: section headers ────────────────────────────────────────
+        $ws->mergeCells('A9:B9');
+        $ws->setCellValue('A9', 'Circulation Period:');
+        $ws->mergeCells('C9:D9');
+        $ws->setCellValue('C9', 'Type of Publication:');
+        $ws->getStyle('A9')->applyFromArray($fieldStyle);
+        $ws->getStyle('C9')->applyFromArray($fieldStyle);
+        $ws->getRowDimension(9)->setRowHeight(18);
+
+        // ── Rows 10–14: freq (A label + B dropdown) | type (C label + D dropdown) ─
+        // Parser reads: frequency_* = bool_(ws, r, 2)  publication_type_* = bool_(ws, r, 4)
+        // frequency_others_specify = str(ws, 14, 1) via stripPrefix after 'specify'
+        // publication_type_others_specify = str(ws, 13, 3) via stripPrefix after 'specify'
+        $freqRows = [
+            10 => [$sub?->frequency_monthly,      'Monthly'],
+            11 => [$sub?->frequency_quarterly,    'Quarterly'],
+            12 => [$sub?->frequency_annual,       'Annual'],
+            13 => [$sub?->frequency_per_semester, 'Per Semester'],
+            14 => [$sub?->frequency_others,       'Others, please specify: ' . ($sub?->frequency_others_specify ?? '')],
+        ];
+        $typeRows = [
+            10 => [$sub?->publication_type_newsletter, 'Newsletter'],
+            11 => [$sub?->publication_type_gazette,    'Gazette'],
+            12 => [$sub?->publication_type_magazine,   'Magazine'],
+            13 => [$sub?->publication_type_others,     'Others, please specify: ' . ($sub?->publication_type_others_specify ?? '')],
         ];
 
-        foreach ($fields as $i => $f) {
-            $r = $i + 5;
-            $ws->setCellValue('A' . $r, $f[0]);
-            $ws->setCellValue('B' . $r, $f[1] ?? '');
-            $ws->getStyle('A' . $r)->applyFromArray([
-                'font' => ['bold' => true, 'size' => 10],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_FIELD_BG]],
-                'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
-            ]);
+        foreach ($freqRows as $r => [$val, $label]) {
+            $ws->setCellValue('A' . $r, $label);
+            $ws->setCellValue('B' . $r, $yn($val));
+            $this->applyYesNoDropdown($ws, 'B' . $r);
+            $ws->getStyle('A' . $r)->applyFromArray($fieldStyle);
+            $ws->getStyle('B' . $r)->applyFromArray($valueStyle);
             $ws->getRowDimension($r)->setRowHeight(15.75);
         }
+        foreach ($typeRows as $r => [$val, $label]) {
+            $ws->setCellValue('C' . $r, $label);
+            $ws->setCellValue('D' . $r, $yn($val));
+            $this->applyYesNoDropdown($ws, 'D' . $r);
+            $ws->getStyle('C' . $r)->applyFromArray($fieldStyle);
+            $ws->getStyle('D' . $r)->applyFromArray($valueStyle);
+        }
 
-        $nextRow = 5 + count($fields) + 1;
+        // ── Rows 15–18: spacer + Table 1 header + Adviser fields ─────────────
+        // Matches original rows 18–20 layout.
+        $ws->getRowDimension(15)->setRowHeight(4);
+        $ws->mergeCells('A16:D16');
+        $ws->setCellValue('A16', 'Table 1. Composition of Editorial Board of the University-Wide publication');
+        $ws->getStyle('A16')->applyFromArray($fieldStyle);
+        $ws->getRowDimension(16)->setRowHeight(15.75);
+
+        // Adviser — parser reads: adviser_name = str(ws, 17, 2)
+        //                          adviser_position_designation = str(ws, 18, 2)
+        $ws->setCellValue('A17', 'Name of Adviser:');
+        $ws->mergeCells('B17:D17');
+        $ws->setCellValue('B17', $sub?->adviser_name ?? '');
+        $ws->getStyle('A17')->applyFromArray($fieldStyle);
+        $ws->getStyle('B17')->applyFromArray($valueStyle);
+        $ws->getRowDimension(17)->setRowHeight(15.75);
+
+        $ws->setCellValue('A18', 'Position/Designation:');
+        $ws->mergeCells('B18:D18');
+        $ws->setCellValue('B18', $sub?->adviser_position_designation ?? '');
+        $ws->getStyle('A18')->applyFromArray($fieldStyle);
+        $ws->getStyle('B18')->applyFromArray($valueStyle);
+        $ws->getRowDimension(18)->setRowHeight(15.75);
+
+        $nextRow = 20;
 
         $hdrStyle = [
             'font'      => ['bold' => true, 'size' => 10],
@@ -791,6 +947,7 @@ class ExcelExportService
         // Parser reads col 2 (with), col 3 (supporting_documents), col 4 (remarks) positionally.
         // Col 1 (service_type label) is cosmetic only — parser uses the predefined list, not col 1.
         //
+        // Col B gets a YES/NO dropdown via Data Validation — parser's bool_() handles YES/NO on import.
         // Key by service_type with a trim+lower normalisation to absorb any encoding/whitespace
         // differences between what was stored and what PREDEFINED_SERVICES declares.
         $serviceMap = [];
@@ -806,6 +963,7 @@ class ExcelExportService
             $ws->setCellValue('B' . $r, $svc !== null ? ($svc->with ? 'YES' : 'NO') : '');
             $ws->setCellValue('C' . $r, $svc?->supporting_documents ?? '');
             $ws->setCellValue('D' . $r, $svc?->remarks ?? '');
+            $this->applyYesNoDropdown($ws, 'B' . $r);
             $ws->getStyle('A' . $r)->applyFromArray([
                 'font' => ['size' => 10],
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_FIELD_BG]],
@@ -1063,7 +1221,9 @@ class ExcelExportService
             ->whereIn('status', ['submitted', 'published', 'request'])->first();
         return $batch?->housing->map(fn($h) => [
             $h->housing_name, $h->complete_address, $h->house_manager_name,
-            $h->male ? 'YES' : 'NO', $h->female ? 'YES' : 'NO', $h->coed ? 'YES' : 'NO',
+            $h->male   ? 'YES' : 'NO',
+            $h->female ? 'YES' : 'NO',
+            $h->coed   ? 'YES' : 'NO',
             $h->others, $h->remarks,
         ])->toArray() ?? [];
     }
@@ -1111,6 +1271,26 @@ class ExcelExportService
     }
 
     // ── style helpers ──────────────────────────────────────────────────────
+
+    /**
+     * Apply a YES/NO dropdown (Data Validation list) to a single cell.
+     * Parser's bool_() already handles YES/NO strings — import side needs no changes.
+     *
+     * NOTE: setShowDropDown(false) is NOT a typo — PhpSpreadsheet's flag is inverted:
+     * false = show the dropdown arrow in Excel, true = hide it.
+     */
+    private function applyYesNoDropdown(Worksheet $ws, string $cell): void
+    {
+        $validation = $ws->getCell($cell)->getDataValidation();
+        $validation->setType(DataValidation::TYPE_LIST)
+            ->setErrorStyle(DataValidation::STYLE_STOP)
+            ->setAllowBlank(true)
+            ->setShowDropDown(false)   // false = SHOW the arrow (PhpSpreadsheet API is inverted)
+            ->setShowErrorMessage(true)
+            ->setErrorTitle('Invalid input')
+            ->setError('Please select YES or NO from the dropdown.')
+            ->setFormula1('"YES,NO"');
+    }
 
     private function styleTagRow(Worksheet $ws, string $cell): void
     {

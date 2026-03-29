@@ -125,7 +125,7 @@ export const ANNEX_G_CONFIG = {
   renderType: 'hybrid',
   
   formSection: {
-    key: 'batch',
+    key: 'form_data', // backend returns this key from getBatchData() for Annex G
     title: 'Publication Information',
     layout: '2-column',
     fields: [
@@ -140,7 +140,7 @@ export const ANNEX_G_CONFIG = {
   // Additional form section for frequencies and types (booleans)
   formSections: [
     {
-      key: 'batch',
+      key: 'form_data', // same key - backend merges all form fields into form_data
       title: 'Publication Frequency',
       layout: '2-column',
       fields: [
@@ -153,7 +153,7 @@ export const ANNEX_G_CONFIG = {
       ]
     },
     {
-      key: 'batch',
+      key: 'form_data',
       title: 'Publication Type',
       layout: '2-column',
       fields: [
@@ -181,8 +181,9 @@ export const ANNEX_G_CONFIG = {
       key: 'other_publications',
       title: 'Other Publications',
       columns: [
-        { field: 'publication_name', headerName: 'Publication Name', flex: 1, minWidth: 250 },
-        { field: 'description', headerName: 'Description', flex: 1, minWidth: 300 }
+        { field: 'name_of_publication', headerName: 'Publication Name', flex: 1, minWidth: 250 },
+        { field: 'department_unit_in_charge', headerName: 'Department/Unit in Charge', flex: 1, minWidth: 250 },
+        { field: 'type_of_publication', headerName: 'Type of Publication', flex: 1, minWidth: 200 }
       ],
       optional: true
     },
@@ -190,9 +191,10 @@ export const ANNEX_G_CONFIG = {
       key: 'programs',
       title: 'Programs/Activities',
       columns: [
-        { field: 'program_activity', headerName: 'Program/Activity', flex: 1, minWidth: 300 },
-        { field: 'date_conducted', headerName: 'Date Conducted', width: 150 },
-        { field: 'participants', headerName: 'Participants', width: 120, type: 'numericColumn' }
+        { field: 'title_of_program', headerName: 'Title of Program', flex: 1, minWidth: 300 },
+        { field: 'implementation_date', headerName: 'Implementation Date', width: 180 },
+        { field: 'implementation_venue', headerName: 'Venue', flex: 1, minWidth: 200 },
+        { field: 'target_group_of_participants', headerName: 'Target Participants', flex: 1, minWidth: 200 }
       ],
       optional: true
     }

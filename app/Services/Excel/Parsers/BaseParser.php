@@ -51,6 +51,23 @@ abstract class BaseParser
         return in_array($v, ['yes', '1', 'true', 'y'], true);
     }
 
+    /**
+     * Read a checkbox cell whose value is the full label string starting with ☑ or ☐.
+     * Returns true if the cell starts with the checked character (☑ / ✓ / ü).
+     * Also falls back to YES/NO strings for backward compat.
+     */
+    protected function checkbox_(Worksheet $ws, int $row, int $col): bool
+    {
+        $v = trim((string) $this->cell($ws, $row, $col));
+        if (!$v) return false;
+        // Checked unicode chars used in CHED templates
+        $first = mb_substr($v, 0, 1);
+        if (in_array($first, ['☑', '✓', 'ü', '✔'], true)) return true;
+        if (in_array($first, ['☐', '◻'], true)) return false;
+        // Fallback: plain YES/NO
+        return in_array(strtolower($v), ['yes', '1', 'true', 'y'], true);
+    }
+
     protected function date_(Worksheet $ws, int $row, int $col): ?string
     {
         $v = $this->cell($ws, $row, $col);

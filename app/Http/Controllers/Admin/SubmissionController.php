@@ -94,10 +94,16 @@ class SubmissionController extends Controller
                         ? ($batch->submission_id ?? $batch->id)
                         : ($batch->batch_id ?? $batch->id);
 
+                    // batch_id must also be submission_id for G/D so the
+                    // fetch URL resolves correctly in getBatchData()
+                    $batchId = ($code === 'D' || $code === 'G')
+                        ? ($batch->submission_id ?? $batch->id)
+                        : ($batch->batch_id ?? $batch->id);
+
                     return [
                         'id' => $batch->id,
                         'route_id' => $routeId,  // The ID used in edit routes
-                        'batch_id' => $batch->batch_id ?? $batch->id,
+                        'batch_id' => $batchId,
                         'annex' => $code,
                         'academic_year' => $batch->academic_year,
                         'status' => $batch->status,
@@ -525,6 +531,18 @@ class SubmissionController extends Controller
                     'student_publication_name' => $batch->student_publication_name,
                     'publication_fee_per_student' => $batch->publication_fee_per_student,
                     'adviser_name' => $batch->adviser_name,
+                    'adviser_position_designation' => $batch->adviser_position_designation,
+                    'frequency_monthly' => $batch->frequency_monthly,
+                    'frequency_quarterly' => $batch->frequency_quarterly,
+                    'frequency_annual' => $batch->frequency_annual,
+                    'frequency_per_semester' => $batch->frequency_per_semester,
+                    'frequency_others' => $batch->frequency_others,
+                    'frequency_others_specify' => $batch->frequency_others_specify,
+                    'publication_type_newsletter' => $batch->publication_type_newsletter,
+                    'publication_type_gazette' => $batch->publication_type_gazette,
+                    'publication_type_magazine' => $batch->publication_type_magazine,
+                    'publication_type_others' => $batch->publication_type_others,
+                    'publication_type_others_specify' => $batch->publication_type_others_specify,
                 ]
             ]);
         }

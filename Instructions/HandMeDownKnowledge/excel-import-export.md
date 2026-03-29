@@ -96,5 +96,27 @@ All sheets use the original CHED SASTOOL visual design. **All title blocks are c
 - Signatures intentionally omitted from both export template and import.
 - The export Excel file is a standalone printable document. It does not need to follow system UI conventions — it follows the original CHED SASTOOL layout instead.
 
+## Annex D & G — Checkbox Redesign (Done)
+Both Annex D and G export now match the original CHED SASTOOL template exactly — no hidden YES/NO cells, no separate import columns.
+
+**Annex D changes:**
+- Top 3 fields (version, OIC, committee) now inline label+value in col A (e.g. `"Version/ Publication date: 2nd Ed 2023"`)
+- Rows 13–18: dissemination checkboxes live directly in col A as `"☑/☐  Label"`. Type checkboxes in col B. `type_others` flag kept hidden in C13 for backward compat.
+- Rows 21–38: full-width checkbox cells (merged A:C), `"☑/☐  Label"` — no separate YES/NO col.
+- `AnnexDParser` uses `checkbox_()` on col A (rows 13, 17, 18, 21-38) and col B (rows 13-14). Strips label prefixes with a `$strip` closure for text fields.
+
+**Annex G changes:**
+- Title block split to 2 rows for RA title (rows 3-4) matching original.
+- Row 7: school name (col A) and fee (col B) on same row, inline label+value.
+- Row 8: student publication name (col A), full width.
+- Row 9: section headers (Circulation Period / Type of Publication).
+- Rows 10–14: circulation checkboxes in col A. Rows 10–13: type checkboxes in col B. No hidden YES/NO.
+- Row 14 col A: `"☑/☐  Others, please specify <text>"` — specify text embedded in label.
+- Rows 15–18: spacer + Table 1 header + adviser name/position (col B).
+- `AnnexGParser` rewritten with explicit row/col reads. Uses `checkbox_()` for all checkbox cells. `stripPrefix` closure handles inline label+value cells. Specify-text extracted from label cells via `stripos('specify')`.
+
+**BaseParser addition:**
+- `checkbox_(Worksheet, row, col): bool` — reads `☑/✓/ü/✔` = true, `☐/◻` = false, falls back to YES/NO strings.
+
 ## To Be Fixed Soon
 - `ExcelPersistService::resolveStatus()` duplicates overwrite/status logic from `BaseAnnexController`. Should be extracted to a shared Action class.
