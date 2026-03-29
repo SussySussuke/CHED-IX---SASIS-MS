@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import HEILayout from '../../../Layouts/HEILayout';
 import { router } from '@inertiajs/react';
 import AGGridEditor from '../../../Components/Common/AGGridEditor';
@@ -23,8 +23,6 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
   const existingBatch = existingBatches[selectedYear];
   const admissionServices = existingBatch?.admission_services || [];
   const admissionStatistics = existingBatch?.admission_statistics || [];
-  const servicesRef = useRef(null);
-  const statisticsRef = useRef(null);
   const { isDark } = useTheme();
   const [processing, setProcessing] = useState(false);
   const [requestNotes, setRequestNotes] = useState('');
@@ -155,9 +153,17 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
       editable: false,
       width: 80,
       pinned: 'right',
-      cellRenderer: params => {
-        return `<button class="delete-row-btn" data-table="statistics" data-row="${params.node.rowIndex}" title="Delete this row" style="padding:4px;border:none;background:none;cursor:pointer;color:#dc2626;"><svg style="width:16px;height:16px;display:inline-block;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
-      }
+      cellRenderer: params => (
+        <button
+          title="Delete this row"
+          onClick={() => handleRemoveRow('statistics', params.node.rowIndex)}
+          style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}
+        >
+          <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      )
     }
   ];
 
@@ -174,20 +180,6 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
       }
     }
   };
-
-  useEffect(() => {
-    const handleClick = (e) => {
-      const deleteBtn = e.target.closest('.delete-row-btn');
-      if (deleteBtn) {
-        const row = parseInt(deleteBtn.dataset.row);
-        const table = deleteBtn.dataset.table;
-        handleRemoveRow(table, row);
-      }
-    };
-
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, [servicesData, statisticsData]);
 
   const handleSubmit = () => {
     const servicesArray = [];
@@ -299,7 +291,6 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
 
             <div className="mb-4">
               <AGGridEditor
-                ref={servicesRef}
                 rowData={servicesData}
                 columnDefs={servicesColumns}
                 onCellValueChanged={(params) => {
@@ -324,7 +315,6 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
 
             <div className="mb-4">
               <AGGridEditor
-                ref={statisticsRef}
                 rowData={statisticsData}
                 columnDefs={statisticsColumns}
                 onCellValueChanged={(params) => {
