@@ -54,6 +54,7 @@ This feature is the most complex in the system. Multiple files cover it from dif
 | `superadmin-management-pages.md` | SuperAdmin HEI/Admin/CHED Contact management pages + SuperAdmin Dashboard — `HEIManagementService`, `CHEDContactService` extraction, `DashboardService` extraction, Total Admins stat card | You're working on SuperAdmin routes/pages or the shared dashboard service. |
 | `audit-log-display-hardening.md` | Audit log UI — `AuditLogResource`, `FIELD_LABELS` per entity type, `ValuesTable` component replacing raw JSON display | You're touching audit logs display, `AuditLogResource`, or adding new entity types to the label map. |
 | `mer4-admin-form-rendering-and-remarks.md` | MER4 admin form — `annex_type` format mismatch bug (`annex_a` vs `A`), wrong API URL (`/mer/` vs `/mer4/`), `normalizeAnnexType()` fix, CHED Remarks save flow | You're working on MER4 admin forms, `MER4TableComponent`, or the remarks batch save endpoint. |
+| `mer4a-submission-autofill-fix.md` | MER4A evidence link autofill bug — `row_id` mismatch between seeder and config, seeder row count wrong (10 SAS/9 GC → 5/3), `submitted_at` column missing from migration and model | You're touching MER4A seeder, `mer4aConfig.js` fixedRow IDs, `MER4ASubmission` model, or see blank fields on MER4A edit. |
 
 ---
 

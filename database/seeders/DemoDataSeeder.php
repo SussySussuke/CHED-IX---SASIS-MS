@@ -1563,29 +1563,19 @@ class DemoDataSeeder extends Seeder
         ], $this->ts()));
 
         $sasLinks = [
-            'sas_001' => 'https://drive.google.com/drive/folders/1A2B3C_sas_orgchart',
-            'sas_002' => 'https://drive.google.com/drive/folders/1A2B3C_sas_manual',
-            'sas_003' => 'https://drive.google.com/drive/folders/1A2B3C_sas_report',
-            'sas_004' => 'https://drive.google.com/drive/folders/1A2B3C_sas_budget',
-            'sas_005' => 'https://drive.google.com/drive/folders/1A2B3C_sas_grievance',
-            'sas_006' => null,
-            'sas_007' => 'https://drive.google.com/drive/folders/1A2B3C_sas_ssg',
-            'sas_008' => null,
-            'sas_009' => 'https://drive.google.com/drive/folders/1A2B3C_sas_moa',
-            'sas_010' => 'https://drive.google.com/drive/folders/1A2B3C_sas_pwd',
+            'sas_admin_1' => 'https://drive.google.com/drive/folders/1A2B3C_sas_orgchart',
+            'sas_admin_2' => 'https://drive.google.com/drive/folders/1A2B3C_sas_personnel',
+            'sas_admin_3' => 'https://drive.google.com/drive/folders/1A2B3C_sas_fees',
+            'sas_admin_4' => 'https://drive.google.com/drive/folders/1A2B3C_sas_consortia',
+            'sas_admin_5' => null,
         ];
 
         foreach ([
-            ['sas_001', 'Approved SAS organizational structure and staffing pattern', true, 'BOR-approved; org chart posted in SAS office and website'],
-            ['sas_002', 'Updated SAS operational manual / policies and procedures', true, 'Reviewed and re-approved for AY ' . $ay],
-            ['sas_003', 'Annual SAS accomplishment report submitted to CHED', true, 'Submitted via eSAS portal'],
-            ['sas_004', 'SAS budget allocation and utilization report', true, 'Audited by COA'],
-            ['sas_005', 'Functional student grievance mechanism and complaint desk', true, 'SDO Room 102; complaint log updated weekly'],
-            ['sas_006', 'SAS program and activity calendar published and followed', true, 'Published on university website; 90%+ activities conducted as scheduled'],
-            ['sas_007', 'Functional and duly recognized student government', true, 'SSG elections conducted; COMELEC-supervised'],
-            ['sas_008', 'SAS personnel meet minimum qualifications per CHED standards', true, 'All permanent SAS staff with relevant graduate degrees'],
-            ['sas_009', 'Memoranda of Agreement (MOAs) with external service providers', true, 'MOAs with PRC, NCMH, Philippine Red Cross'],
-            ['sas_010', 'SAS services accessible to PWD students per Magna Carta', true, 'Ramps, accessible restrooms, priority lanes available across all SAS units'],
+            ['sas_admin_1', 'Established functional/ operational/ accessible SAS office to manage SAS programs and activities', true, 'SAS office open Mon-Fri, 8AM-5PM; accessible to students'],
+            ['sas_admin_2', 'Ensured adequate number of qualified and competent personnel to deliver SAS programs and services to students', true, 'All permanent SAS staff with relevant graduate degrees and professional licenses'],
+            ['sas_admin_3', 'Ensured that specific school fees that have been collected to students are judiciously utilized for the delivery of SAS programs and activities', true, 'Audited by COA; utilization report submitted to Finance Office'],
+            ['sas_admin_4', 'Developed collaborations or consortia with peer HEIs to be able to deliver critical SAS programs and activities [2]', true, 'MOAs signed with 3 partner HEIs in the region'],
+            ['sas_admin_5', 'Conducted researches related to SAS', false, null],
         ] as [$rowId, $requirement, $compiled, $remarks]) {
             DB::table('mer4a_sas_management_items')->insert(array_merge([
                 'mer4a_submission_id' => $mer4a,
@@ -1597,32 +1587,22 @@ class DemoDataSeeder extends Seeder
             ], $this->ts()));
         }
 
+        $gcLinks = [
+            'guidance_1' => 'https://drive.google.com/drive/folders/1A2B3C_gc_office',
+            'guidance_2' => 'https://drive.google.com/drive/folders/1A2B3C_gc_pandemic',
+            'guidance_3' => 'https://drive.google.com/drive/folders/1A2B3C_gc_personnel',
+        ];
+
         foreach ([
-            ['gc_001', 'Licensed guidance counselor/s employed per student-counselor ratio', true, 'Three (3) RGCs on staff; ratio within PRC standard'],
-            ['gc_002', 'Functional guidance and counseling office with adequate facilities', true, 'Guidance Center – Student Services Building'],
-            ['gc_003', 'Guidance program aligned with RA 9258 (Guidance and Counseling Act of 2004)', true, 'Annual review conducted; updated per CHED Memorandum Order'],
-            ['gc_004', 'Psychological testing instruments available, valid, and properly administered', true, 'MBTI, SDS, Beck Depression Inventory available; administered by RGC only'],
-            ['gc_005', 'Individual and group counseling services conducted regularly', true, '1,200+ individual sessions; 35+ group sessions per AY'],
-            ['gc_006', 'Student cumulative records maintained, secured, and updated', true, 'Electronic records in Guidance MIS; data privacy compliant per RA 10173'],
-            ['gc_007', 'Referral system and MOA with external mental health facilities', true, 'MOA with National Center for Mental Health (NCMH)'],
-            ['gc_008', 'Trained peer counselors / peer facilitators deployed in colleges', true, '20+ trained peer facilitators across colleges'],
-            ['gc_009', 'Guidance programs address mental health per RA 11036 (Mental Health Act)', true, 'Mental Health Policy adopted by BOR; annual report submitted to DOH and CHED'],
+            ['guidance_1', 'Established functional/ operational/ accessible SAS office to manage SAS programs and activities', true, 'Guidance Center open Mon-Fri; accessible via ramp and elevator'],
+            ['guidance_2', 'Maintained operations of SAS during pandemic and other similar situation', true, 'Online counseling sessions conducted; LMS-based guidance resources deployed'],
+            ['guidance_3', 'Ensured adequate number of qualified and competent personnel to deliver SAS programs and services to students', true, 'Three (3) RGCs on staff; ratio within PRC standard of 1:1500'],
         ] as [$rowId, $requirement, $compiled, $remarks]) {
             DB::table('mer4a_guidance_counseling_items')->insert(array_merge([
                 'mer4a_submission_id' => $mer4a,
                 'row_id'              => $rowId,
                 'requirement'         => $requirement,
-                'evidence_link'       => [
-                    'gc_001' => 'https://drive.google.com/drive/folders/1A2B3C_gc_counselors',
-                    'gc_002' => 'https://drive.google.com/drive/folders/1A2B3C_gc_office',
-                    'gc_003' => 'https://drive.google.com/drive/folders/1A2B3C_gc_program',
-                    'gc_004' => 'https://drive.google.com/drive/folders/1A2B3C_gc_testing',
-                    'gc_005' => null,
-                    'gc_006' => 'https://drive.google.com/drive/folders/1A2B3C_gc_records',
-                    'gc_007' => 'https://drive.google.com/drive/folders/1A2B3C_gc_moa',
-                    'gc_008' => null,
-                    'gc_009' => 'https://drive.google.com/drive/folders/1A2B3C_gc_mentalhealth',
-                ][$rowId] ?? null,
+                'evidence_link'       => $gcLinks[$rowId] ?? null,
                 'status_compiled'     => $compiled,
                 'hei_remarks'         => $remarks,
             ], $this->ts()));

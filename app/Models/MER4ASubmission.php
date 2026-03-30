@@ -15,9 +15,11 @@ class MER4ASubmission extends Model
         'request_notes',
         'cancelled_notes',
         'admin_notes',
+        'submitted_at',
     ];
 
     protected $casts = [
+        'submitted_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

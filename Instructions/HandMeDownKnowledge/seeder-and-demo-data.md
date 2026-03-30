@@ -115,7 +115,7 @@ All annexes seeded with `status = 'submitted'`. Each follows the batch → child
 | MER1 | `mer1_submissions`, `mer1_educational_attainments`, `mer1_trainings` | 3 degrees, 3–5 trainings/year |
 | MER2 | `mer2_submissions`, `mer2_personnel` | 12 personnel (mix of permanent/contractual/JO, 4 office types) |
 | MER3 | `mer3_submissions`, `mer3_school_fees` | 9 fee entries/year; amounts scaled +5%/+10% for 2025-2026/2026-2027 |
-| MER4A | `mer4a_submissions`, `mer4a_sas_management_items`, `mer4a_guidance_counseling_items` | 10 SAS items + 9 GC items/year |
+| MER4A | `mer4a_submissions`, `mer4a_sas_management_items`, `mer4a_guidance_counseling_items` | 5 SAS items + 3 GC items/year |
 
 ## Relevant Files
 

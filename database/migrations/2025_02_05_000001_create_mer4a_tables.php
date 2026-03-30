@@ -36,6 +36,7 @@ return new class extends Migration
             $table->text('request_notes')->nullable();
             $table->text('cancelled_notes')->nullable();
             $table->text('admin_notes')->nullable();
+            $table->timestamp('submitted_at')->nullable();
             $table->timestamps();
 
             $table->foreign('hei_id')->references('id')->on('heis')->onDelete('cascade');
