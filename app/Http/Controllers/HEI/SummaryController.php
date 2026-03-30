@@ -121,8 +121,7 @@ class SummaryController extends Controller
         ]);
 
         // Clear caches
-        CacheService::clearSubmissionCaches(Auth::user()->hei_id);
-        CacheService::clearHeiCaches(Auth::user()->hei_id, $academicYear);
+        CacheService::clearSubmissionCaches(Auth::user()->hei_id, $academicYear);
 
         return redirect()->route('hei.submissions.history')->with('success', $message);
     }
@@ -215,8 +214,7 @@ class SummaryController extends Controller
         ]);
 
         // Clear caches
-        CacheService::clearSubmissionCaches(Auth::user()->hei_id);
-        CacheService::clearHeiCaches(Auth::user()->hei_id, $submissionToEdit->academic_year);
+        CacheService::clearSubmissionCaches(Auth::user()->hei_id, $submissionToEdit->academic_year);
 
         return redirect()->route('hei.submissions.history')->with('success', 'Update request submitted successfully! Waiting for admin approval.');
     }
@@ -244,8 +242,7 @@ class SummaryController extends Controller
         ]);
 
         // Clear caches
-        CacheService::clearSubmissionCaches(Auth::user()->hei_id);
-        CacheService::clearHeiCaches(Auth::user()->hei_id, $submission->academic_year);
+        CacheService::clearSubmissionCaches(Auth::user()->hei_id, $submission->academic_year);
 
         return redirect()->route('hei.submissions.history')->with('success', 'Request cancelled successfully.');
     }

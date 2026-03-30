@@ -6,17 +6,30 @@ import SubmissionsList from '../../../Components/Submissions/SubmissionsList';
 export default function Show({ hei, submissions, academicYears }) {
     const handleApprove = (id, annexType) => {
         if (confirm('Approve this request? The current published batch will be overwritten and its remarks will be archived.')) {
-            router.post(`/admin/submissions/${id}/approve`, { annex_type: annexType });
+            router.post(
+                `/admin/submissions/${id}/approve`,
+                { annex_type: annexType },
+                {
+                    // Force a full Inertia visit after the action so the page
+                    // re-fetches all props from the server (fresh submission list,
+                    // fresh pending counts). Without this, Inertia just replays
+                    // the existing props and the UI appears stale.
+                    onSuccess: () => router.visit(window.location.href, { preserveScroll: true }),
+                }
+            );
         }
     };
 
     const handleReject = (id, annexType) => {
         const reason = prompt('Reason for rejection (optional):');
         if (reason !== null) {
-            router.post(`/admin/submissions/${id}/reject`, {
-                annex_type: annexType,
-                rejection_reason: reason
-            });
+            router.post(
+                `/admin/submissions/${id}/reject`,
+                { annex_type: annexType, rejection_reason: reason },
+                {
+                    onSuccess: () => router.visit(window.location.href, { preserveScroll: true }),
+                }
+            );
         }
     };
 

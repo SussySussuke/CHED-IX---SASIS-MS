@@ -59,6 +59,11 @@ class CacheService
         return "batch_data_{$annexType}_{$batchId}";
     }
 
+    public static function adminDashboardStatsKey(string $academicYear): string
+    {
+        return "admin_dashboard_stats_{$academicYear}";
+    }
+
     /**
      * Clear HEI-specific caches when data is updated
      */
@@ -97,11 +102,22 @@ class CacheService
     }
 
     /**
-     * Clear all submission-related caches for an HEI
+     * Clear all submission-related caches for an HEI.
+     * Also clears admin dashboard stats caches for all affected years.
      */
-    public static function clearSubmissionCaches($heiId): void
+    public static function clearSubmissionCaches($heiId, $academicYear = null): void
     {
         Cache::forget(self::submissionsListKey($heiId));
-        self::clearHeiCaches($heiId);
+        self::clearHeiCaches($heiId, $academicYear);
+
+        // Clear admin/superadmin dashboard stats caches
+        if ($academicYear) {
+            Cache::forget(self::adminDashboardStatsKey($academicYear));
+        } else {
+            $currentYear = date('Y');
+            for ($year = 1994; $year <= $currentYear + 1; $year++) {
+                Cache::forget(self::adminDashboardStatsKey($year . '-' . ($year + 1)));
+            }
+        }
     }
 }

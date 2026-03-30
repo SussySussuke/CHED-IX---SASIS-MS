@@ -13,7 +13,7 @@ class DashboardService
 {
     public function getStats(string $selectedYear): array
     {
-        return Cache::remember("admin_dashboard_stats_{$selectedYear}", CacheService::TTL_SHORT, function () use ($selectedYear) {
+        return Cache::remember(CacheService::adminDashboardStatsKey($selectedYear), CacheService::TTL_SHORT, function () use ($selectedYear) {
             return [
                 'pendingReviews'   => $this->getPendingReviewsCount(),
                 'completionRate'   => $this->getTotalCompletionPercentage($selectedYear),

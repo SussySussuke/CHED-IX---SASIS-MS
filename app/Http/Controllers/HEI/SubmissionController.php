@@ -248,203 +248,162 @@ class SubmissionController extends Controller
     }
 
     /**
-     * Get batch data with related entities for HEI view (CACHED)
+     * Get batch data with related entities for HEI view.
+     * Not cached — this is called on demand when a user opens a submission,
+     * and caching it risks showing stale form data after an update/request.
+     * The query is a single-record lookup and is fast enough without caching.
      */
     public function getBatchData($annexType, $batchId)
     {
         $user = Auth::user();
-        $hei = $user->hei;
+        $hei  = $user->hei;
 
-        // Cache the batch data
-        return Cache::remember(
-            CacheService::batchDataKey($annexType, $batchId),
-            CacheService::TTL_MEDIUM, // 30 minutes - this data rarely changes after submission
-            function () use ($hei, $annexType, $batchId) {
-                // Handle Summary
-                if ($annexType === 'SUMMARY') {
-                    $summary = \App\Models\Summary::where('hei_id', $hei->id)
-                        ->where('id', $batchId)
-                        ->firstOrFail();
+        if ($annexType === 'SUMMARY') {
+            $summary = \App\Models\Summary::where('hei_id', $hei->id)
+                ->where('id', $batchId)
+                ->firstOrFail();
+            return response()->json(['summary' => $summary]);
+        }
 
-                    return response()->json([
-                        'summary' => $summary,
-                    ])->getData();
-                }
+        if ($annexType === 'MER1') {
+            $submission = \App\Models\MER1Submission::where('hei_id', $hei->id)
+                ->where('id', $batchId)
+                ->with(['educationalAttainments', 'trainings'])
+                ->firstOrFail();
+            return response()->json([
+                'batch'                  => $submission,
+                'educational_attainments'=> $submission->educationalAttainments,
+                'trainings'              => $submission->trainings,
+            ]);
+        }
 
-                // Handle MER1 - SharedRenderer compatible format
-                if ($annexType === 'MER1') {
-                    $submission = \App\Models\MER1Submission::where('hei_id', $hei->id)
-                        ->where('id', $batchId)
-                        ->with(['educationalAttainments', 'trainings'])
-                        ->firstOrFail();
+        if ($annexType === 'MER2') {
+            $submission = \App\Models\MER2Submission::where('hei_id', $hei->id)
+                ->where('id', $batchId)
+                ->with(['personnel'])
+                ->firstOrFail();
+            return response()->json(['batch' => $submission, 'personnel' => $submission->personnel]);
+        }
 
-                    return response()->json([
-                        'batch' => $submission,  // Changed from 'mer1' to 'batch' for SharedRenderer compatibility
-                        'educational_attainments' => $submission->educationalAttainments,
-                        'trainings' => $submission->trainings,
-                    ])->getData();
-                }
+        if ($annexType === 'MER3') {
+            $submission = \App\Models\MER3Submission::where('hei_id', $hei->id)
+                ->where('id', $batchId)
+                ->with(['schoolFees'])
+                ->firstOrFail();
+            return response()->json(['batch' => $submission, 'school_fees' => $submission->schoolFees]);
+        }
 
-                // Handle MER2 - SharedRenderer compatible format
-                if ($annexType === 'MER2') {
-                    $submission = \App\Models\MER2Submission::where('hei_id', $hei->id)
-                        ->where('id', $batchId)
-                        ->with(['personnel'])
-                        ->firstOrFail();
+        if ($annexType === 'MER4A') {
+            $submission = \App\Models\MER4ASubmission::where('hei_id', $hei->id)
+                ->where('id', $batchId)
+                ->with(['sasManagementItems', 'guidanceCounselingItems'])
+                ->firstOrFail();
+            return response()->json([
+                'batch'                    => $submission,
+                'sas_management_items'     => $submission->sasManagementItems,
+                'guidance_counseling_items'=> $submission->guidanceCounselingItems,
+            ]);
+        }
 
-                    return response()->json([
-                        'batch' => $submission,
-                        'personnel' => $submission->personnel,
-                    ])->getData();
-                }
+        if (!FormConfigService::isValidFormType($annexType)) {
+            return response()->json(['error' => 'Invalid annex type'], 400);
+        }
 
-                // Handle MER3 - SharedRenderer compatible format
-                if ($annexType === 'MER3') {
-                    $submission = \App\Models\MER3Submission::where('hei_id', $hei->id)
-                        ->where('id', $batchId)
-                        ->with(['schoolFees'])
-                        ->firstOrFail();
+        $config     = FormConfigService::getFormConfig($annexType);
+        $modelClass = $config['model'];
 
-                    return response()->json([
-                        'batch' => $submission,
-                        'school_fees' => $submission->schoolFees,
-                    ])->getData();
-                }
-
-                // Handle MER4A - SharedRenderer compatible format
-                if ($annexType === 'MER4A') {
-                    $submission = \App\Models\MER4ASubmission::where('hei_id', $hei->id)
-                        ->where('id', $batchId)
-                        ->with(['sasManagementItems', 'guidanceCounselingItems'])
-                        ->firstOrFail();
-
-                    return response()->json([
-                        'batch' => $submission,
-                        'sas_management_items' => $submission->sasManagementItems,
-                        'guidance_counseling_items' => $submission->guidanceCounselingItems,
-                    ])->getData();
-                }
-
-                if (!FormConfigService::isValidFormType($annexType)) {
-                    return response()->json(['error' => 'Invalid annex type'], 400)->getData();
-                }
-
-                $config = FormConfigService::getFormConfig($annexType);
-                $modelClass = $config['model'];
-
-                // Handle different ID fields for different annexes
-                if ($annexType === 'D' || $annexType === 'G') {
-                    $query = $modelClass::where('hei_id', $hei->id)
-                        ->where(function ($q) use ($batchId) {
-                            $q->where('id', $batchId)
-                              ->orWhere('submission_id', $batchId);
-                        });
-
-                    if ($annexType === 'G') {
-                        $query->with(['editorialBoards', 'otherPublications', 'programs']);
-                    }
-
-                    $batch = $query->firstOrFail();
-                } else {
-                    $query = $modelClass::where('hei_id', $hei->id)
-                        ->where(function ($q) use ($batchId) {
-                            $q->where('batch_id', $batchId)
-                              ->orWhere('id', $batchId);
-                        });
-
-                    if ($annexType === 'H') {
-                        $query->with(['admissionServices', 'admissionStatistics']);
-                    }
-
-                    if ($annexType === 'M') {
-                        $query->with(['statistics', 'services']);
-                    }
-
-                    $batch = $query->firstOrFail();
-                }
-
-                // Return annex-specific data structure
-                if ($annexType === 'G') {
-                    return response()->json([
-                        'editorial_boards' => $batch->editorialBoards,
-                        'other_publications' => $batch->otherPublications,
-                        'programs' => $batch->programs,
-                        'form_data' => [
-                            'official_school_name' => $batch->official_school_name,
-                            'student_publication_name' => $batch->student_publication_name,
-                            'publication_fee_per_student' => $batch->publication_fee_per_student,
-                            'adviser_name' => $batch->adviser_name,
-                            'adviser_position_designation' => $batch->adviser_position_designation,
-                            'frequency_monthly' => $batch->frequency_monthly,
-                            'frequency_quarterly' => $batch->frequency_quarterly,
-                            'frequency_annual' => $batch->frequency_annual,
-                            'frequency_per_semester' => $batch->frequency_per_semester,
-                            'frequency_others' => $batch->frequency_others,
-                            'frequency_others_specify' => $batch->frequency_others_specify,
-                            'publication_type_newsletter' => $batch->publication_type_newsletter,
-                            'publication_type_gazette' => $batch->publication_type_gazette,
-                            'publication_type_magazine' => $batch->publication_type_magazine,
-                            'publication_type_others' => $batch->publication_type_others,
-                            'publication_type_others_specify' => $batch->publication_type_others_specify,
-                        ]
-                    ])->getData();
-                }
-
-                if ($annexType === 'H') {
-                    return response()->json([
-                        'admission_services' => $batch->admissionServices,
-                        'admission_statistics' => $batch->admissionStatistics,
-                    ])->getData();
-                }
-
-                if ($annexType === 'M') {
-                    $statistics = $batch->statistics->map(function ($stat) {
-                        $yearData = $stat->year_data ?? [];
-
-                        return [
-                            'id' => $stat->id,
-                            'category' => $stat->category,
-                            'subcategory' => $stat->subcategory,
-                            'is_subtotal' => $stat->is_subtotal,
-                            'ay_2023_2024_enrollment' => $yearData['2023-2024']['enrollment'] ?? 0,
-                            'ay_2023_2024_graduates' => $yearData['2023-2024']['graduates'] ?? 0,
-                            'ay_2022_2023_enrollment' => $yearData['2022-2023']['enrollment'] ?? 0,
-                            'ay_2022_2023_graduates' => $yearData['2022-2023']['graduates'] ?? 0,
-                            'ay_2021_2022_enrollment' => $yearData['2021-2022']['enrollment'] ?? 0,
-                            'ay_2021_2022_graduates' => $yearData['2021-2022']['graduates'] ?? 0,
-                        ];
-                    });
-
-                    return response()->json([
-                        'statistics' => $statistics,
-                        'services' => $batch->services,
-                    ])->getData();
-                }
-
-                if ($annexType === 'D') {
-                    return response()->json([
-                        'submission' => $batch,
-                    ])->getData();
-                }
-
-                // For standard Handsontable-based annexes
-                $data = [
-                    'batch' => $batch,
-                    'entities' => []
-                ];
-
-                if ($config['relation']) {
-                    try {
-                        if (method_exists($batch, $config['relation'])) {
-                            $data['entities'] = $batch->{$config['relation']}()->get();
-                        }
-                    } catch (\Exception $e) {
-                        $data['entities'] = [];
-                    }
-                }
-
-                return response()->json($data)->getData();
+        if ($annexType === 'D' || $annexType === 'G') {
+            $query = $modelClass::where('hei_id', $hei->id)
+                ->where(function ($q) use ($batchId) {
+                    $q->where('id', $batchId)->orWhere('submission_id', $batchId);
+                });
+            if ($annexType === 'G') {
+                $query->with(['editorialBoards', 'otherPublications', 'programs']);
             }
-        );
+            $batch = $query->firstOrFail();
+        } else {
+            $query = $modelClass::where('hei_id', $hei->id)
+                ->where(function ($q) use ($batchId) {
+                    $q->where('batch_id', $batchId)->orWhere('id', $batchId);
+                });
+            if ($annexType === 'H') {
+                $query->with(['admissionServices', 'admissionStatistics']);
+            }
+            if ($annexType === 'M') {
+                $query->with(['statistics', 'services']);
+            }
+            $batch = $query->firstOrFail();
+        }
+
+        if ($annexType === 'G') {
+            return response()->json([
+                'editorial_boards'   => $batch->editorialBoards,
+                'other_publications' => $batch->otherPublications,
+                'programs'           => $batch->programs,
+                'form_data'          => [
+                    'official_school_name'             => $batch->official_school_name,
+                    'student_publication_name'         => $batch->student_publication_name,
+                    'publication_fee_per_student'      => $batch->publication_fee_per_student,
+                    'adviser_name'                     => $batch->adviser_name,
+                    'adviser_position_designation'     => $batch->adviser_position_designation,
+                    'frequency_monthly'                => $batch->frequency_monthly,
+                    'frequency_quarterly'              => $batch->frequency_quarterly,
+                    'frequency_annual'                 => $batch->frequency_annual,
+                    'frequency_per_semester'           => $batch->frequency_per_semester,
+                    'frequency_others'                 => $batch->frequency_others,
+                    'frequency_others_specify'         => $batch->frequency_others_specify,
+                    'publication_type_newsletter'      => $batch->publication_type_newsletter,
+                    'publication_type_gazette'         => $batch->publication_type_gazette,
+                    'publication_type_magazine'        => $batch->publication_type_magazine,
+                    'publication_type_others'          => $batch->publication_type_others,
+                    'publication_type_others_specify'  => $batch->publication_type_others_specify,
+                ],
+            ]);
+        }
+
+        if ($annexType === 'H') {
+            return response()->json([
+                'admission_services'   => $batch->admissionServices,
+                'admission_statistics' => $batch->admissionStatistics,
+            ]);
+        }
+
+        if ($annexType === 'M') {
+            $statistics = $batch->statistics->map(function ($stat) {
+                $yearData = $stat->year_data ?? [];
+                return [
+                    'id'                        => $stat->id,
+                    'category'                  => $stat->category,
+                    'subcategory'               => $stat->subcategory,
+                    'is_subtotal'               => $stat->is_subtotal,
+                    'ay_2023_2024_enrollment'   => $yearData['2023-2024']['enrollment'] ?? 0,
+                    'ay_2023_2024_graduates'    => $yearData['2023-2024']['graduates'] ?? 0,
+                    'ay_2022_2023_enrollment'   => $yearData['2022-2023']['enrollment'] ?? 0,
+                    'ay_2022_2023_graduates'    => $yearData['2022-2023']['graduates'] ?? 0,
+                    'ay_2021_2022_enrollment'   => $yearData['2021-2022']['enrollment'] ?? 0,
+                    'ay_2021_2022_graduates'    => $yearData['2021-2022']['graduates'] ?? 0,
+                ];
+            });
+            return response()->json(['statistics' => $statistics, 'services' => $batch->services]);
+        }
+
+        if ($annexType === 'D') {
+            return response()->json(['submission' => $batch]);
+        }
+
+        // Standard Handsontable-based annexes
+        $data = ['batch' => $batch, 'entities' => []];
+
+        if ($config['relation']) {
+            try {
+                if (method_exists($batch, $config['relation'])) {
+                    $data['entities'] = $batch->{$config['relation']}()->get();
+                }
+            } catch (\Exception $e) {
+                $data['entities'] = [];
+            }
+        }
+
+        return response()->json($data);
     }
 }

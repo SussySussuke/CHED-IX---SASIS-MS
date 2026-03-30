@@ -180,7 +180,7 @@ abstract class BaseAnnexController extends Controller
             
             // Clear caches when data is modified (only if something was actually overwritten)
             if ($affected > 0) {
-                CacheService::clearHeiCaches($heiId, $academicYear);
+                CacheService::clearSubmissionCaches($heiId, $academicYear);
             }
         } catch (\Exception $e) {
             \Log::error('OVERWRITE FAILED', [
@@ -204,11 +204,13 @@ abstract class BaseAnnexController extends Controller
     }
 
     /**
-     * Clear submission caches after create/update/delete
+     * Clear submission caches after create/update/delete.
+     * Delegates to CacheService::clearSubmissionCaches which handles
+     * HEI caches, submissions list, and admin dashboard stats in one call.
      */
     protected function clearSubmissionCaches(int $heiId, string $academicYear): void
     {
-        CacheService::clearHeiCaches($heiId, $academicYear);
+        CacheService::clearSubmissionCaches($heiId, $academicYear);
     }
 
     /**
