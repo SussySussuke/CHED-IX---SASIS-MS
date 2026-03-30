@@ -30,7 +30,7 @@ class HEI extends Model
         'uii',
         'name',
         'type',
-        'code',
+        'abbreviation',
         'email',
         'phone',
         'address',

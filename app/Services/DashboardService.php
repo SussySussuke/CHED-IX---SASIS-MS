@@ -170,7 +170,7 @@ class DashboardService
                         "{$table}.id",
                         'heis.id as hei_id',
                         'heis.name as hei_name',
-                        'heis.code as hei_code',
+                        'heis.abbreviation as hei_code',
                         DB::raw("'{$displayName}' as annex"),
                         "{$table}.academic_year",
                         "{$table}.updated_at as submitted_at",
@@ -210,7 +210,7 @@ class DashboardService
         $heis = DB::table('heis')
             ->where('is_active', true)
             ->where('established_at', '<=', $cutoffDate)
-            ->select('id', 'name', 'code', 'type')
+            ->select('id', 'name', 'abbreviation', 'type')
             ->get();
 
         $performance = [];
@@ -241,7 +241,7 @@ class DashboardService
             $performance[] = [
                 'id'             => $hei->id,
                 'name'           => $hei->name,
-                'code'           => $hei->code,
+                'code'           => $hei->abbreviation,
                 'type'           => $hei->type,
                 'completionRate' => round(($completed / $totalForms) * 100, 1),
                 'completedForms' => $completed,

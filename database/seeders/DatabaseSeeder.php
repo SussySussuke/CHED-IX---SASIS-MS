@@ -37,5 +37,8 @@ class DatabaseSeeder extends Seeder
 
         // Demo HEI with all forms populated
         $this->call(DemoDataSeeder::class);
+
+        // CHED HEI master reference data (120 HEIs, Region 09)
+        $this->call(HEIReferenceSeeder::class);
     }
 }

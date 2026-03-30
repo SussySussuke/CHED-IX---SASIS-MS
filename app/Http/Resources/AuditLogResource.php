@@ -16,7 +16,7 @@ class AuditLogResource extends JsonResource
             'uii'            => 'UII',
             'name'           => 'Name',
             'type'           => 'Type',
-            'code'           => 'Code',
+            'abbreviation'   => 'Abbreviation',
             'email'          => 'Email',
             'address'        => 'Address',
             'established_at' => 'Established',

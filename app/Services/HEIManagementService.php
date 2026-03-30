@@ -21,7 +21,7 @@ class HEIManagementService
                 'uii'            => $hei->uii,
                 'name'           => $hei->name,
                 'type'           => $hei->type,
-                'code'           => $hei->code,
+                'abbreviation'   => $hei->abbreviation,
                 'email'          => $hei->email,
                 'address'        => $hei->address,
                 'established_at' => $hei->established_at?->format('Y-m-d'),
@@ -40,7 +40,7 @@ class HEIManagementService
             'uii'            => $validated['uii'] ?? null,
             'name'           => $validated['name'],
             'type'           => $validated['type'],
-            'code'           => $validated['code'],
+            'abbreviation'   => $validated['abbreviation'],
             'email'          => $validated['email'],
             'address'        => $validated['address'] ?? null,
             'established_at' => $validated['established_at'] ?? null,
@@ -60,13 +60,13 @@ class HEIManagementService
             action: 'created',
             entityType: 'HEI',
             entityId: $hei->id,
-            entityName: $hei->name . ' (' . $hei->code . ')',
+            entityName: $hei->name . ' (' . $hei->abbreviation . ')',
             description: 'Created new HEI account',
             newValues: [
-                'uii'       => $hei->uii,
-                'name'      => $hei->name,
-                'type'      => $hei->type,
-                'code'      => $hei->code,
+                'uii'          => $hei->uii,
+                'name'         => $hei->name,
+                'type'         => $hei->type,
+                'abbreviation' => $hei->abbreviation,
                 'email'     => $hei->email,
                 'address'   => $hei->address,
                 'is_active' => true,
@@ -87,7 +87,7 @@ class HEIManagementService
             'uii'            => $hei->uii,
             'name'           => $hei->name,
             'type'           => $hei->type,
-            'code'           => $hei->code,
+            'abbreviation'   => $hei->abbreviation,
             'email'          => $hei->email,
             'address'        => $hei->address,
             'established_at' => $hei->established_at?->format('Y-m-d'),
@@ -98,7 +98,7 @@ class HEIManagementService
             'uii'            => $validated['uii'] ?? null,
             'name'           => $validated['name'],
             'type'           => $validated['type'],
-            'code'           => $validated['code'],
+            'abbreviation'   => $validated['abbreviation'],
             'email'          => $validated['email'],
             'address'        => $validated['address'] ?? null,
             'established_at' => $validated['established_at'] ?? null,
@@ -125,7 +125,7 @@ class HEIManagementService
             'uii'            => $hei->uii,
             'name'           => $hei->name,
             'type'           => $hei->type,
-            'code'           => $hei->code,
+            'abbreviation'   => $hei->abbreviation,
             'email'          => $hei->email,
             'address'        => $hei->address,
             'established_at' => $hei->established_at?->format('Y-m-d'),
@@ -148,7 +148,7 @@ class HEIManagementService
             action: 'updated',
             entityType: 'HEI',
             entityId: $hei->id,
-            entityName: $hei->name . ' (' . $hei->code . ')',
+            entityName: $hei->name . ' (' . $hei->abbreviation . ')',
             description: 'Updated HEI account' . (!empty($changes) ? ': ' . implode(', ', $changes) : ''),
             oldValues: $oldValues,
             newValues: $newValues
@@ -163,17 +163,17 @@ class HEIManagementService
     public function delete(HEI $hei): void
     {
         $heiData = [
-            'uii'       => $hei->uii,
-            'name'      => $hei->name,
-            'type'      => $hei->type,
-            'code'      => $hei->code,
+            'uii'          => $hei->uii,
+            'name'         => $hei->name,
+            'type'         => $hei->type,
+            'abbreviation' => $hei->abbreviation,
             'email'     => $hei->email,
             'address'   => $hei->address,
             'is_active' => $hei->is_active,
         ];
 
         $heiId   = $hei->id;
-        $heiName = $hei->name . ' (' . $hei->code . ')';
+        $heiName = $hei->name . ' (' . $hei->abbreviation . ')';
 
         $hei->users()->delete();
         $hei->delete();

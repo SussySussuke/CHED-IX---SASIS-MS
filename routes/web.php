@@ -41,6 +41,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes (no auth required)
 Route::get('/api/ched-contacts', [CHEDContactController::class, 'getActiveContacts'])->name('ched-contacts.public');
+Route::get('/api/hei-reference/search', [App\Http\Controllers\HEIReferenceController::class, 'search'])->name('hei-reference.search');
 
 // Guest routes
 Route::middleware('guest')->group(function () {

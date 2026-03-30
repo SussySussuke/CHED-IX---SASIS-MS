@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { IoClose, IoSearch, IoCheckmarkCircle, IoCloseCircle, IoChevronForward } from 'react-icons/io5';
 import { router } from '@inertiajs/react';
 
@@ -345,16 +346,17 @@ const TopPerformingHEIs = ({ heis, allHEIs = [], selectedYear }) => {
             </div>
 
             {/* ── Mini-modal (widget card click) ───────────────────────────── */}
-            {miniModalHei && (
+            {miniModalHei && createPortal(
                 <MiniModal
                     hei={miniModalHei}
                     selectedYear={selectedYear}
                     onClose={() => setMiniModalHei(null)}
-                />
+                />,
+                document.body
             )}
 
             {/* ── Full modal (View All HEIs) ───────────────────────────────── */}
-            {showModal && (
+            {showModal && createPortal(
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <div
@@ -475,7 +477,7 @@ const TopPerformingHEIs = ({ heis, allHEIs = [], selectedYear }) => {
                         </div>
                     </div>
                 </div>
-            )}
+            , document.body)}
         </>
     );
 };

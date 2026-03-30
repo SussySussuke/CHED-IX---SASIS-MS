@@ -8,6 +8,15 @@ import AddressSearchInput from '../../Components/Forms/AddressSearchInput';
 import IconButton from '../../Components/Common/IconButton';
 import StatusBadge from '../../Components/Widgets/StatusBadge';
 
+const HEI_TYPE_MAP = {
+  P: 'Private',
+  S: 'SUC',
+  L: 'LUC',
+  NEW: 'Private',
+  'NEW-S': 'SUC',
+  'NEW-L': 'LUC',
+};
+
 const HEIAccounts = ({ heis = [] }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -16,11 +25,17 @@ const HEIAccounts = ({ heis = [] }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Combobox state for HEI name autofill
+  const [nameQuery, setNameQuery] = useState('');
+  const [referenceResults, setReferenceResults] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoadingRef, setIsLoadingRef] = useState(false);
+
   const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
     uii: '',
     name: '',
     type: '',
-    code: '',
+    abbreviation: '',
     email: '',
     address: '',
     established_at: '2000-01-01',
@@ -28,6 +43,52 @@ const HEIAccounts = ({ heis = [] }) => {
     password_confirmation: '',
     is_active: true,
   });
+
+  const searchHEIReference = async (query) => {
+    setNameQuery(query);
+    setData('name', query);
+    if (query.length < 2) {
+      setReferenceResults([]);
+      setShowSuggestions(false);
+      return;
+    }
+    setIsLoadingRef(true);
+    try {
+      const res = await fetch(`/api/hei-reference/search?q=${encodeURIComponent(query)}`);
+      const results = await res.json();
+      setReferenceResults(results);
+      setShowSuggestions(true);
+    } catch {
+      setReferenceResults([]);
+    } finally {
+      setIsLoadingRef(false);
+    }
+  };
+
+  const selectReference = (ref) => {
+    const firstEmail = ref.email?.split('\n')[0]?.trim() ?? '';
+    const addressParts = [ref.street, ref.barangay, ref.municipality, ref.province]
+      .filter(Boolean)
+      .join(', ');
+
+    setData((prev) => ({
+      ...prev,
+      name: ref.name,
+      uii: ref.uii ?? '',
+      type: HEI_TYPE_MAP[ref.type] ?? '',
+      email: firstEmail,
+      address: addressParts,
+      // abbreviation stays manual — CHED reference has no abbreviation column
+    }));
+    setNameQuery(ref.name);
+    setReferenceResults([]);
+    setShowSuggestions(false);
+  };
+
+  const closeSuggestions = () => {
+    setShowSuggestions(false);
+    setReferenceResults([]);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -38,6 +99,8 @@ const HEIAccounts = ({ heis = [] }) => {
           setIsEditMode(false);
           setEditingHEI(null);
           reset();
+          setNameQuery('');
+          closeSuggestions();
         },
       });
     } else {
@@ -45,6 +108,8 @@ const HEIAccounts = ({ heis = [] }) => {
         onSuccess: () => {
           setIsModalOpen(false);
           reset();
+          setNameQuery('');
+          closeSuggestions();
         },
       });
     }
@@ -53,11 +118,13 @@ const HEIAccounts = ({ heis = [] }) => {
   const handleEdit = (hei) => {
     setEditingHEI(hei);
     setIsEditMode(true);
+    setNameQuery(hei.name);
+    closeSuggestions();
     setData({
-      uii: hei.uii,
+      uii: hei.uii ?? '',
       name: hei.name,
       type: hei.type,
-      code: hei.code,
+      abbreviation: hei.abbreviation ?? '',
       email: hei.email,
       address: hei.address || '',
       established_at: hei.established_at || '2000-01-01',
@@ -82,6 +149,8 @@ const HEIAccounts = ({ heis = [] }) => {
     setIsEditMode(false);
     setEditingHEI(null);
     reset();
+    setNameQuery('');
+    closeSuggestions();
     setShowPassword(false);
     setShowConfirmPassword(false);
     setIsModalOpen(true);
@@ -110,9 +179,9 @@ const HEIAccounts = ({ heis = [] }) => {
       cellStyle: { textAlign: 'center' },
     },
     {
-      headerName: 'HEI Code',
-      field: 'code',
-      width: 130,
+      headerName: 'HEI Abbreviation',
+      field: 'abbreviation',
+      width: 160,
       filter: 'agTextColumnFilter',
       cellStyle: { textAlign: 'center' },
     },
@@ -215,7 +284,7 @@ const HEIAccounts = ({ heis = [] }) => {
             paginationPageSize={50}
             paginationPageSizeSelector={[25, 50, 100, 200]}
             enableQuickFilter={true}
-            quickFilterPlaceholder="Search HEIs by name, code, email, type..."
+            quickFilterPlaceholder="Search HEIs by name, abbreviation, email, type..."
             gridOptions={{
               onCellClicked: onCellClicked,
             }}
@@ -239,6 +308,50 @@ const HEIAccounts = ({ heis = [] }) => {
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                      {/* Name of HEI — combobox with autofill from CHED reference */}
+                      <div className="md:col-span-2 relative">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Name of HEI
+                          {!isEditMode && (
+                            <span className="ml-2 text-xs text-blue-500 dark:text-blue-400 font-normal">
+                              — type to autofill from CHED reference
+                            </span>
+                          )}
+                        </label>
+                        <input
+                          type="text"
+                          value={nameQuery}
+                          onChange={(e) => searchHEIReference(e.target.value)}
+                          onBlur={() => setTimeout(closeSuggestions, 150)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                          placeholder={isEditMode ? '' : 'Type institution name to search...'}
+                          required
+                        />
+                        {isLoadingRef && (
+                          <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Searching...</p>
+                        )}
+                        {showSuggestions && referenceResults.length > 0 && (
+                          <ul className="absolute z-50 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
+                            {referenceResults.map((ref) => (
+                              <li
+                                key={ref.id}
+                                onMouseDown={() => selectReference(ref)}
+                                className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0"
+                              >
+                                <div className="text-sm font-medium text-gray-900 dark:text-white">{ref.name}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  UII {ref.uii} · {ref.type} · {ref.municipality}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {errors.name && (
+                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+                        )}
+                      </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           UII
@@ -248,9 +361,8 @@ const HEIAccounts = ({ heis = [] }) => {
                           value={data.uii}
                           onChange={(e) => setData('uii', e.target.value.slice(0, 6))}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                          placeholder="09001a"
-                          maxLength="8"
-                          required
+                          placeholder="09001"
+                          maxLength="6"
                         />
                         {errors.uii && (
                           <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.uii}</p>
@@ -259,17 +371,18 @@ const HEIAccounts = ({ heis = [] }) => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Name of HEI
+                          HEI Abbreviation
                         </label>
                         <input
                           type="text"
-                          value={data.name}
-                          onChange={(e) => setData('name', e.target.value)}
+                          value={data.abbreviation}
+                          onChange={(e) => setData('abbreviation', e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                          placeholder="e.g. ADZU, ABC"
                           required
                         />
-                        {errors.name && (
-                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+                        {errors.abbreviation && (
+                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.abbreviation}</p>
                         )}
                       </div>
 
@@ -290,22 +403,6 @@ const HEIAccounts = ({ heis = [] }) => {
                         </select>
                         {errors.type && (
                           <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.type}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          HEI Code
-                        </label>
-                        <input
-                          type="text"
-                          value={data.code}
-                          onChange={(e) => setData('code', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                          required
-                        />
-                        {errors.code && (
-                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.code}</p>
                         )}
                       </div>
 
