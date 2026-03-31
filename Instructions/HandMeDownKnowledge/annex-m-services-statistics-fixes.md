@@ -150,3 +150,33 @@ The `AnnexMController`-specific route (`GET /hei/annex-m/{batch_id}/data`) is on
 ## Decisions Made
 - Delegate from `SubmissionController` to `AnnexMController` rather than duplicating or extracting to a Service. Single source of truth, minimal change surface.
 - Per README: "Before fixing a problem locally, ask: could this same problem occur across other features?" — Other annexes with bespoke `SubmissionController` branches (H, G, D) should be audited for the same drift risk if their feature controllers are ever updated.
+
+---
+
+## Session 5 — `category` Field Removal from `annex_m_services`
+
+## Input
+`annex_m_services.category` was never populated in the UI (column removed in Session 1), always `null` in the DB, yet still existed as a fillable model field, a validated controller field, an exported Excel column (col B "Sub-category"), and a parsed import field. The export column headers were also wrong: col A was labeled "Category" but wrote `section`; col B was labeled "Sub-category" but wrote `category`.
+
+## Process
+Confirmed `category` is always `null` in practice: the JSX `handleAddService` initializer had already dropped it, so no new submission ever populated it. Safe to hard-delete.
+
+Dropped the field across the full stack: DB migration, model `$fillable`, controller validation, export sheet (4-col layout replacing 5-col), parser col indices shifted (program: 3→2, count: 4→3, remarks: 5→4, blank-row check: cols 1–5 → 1–4).
+
+Fixed export column headers: col A now reads "Category of Students with Special Needs" (accurately describing `section`). The "Sub-category" column is gone entirely.
+
+## Output
+- `database/migrations/2026_03_31_000001_drop_category_from_annex_m_services.php` — drops column, reversible
+- `app/Models/AnnexMService.php` — removed `category` from `$fillable`
+- `app/Http/Controllers/HEI/AnnexMController.php` — removed `services.*.category` validation rule
+- `app/Services/ExcelExportService.php` — `addAnnexMSheet()` services table: 5→4 cols, corrected headers
+- `app/Services/Excel/Parsers/AnnexMParser.php` — services section: removed `category` read, shifted col indices, updated `isRowBlank` span
+
+## Key Discoveries
+- The export had inverted column header names: "Category" (col A) held `section` data, "Sub-category" (col B) held `category` data. Misleading even before the field was dead weight.
+- `ExcelPersistService::persistAnnexM()` passes `$svc` arrays directly to `->create()` — no change needed there since `category` is no longer in `$fillable` and would be silently ignored even on old exports during the transition.
+- `AnnexMCreate.jsx` had already removed `category` from the service row initializer in Session 1, so no JSX change was needed.
+
+## Decisions Made
+- Hard delete (migration) rather than leaving the column nullable and ignored. Dead columns create confusion for future devs.
+- `php artisan migrate` required to apply; no `migrate:fresh` needed since data loss is intentional (column was always null).

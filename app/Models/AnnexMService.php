@@ -12,7 +12,6 @@ class AnnexMService extends Model
     protected $fillable = [
         'batch_id',
         'section',
-        'category',
         'institutional_services_programs_activities',
         'number_of_beneficiaries_participants',
         'remarks',

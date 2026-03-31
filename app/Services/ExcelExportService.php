@@ -1185,28 +1185,26 @@ class ExcelExportService
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFE2EFD9']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
         ];
-        // 5-col layout matches AnnexMParser: col1=section, col2=category, col3=program, col4=count, col5=remarks.
-        $ws->setCellValue('A' . $row, 'Category');
-        $ws->setCellValue('B' . $row, 'Sub-category');
-        $ws->setCellValue('C' . $row, 'Institutional Services offered/ Programs Implemented/ Activities conducted/ and others');
-        $ws->setCellValue('D' . $row, 'No. of Beneficiaries/ Participants');
-        $ws->setCellValue('E' . $row, 'Remarks, if any');
-        $ws->getStyle('A' . $row . ':E' . $row)->applyFromArray($svcHdrStyle);
+        // 4-col layout: col1=section, col2=program, col3=count, col4=remarks.
+        $ws->setCellValue('A' . $row, 'Category of Students with Special Needs');
+        $ws->setCellValue('B' . $row, 'Institutional Services offered/ Programs Implemented/ Activities conducted/ and others');
+        $ws->setCellValue('C' . $row, 'No. of Beneficiaries/ Participants');
+        $ws->setCellValue('D' . $row, 'Remarks, if any');
+        $ws->getStyle('A' . $row . ':D' . $row)->applyFromArray($svcHdrStyle);
         $ws->getRowDimension($row)->setRowHeight(27);
         $row++;
 
         foreach ($batch?->services?->sortBy('display_order') ?? [] as $svc) {
             $ws->setCellValue('A' . $row, $svc->section);
-            $ws->setCellValue('B' . $row, $svc->category);
-            $ws->setCellValue('C' . $row, $svc->institutional_services_programs_activities);
-            $ws->setCellValue('D' . $row, $svc->number_of_beneficiaries_participants);
-            $ws->setCellValue('E' . $row, $svc->remarks);
-            $ws->getStyle('A' . $row . ':E' . $row)->applyFromArray($dataRowStyle);
+            $ws->setCellValue('B' . $row, $svc->institutional_services_programs_activities);
+            $ws->setCellValue('C' . $row, $svc->number_of_beneficiaries_participants);
+            $ws->setCellValue('D' . $row, $svc->remarks);
+            $ws->getStyle('A' . $row . ':D' . $row)->applyFromArray($dataRowStyle);
             $ws->getRowDimension($row)->setRowHeight(15.75);
             $row++;
         }
 
-        foreach (['A', 'B', 'C', 'D', 'E'] as $col) {
+        foreach (['A', 'B', 'C', 'D'] as $col) {
             $ws->getColumnDimension($col)->setAutoSize(true);
         }
     }

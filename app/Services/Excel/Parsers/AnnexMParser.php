@@ -19,8 +19,8 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *   Row after [STATISTICS] is the header row.
  *
  * [SERVICES] sub-table:
- *   Col 1: section | Col 2: category | Col 3: institutional_services_programs_activities
- *   Col 4: number_of_beneficiaries_participants | Col 5: remarks | Col 6: display_order
+ *   Col 1: section | Col 2: institutional_services_programs_activities
+ *   Col 3: number_of_beneficiaries_participants | Col 4: remarks
  */
 class AnnexMParser extends BaseParser
 {
@@ -112,14 +112,13 @@ class AnnexMParser extends BaseParser
             }
 
             if ($currentSection === 'services') {
-                if ($this->isRowBlank($ws, $r, 1, 5)) continue;
+                if ($this->isRowBlank($ws, $r, 1, 4)) continue;
 
                 $anyData  = true;
                 $section  = $this->str($ws, $r, 1);
-                $category = $this->str($ws, $r, 2);
-                $services_desc = $this->longStr($ws, $r, 3);
-                $count    = $this->int_($ws, $r, 4);
-                $remarks  = $this->str($ws, $r, 5);
+                $services_desc = $this->longStr($ws, $r, 2);
+                $count    = $this->int_($ws, $r, 3);
+                $remarks  = $this->str($ws, $r, 4);
 
                 $validSections = AnnexMStatistic::STRUCTURE;
                 $sectionNames  = array_column($validSections, 'category');
@@ -133,7 +132,6 @@ class AnnexMParser extends BaseParser
 
                 $services[] = [
                     'section'                                  => $section ?? '',
-                    'category'                                 => $category,
                     'institutional_services_programs_activities' => $services_desc ?? '',
                     'number_of_beneficiaries_participants'     => $count,
                     'remarks'                                  => $remarks,

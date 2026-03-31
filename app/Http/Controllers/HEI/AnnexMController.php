@@ -34,7 +34,6 @@ class AnnexMController extends BaseAnnexController
 
             'services' => 'nullable|array',
             'services.*.section' => 'required|string|in:' . implode(',', AnnexMService::SECTIONS),
-            'services.*.category' => 'nullable|string|max:255',
             'services.*.institutional_services_programs_activities' => 'required|string',
             'services.*.number_of_beneficiaries_participants' => 'required|integer|min:0',
             'services.*.remarks' => 'nullable|string',
