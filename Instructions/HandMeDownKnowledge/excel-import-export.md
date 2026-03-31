@@ -120,5 +120,11 @@ Both Annex D and G export now match the original CHED SASTOOL template exactly �
 **BaseParser addition:**
 - `checkbox_(Worksheet, row, col): bool` — reads `☑/✓/ü/✔` = true, `☐/◻` = false, falls back to YES/NO strings.
 
+## Key Discoveries (continued)
+- `getCellByColumnAndRow()` was removed in PhpSpreadsheet 2.x. All parsers route through `BaseParser::cell()`, so the fix is one line there: `$ws->getCell(Coordinate::stringFromColumnIndex($col) . $row)->getValue()`. The export was unaffected because it only uses string-coord `setCellValue()`.
+- `app/views/app.blade.php` was missing `<meta name="csrf-token" content="{{ csrf_token() }}">`. Fetch-based POST requests silently sent an empty token → 419. Required by all AJAX imports.
+- `ImportExcelRequest::authorize()` checked `Auth::user()->role` but the column is `account_type`. Silent `null !== 'hei'` → 403.
+- `ImportConflictModal` X button and Skip both call `advanceConflict()`. That function reset `conflictStep` to `0` after the last conflict instead of advancing past the end, causing the modal to loop forever from conflict 1. Fix: always increment, never reset — `pendingConflict` becomes `null` naturally when `conflictStep >= conflicts.length`.
+
 ## To Be Fixed Soon
 - `ExcelPersistService::resolveStatus()` duplicates overwrite/status logic from `BaseAnnexController`. Should be extracted to a shared Action class.

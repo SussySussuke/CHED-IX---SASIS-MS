@@ -9,7 +9,7 @@ class ImportExcelRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Auth::check() && Auth::user()->role === 'hei';
+        return Auth::check() && Auth::user()->account_type === 'hei';
     }
 
     public function rules(): array

@@ -93,12 +93,9 @@ export default function ExcelImport({ availableYears, defaultYear }) {
   };
 
   const advanceConflict = () => {
-    if (conflictStep + 1 < parseResult.conflicts.length) {
-      setConflictStep(c => c + 1);
-    } else {
-      // All conflicts resolved — conflicts modal closes automatically
-      setConflictStep(0);
-    }
+    // Always advance — never reset. Once conflictStep >= conflicts.length,
+    // pendingConflict becomes null and the modal closes on its own.
+    setConflictStep(c => c + 1);
   };
 
   const pendingConflict = parseResult?.conflicts?.length > 0 && conflictStep < parseResult.conflicts.length

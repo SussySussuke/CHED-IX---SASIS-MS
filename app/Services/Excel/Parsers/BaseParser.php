@@ -2,6 +2,7 @@
 
 namespace App\Services\Excel\Parsers;
 
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 abstract class BaseParser
@@ -22,7 +23,7 @@ abstract class BaseParser
 
     protected function cell(Worksheet $ws, int $row, int $col): mixed
     {
-        return $ws->getCellByColumnAndRow($col, $row)->getValue();
+        return $ws->getCell(Coordinate::stringFromColumnIndex($col) . $row)->getValue();
     }
 
     protected function str(Worksheet $ws, int $row, int $col): ?string
