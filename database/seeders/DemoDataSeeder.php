@@ -1154,6 +1154,16 @@ class DemoDataSeeder extends Seeder
 
     private function seedAnnexM(HEI $hei, string $ay): void
     {
+        // ── Statistics ────────────────────────────────────────────────────────
+        // year_data shape: { "<AY>": { "enrollment": int, "graduates": int } }
+        // category/subcategory must exactly match AnnexMStatistic::STRUCTURE and
+        // the CATEGORY_*_SUBCATEGORIES constants in AnnexMCreate.jsx.
+        // Sections A & C are fixed subcategories; B & D are user-addable.
+        //
+        // Previous seeder (pre-fix) used wrong keys: category held the subcategory
+        // name (e.g. 'Medical Consultation'), year_data used {'sem1','sem2'}, and
+        // section strings didn't match SECTIONS const — all invisible in the UI.
+
         $batchId = $this->uuid();
         DB::table('annex_m_batches')->insert(array_merge([
             'batch_id'        => $batchId,
@@ -1164,59 +1174,110 @@ class DemoDataSeeder extends Seeder
             'cancelled_notes' => null,
         ], $this->ts()));
 
-        $ayStats = [
+        // Per-AY enrollment/graduate counts — realistic variance across years.
+        $stats = [
             '2024-2025' => [
-                ['Medical Consultation',   json_encode(['sem1' => 760, 'sem2' => 820]),  false, 1],
-                ['Dental Consultation',    json_encode(['sem1' => 390, 'sem2' => 440]),  false, 2],
-                ['Mental Health Referrals',json_encode(['sem1' => 80,  'sem2' => 95]),   false, 3],
-                ['Drug Testing (RA 9165)', json_encode(['sem1' => 550, 'sem2' => 550]),  false, 4],
-                ['Emergency Cases Handled',json_encode(['sem1' => 38,  'sem2' => 32]),   false, 5],
-                ['Health Services Total',  json_encode(['sem1' => 1818,'sem2' => 1937]), true,  6],
+                // Category A — Persons with Disabilities (fixed subcategories)
+                ['A. Persons with Disabilities', 'Psychosocial',                    42, 18, false, 0],
+                ['A. Persons with Disabilities', 'Disability due to chronic illness',28, 10, false, 1],
+                ['A. Persons with Disabilities', 'Learning',                         55, 22, false, 2],
+                ['A. Persons with Disabilities', 'Visual / Hearing',                 19,  7, false, 3],
+                ['A. Persons with Disabilities', 'Orthopedic',                       12,  5, false, 4],
+                ['A. Persons with Disabilities', 'Communication',                     8,  3, false, 5],
+                ['A. Persons with Disabilities', 'Medical',                          33, 14, false, 6],
+                ['A. Persons with Disabilities', 'Sub-Total',                       197, 79, true,  7],
+                // Category B — Indigenous People (user-addable; seed 2 rows)
+                ['B. Indigenous People',         'Lumad',                            24,  8, false, 8],
+                ['B. Indigenous People',         'Mangyan',                          11,  3, false, 9],
+                ['B. Indigenous People',         'Sub-Total',                        35, 11, true, 10],
+                // Category C — Dependents of Solo Parents (fixed subcategories)
+                ['C. Dependents of Solo Parents / Solo Parents', 'Living with Mother/Father only', 68, 29, false, 11],
+                ['C. Dependents of Solo Parents / Solo Parents', 'Young Parent',                   17,  6, false, 12],
+                ['C. Dependents of Solo Parents / Solo Parents', 'Sub-Total',                      85, 35, true,  13],
+                // Category D — Other special needs (user-addable; seed 1 row)
+                ['D. Other students with special needs', 'Student Athletes',         40, 15, false, 14],
+                ['D. Other students with special needs', 'Sub-Total',                40, 15, true,  15],
+                // TOTAL
+                ['TOTAL',                        null,                              357,140, true, 999],
             ],
             '2025-2026' => [
-                ['Medical Consultation',   json_encode(['sem1' => 820, 'sem2' => 910]),  false, 1],
-                ['Dental Consultation',    json_encode(['sem1' => 430, 'sem2' => 510]),  false, 2],
-                ['Mental Health Referrals',json_encode(['sem1' => 95,  'sem2' => 115]),  false, 3],
-                ['Drug Testing (RA 9165)', json_encode(['sem1' => 600, 'sem2' => 600]),  false, 4],
-                ['Emergency Cases Handled',json_encode(['sem1' => 42,  'sem2' => 38]),   false, 5],
-                ['Health Services Total',  json_encode(['sem1' => 1987,'sem2' => 2173]), true,  6],
+                ['A. Persons with Disabilities', 'Psychosocial',                    47, 20, false, 0],
+                ['A. Persons with Disabilities', 'Disability due to chronic illness',31, 12, false, 1],
+                ['A. Persons with Disabilities', 'Learning',                         60, 25, false, 2],
+                ['A. Persons with Disabilities', 'Visual / Hearing',                 21,  9, false, 3],
+                ['A. Persons with Disabilities', 'Orthopedic',                       14,  6, false, 4],
+                ['A. Persons with Disabilities', 'Communication',                    10,  4, false, 5],
+                ['A. Persons with Disabilities', 'Medical',                          37, 16, false, 6],
+                ['A. Persons with Disabilities', 'Sub-Total',                       220, 92, true,  7],
+                ['B. Indigenous People',         'Lumad',                            27,  9, false, 8],
+                ['B. Indigenous People',         'Mangyan',                          13,  4, false, 9],
+                ['B. Indigenous People',         'Sub-Total',                        40, 13, true, 10],
+                ['C. Dependents of Solo Parents / Solo Parents', 'Living with Mother/Father only', 74, 32, false, 11],
+                ['C. Dependents of Solo Parents / Solo Parents', 'Young Parent',                   19,  8, false, 12],
+                ['C. Dependents of Solo Parents / Solo Parents', 'Sub-Total',                      93, 40, true,  13],
+                ['D. Other students with special needs', 'Student Athletes',         45, 18, false, 14],
+                ['D. Other students with special needs', 'Sub-Total',                45, 18, true,  15],
+                ['TOTAL',                        null,                              398,163, true, 999],
             ],
             '2026-2027' => [
-                ['Medical Consultation',   json_encode(['sem1' => 890, 'sem2' => 970]),  false, 1],
-                ['Dental Consultation',    json_encode(['sem1' => 470, 'sem2' => 540]),  false, 2],
-                ['Mental Health Referrals',json_encode(['sem1' => 120, 'sem2' => 135]),  false, 3],
-                ['Drug Testing (RA 9165)', json_encode(['sem1' => 680, 'sem2' => 680]),  false, 4],
-                ['Emergency Cases Handled',json_encode(['sem1' => 50,  'sem2' => 44]),   false, 5],
-                ['Vaccination (Flu)',       json_encode(['sem1' => 200, 'sem2' => 0]),    false, 6],
-                ['Health Services Total',  json_encode(['sem1' => 2410,'sem2' => 2369]), true,  7],
+                ['A. Persons with Disabilities', 'Psychosocial',                    51, 22, false, 0],
+                ['A. Persons with Disabilities', 'Disability due to chronic illness',34, 13, false, 1],
+                ['A. Persons with Disabilities', 'Learning',                         65, 27, false, 2],
+                ['A. Persons with Disabilities', 'Visual / Hearing',                 23, 10, false, 3],
+                ['A. Persons with Disabilities', 'Orthopedic',                       15,  7, false, 4],
+                ['A. Persons with Disabilities', 'Communication',                    11,  5, false, 5],
+                ['A. Persons with Disabilities', 'Medical',                          40, 17, false, 6],
+                ['A. Persons with Disabilities', 'Sub-Total',                       239,101, true,  7],
+                ['B. Indigenous People',         'Lumad',                            30, 11, false, 8],
+                ['B. Indigenous People',         'Mangyan',                          15,  5, false, 9],
+                ['B. Indigenous People',         'Sub-Total',                        45, 16, true, 10],
+                ['C. Dependents of Solo Parents / Solo Parents', 'Living with Mother/Father only', 80, 35, false, 11],
+                ['C. Dependents of Solo Parents / Solo Parents', 'Young Parent',                   21,  9, false, 12],
+                ['C. Dependents of Solo Parents / Solo Parents', 'Sub-Total',                     101, 44, true,  13],
+                ['D. Other students with special needs', 'Student Athletes',         50, 20, false, 14],
+                ['D. Other students with special needs', 'Sub-Total',                50, 20, true,  15],
+                ['TOTAL',                        null,                              435,181, true, 999],
             ],
         ];
 
-        foreach (($ayStats[$ay] ?? $ayStats['2025-2026']) as [$category, $yearData, $isSubtotal, $order]) {
+        foreach (($stats[$ay] ?? $stats['2025-2026']) as [$category, $subcategory, $enrollment, $graduates, $isSubtotal, $order]) {
             DB::table('annex_m_statistics')->insert(array_merge([
                 'batch_id'      => $batchId,
                 'category'      => $category,
-                'subcategory'   => null,
-                'year_data'     => $yearData,
+                'subcategory'   => $subcategory,
+                'year_data'     => json_encode([$ay => ['enrollment' => $enrollment, 'graduates' => $graduates]]),
                 'is_subtotal'   => $isSubtotal,
                 'display_order' => $order,
             ], $this->ts()));
         }
 
-        foreach ([
-            ['Health Services', 'Primary Care',      'Free outpatient medical consultation, basic laboratory, prescription', 1500, 1],
-            ['Health Services', 'Dental Care',        'Dental examination, oral prophylaxis, tooth extraction',              400,  2],
-            ['Health Services', 'Emergency Care',     'First aid, stabilization, ambulance referral to partner hospitals',  80,   3],
-            ['Psychological Services', null,           'Individual counseling, group therapy, psychological assessments',   250,  4],
-            ['Preventive Programs', 'Health Education','Health promotion seminars, nutrition month, anti-smoking campaign',  2000, 5],
-        ] as [$section, $category, $program, $beneficiaries, $order]) {
+        // ── Services ──────────────────────────────────────────────────────────
+        // section must exactly match AnnexMService::SECTIONS / SECTIONS const in
+        // AnnexMCreate.jsx. Previous seeder used 'Health Services', 'Psychological
+        // Services', 'Preventive Programs' — none of which matched, so all rows
+        // were invisible (services.filter(s => s.section === section) = []).
+        $services = [
+            // Section A
+            ['A. Persons with Disabilities', null,             'Accessibility ramp installation and maintenance across campus buildings', 320, 'Completed AY '.$ay, 1],
+            ['A. Persons with Disabilities', null,             'Sign language interpretation services during university events',           85, null,                  2],
+            // Section B
+            ['B. Indigenous People',         null,             'Indigenous Peoples scholarship orientation and application assistance',   120, null,                  3],
+            ['B. Indigenous People',         null,             'Lumad and Mangyan cultural integration program — orientation week',       95, 'Annual',              4],
+            // Section C
+            ['C. Dependents of Solo Parents / Solo Parents', null, 'Solo parent ID processing assistance and DSWD coordination',          68, null,                  5],
+            // Section D
+            ['D. Other students with special needs', null,    'Student athlete academic monitoring and tutorial program',                 50, 'Per semester',        6],
+            ['D. Other students with special needs', null,    'Counseling referral for students under financial distress',                40, null,                  7],
+        ];
+
+        foreach ($services as [$section, $category, $program, $beneficiaries, $remarks, $order]) {
             DB::table('annex_m_services')->insert(array_merge([
                 'batch_id'                                   => $batchId,
                 'section'                                    => $section,
                 'category'                                   => $category,
                 'institutional_services_programs_activities' => $program,
                 'number_of_beneficiaries_participants'       => $beneficiaries,
-                'remarks'                                    => null,
+                'remarks'                                    => $remarks,
                 'display_order'                              => $order,
             ], $this->ts()));
         }

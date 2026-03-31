@@ -103,7 +103,7 @@ All annexes seeded with `status = 'submitted'`. Each follows the batch → child
 | K | `annex_k_batches`, `annex_k_committees` | 4 committees |
 | L | `annex_l_batches`, `annex_l_housings` | 3 housings |
 | L1 | `annex_l1_batches`, `annex_l1_international_services` | 4 services |
-| M | `annex_m_batches`, `annex_m_statistics`, `annex_m_services` | 6–7 stats, 5 services |
+| M | `annex_m_batches`, `annex_m_statistics`, `annex_m_services` | 16 stat rows (7xA + 2xB + 2xC + 1xD + 4 subtotals + TOTAL), 7 service rows (2xA, 2xB, 1xC, 2xD) |
 | N | `annex_n_batches`, `annex_n_activities` | 4–7 activities/year |
 | N1 | `annex_n1_batches`, `annex_n1_sports_programs` | 3–6 programs/year |
 | O | `annex_o_batches`, `annex_o_programs` | 4–8 programs/year |
@@ -141,6 +141,7 @@ All annexes seeded with `status = 'submitted'`. Each follows the batch → child
 - HEIs #2–#5 are seeded inside `createHeiAndUsers()` before it returns HEI #1. Refactoring this method will affect seeding order.
 - Partial HEI coverage is controlled solely by which seeder methods `seedYearPartialX` calls — the data shape is identical to full HEIs.
 - `seedAnnexJ()` originally inserted a single `number_of_participants` total. After the schema fix (see `annex-j-participant-split.md`), it now inserts `participants_online` + `participants_face_to_face` using a fixed 30/70 split from the original total values.
+- `seedAnnexM()` was previously seeding data for a completely different version of the form (health services tracking with `sem1`/`sem2` year_data keys and section strings like `'Health Services'`). After the Annex M UI rewrite to PWD/special needs tracking, the seeder was never updated. All seeded data was structurally invisible to the UI. Rewritten in Session 2 — see `annex-m-services-statistics-fixes.md`.
 
 ## Decisions Made
 
