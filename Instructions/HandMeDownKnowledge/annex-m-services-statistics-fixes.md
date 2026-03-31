@@ -40,3 +40,5 @@ Fix: replaced the direct `setStatisticsData(statistics)` branch with a call to a
 - `category` column stays in DB, model, controller, and Excel. No migration needed. Only the UI column was removed.
 - `mergeStatisticsWithStructure` is an additive path only for the DB-loaded case. Fresh forms (no DB rows) still go through `initializeStatistics()` unchanged.
 - Fixed subcategory rows for A and C that are absent from older DB submissions are silently injected with zero values on load and saved with real values on next submit.
+- Category D placeholder rows are UI-only (`is_placeholder: true`). They are stripped from the submit payload (`statisticsData.filter(r => !r.is_placeholder)`), skipped in validation, and cannot be deleted. When the last real D row is removed, the placeholder is re-injected.
+- Placeholder rows render with a single wide `colSpan` cell saying “No entries yet” with the add icon inline. This communicates intent without fake data in the table.

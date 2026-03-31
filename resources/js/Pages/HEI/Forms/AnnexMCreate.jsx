@@ -122,9 +122,14 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
     const cSubtotal = dbRows.find(r => r.category === 'C. Dependents of Solo Parents / Solo Parents' && r.is_subtotal);
     merged.push(cSubtotal ? { ...cSubtotal, display_order: order++ } : { category: 'C. Dependents of Solo Parents / Solo Parents', subcategory: 'Sub-Total', year_data: { ...emptyYearData }, is_subtotal: true, display_order: order++ });
 
-    // Category D — user-addable, no subtotal
+    // Category D — user-addable, no subtotal. Always inject at least one placeholder row
+    // so the category header and add button render even when empty.
     const dUserRows = dbRows.filter(r => r.category === 'D. Other students with special needs' && !r.is_subtotal);
-    dUserRows.forEach(r => merged.push({ ...r, display_order: order++ }));
+    if (dUserRows.length > 0) {
+      dUserRows.forEach(r => merged.push({ ...r, display_order: order++ }));
+    } else {
+      merged.push({ category: 'D. Other students with special needs', subcategory: '', year_data: { ...emptyYearData }, is_subtotal: false, is_placeholder: true, display_order: order++ });
+    }
 
     // TOTAL row
     const totalRow = dbRows.find(r => r.category === 'TOTAL');
@@ -192,7 +197,15 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
     rows.push(createSubtotalRow('C. Dependents of Solo Parents / Solo Parents', displayOrder++));
 
     // Category D: Other students (USER-ADDABLE, NO SUBTOTAL)
-    // No initial rows
+    // Inject placeholder so the category row always appears with its add button.
+    rows.push({
+      category: 'D. Other students with special needs',
+      subcategory: '',
+      year_data: { ...emptyYearData },
+      is_subtotal: false,
+      is_placeholder: true,
+      display_order: displayOrder++,
+    });
 
     // TOTAL row
     rows.push({
@@ -274,44 +287,65 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
   };
 
   const handleAddSubcategory = (category) => {
-    const newData = [...statisticsData];
+    let newData = [...statisticsData];
 
-    // For Category D (no subtotal), insert before TOTAL
-    // For Categories B (has subtotal), insert before subtotal
-    let insertIndex;
     if (category === 'D. Other students with special needs') {
-      insertIndex = newData.findIndex(row => row.category === 'TOTAL');
+      // Replace the placeholder with a real empty row, then append another real row.
+      const placeholderIndex = newData.findIndex(row => row.category === category && row.is_placeholder);
+      const newRow = {
+        category,
+        subcategory: '',
+        year_data: { [selectedYear]: { enrollment: 0, graduates: 0 } },
+        is_subtotal: false,
+        display_order: 0,
+      };
+      if (placeholderIndex !== -1) {
+        // Swap placeholder for a real row
+        newData[placeholderIndex] = newRow;
+      } else {
+        // No placeholder — just insert before TOTAL
+        const insertIndex = newData.findIndex(row => row.category === 'TOTAL');
+        newData.splice(insertIndex, 0, newRow);
+      }
     } else {
-      insertIndex = newData.findIndex(row => row.category === category && row.is_subtotal);
+      // Categories B: insert before subtotal
+      const insertIndex = newData.findIndex(row => row.category === category && row.is_subtotal);
+      const newRow = {
+        category,
+        subcategory: '',
+        year_data: { [selectedYear]: { enrollment: 0, graduates: 0 } },
+        is_subtotal: false,
+        display_order: insertIndex,
+      };
+      newData.splice(insertIndex, 0, newRow);
     }
 
-    const newRow = {
-      category,
-      subcategory: '',
-      year_data: { [selectedYear]: { enrollment: 0, graduates: 0 } },
-      is_subtotal: false,
-      display_order: insertIndex,
-    };
-
-    newData.splice(insertIndex, 0, newRow);
-
-    // Update display orders
-    newData.forEach((row, idx) => {
-      row.display_order = idx;
-    });
-
+    newData.forEach((row, idx) => { row.display_order = idx; });
     setStatisticsData(recalculateStatistics(newData));
   };
 
   const handleRemoveSubcategory = (index) => {
     if (confirm('Are you sure you want to remove this subcategory?')) {
-      const newData = statisticsData.filter((_, idx) => idx !== index);
+      const removedRow = statisticsData[index];
+      let newData = statisticsData.filter((_, idx) => idx !== index);
 
-      // Update display orders
-      newData.forEach((row, idx) => {
-        row.display_order = idx;
-      });
+      // If Category D now has no user rows, re-inject the placeholder so the row stays visible.
+      if (removedRow.category === 'D. Other students with special needs') {
+        const dRemaining = newData.filter(r => r.category === 'D. Other students with special needs' && !r.is_subtotal);
+        if (dRemaining.length === 0) {
+          const totalIndex = newData.findIndex(r => r.category === 'TOTAL');
+          newData.splice(totalIndex, 0, {
+            category: 'D. Other students with special needs',
+            subcategory: '',
+            year_data: { [selectedYear]: { enrollment: 0, graduates: 0 } },
+            is_subtotal: false,
+            is_placeholder: true,
+            display_order: 0,
+          });
+        }
+      }
 
+      newData.forEach((row, idx) => { row.display_order = idx; });
       setStatisticsData(recalculateStatistics(newData));
     }
   };
@@ -356,10 +390,10 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
   };
 
   const handleSubmit = () => {
-    // Validate statistics
+    // Validate statistics (skip placeholder rows — they are UI-only and stripped before submit)
     for (let i = 0; i < statisticsData.length; i++) {
       const row = statisticsData[i];
-      if (!row.is_subtotal && row.category !== 'TOTAL') {
+      if (!row.is_subtotal && row.category !== 'TOTAL' && !row.is_placeholder) {
         if (!row.subcategory || row.subcategory.trim() === '') {
           alert(`Statistics Row ${i + 1}: Subcategory is required`);
           return;
@@ -394,7 +428,7 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
     setProcessing(true);
     router.post('/hei/annex-m', {
       academic_year: academicYear,
-      statistics: statisticsData,
+      statistics: statisticsData.filter(r => !r.is_placeholder),
       services: allServices,
       request_notes: requestNotes
     }, {
@@ -411,7 +445,7 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
   };
 
   const canRemoveSubcategory = (row) => {
-    if (row.is_subtotal || row.category === 'TOTAL') return false;
+    if (row.is_subtotal || row.category === 'TOTAL' || row.is_placeholder) return false;
     return canAddSubcategory(row.category);
   };
 
@@ -476,7 +510,29 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
               const categoryInfo = categoryStartIndices[row.category];
               const rowspan = isFirstInCategory ? categoryInfo?.count ?? 1 : 0;
               const isReadOnly = row.is_subtotal || row.category === 'TOTAL';
+              const isPlaceholder = !!row.is_placeholder;
               const bgClass = isReadOnly ? 'bg-gray-100 dark:bg-gray-700 font-semibold' : 'bg-white dark:bg-gray-800';
+
+              // Placeholder rows: show the category header + add button, but render all data cells as dimmed dashes.
+              if (isPlaceholder) {
+                return (
+                  <tr key={index} className="bg-white dark:bg-gray-800">
+                    {isFirstInCategory && (
+                      <td rowSpan={rowspan} className="px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-600 align-top">
+                        {row.category}
+                        <button type="button" onClick={() => handleAddSubcategory(row.category)}
+                          className="ml-2 text-green-600 hover:text-green-800 dark:text-green-400" title="Add subcategory">
+                          <IoAddCircle className="inline text-lg" />
+                        </button>
+                      </td>
+                    )}
+                    <td className="px-3 py-2 text-sm border-r border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500 italic" colSpan={2 + priorYears.length * 2}>
+                      No entries yet — click <IoAddCircle className="inline text-base text-green-600" /> to add
+                    </td>
+                    <td />
+                  </tr>
+                );
+              }
 
               return (
                 <tr key={index} className={`${bgClass} hover:bg-gray-50 dark:hover:bg-gray-750`}>
