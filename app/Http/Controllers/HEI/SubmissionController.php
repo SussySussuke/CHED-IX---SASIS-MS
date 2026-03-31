@@ -369,22 +369,7 @@ class SubmissionController extends Controller
         }
 
         if ($annexType === 'M') {
-            $statistics = $batch->statistics->map(function ($stat) {
-                $yearData = $stat->year_data ?? [];
-                return [
-                    'id'                        => $stat->id,
-                    'category'                  => $stat->category,
-                    'subcategory'               => $stat->subcategory,
-                    'is_subtotal'               => $stat->is_subtotal,
-                    'ay_2023_2024_enrollment'   => $yearData['2023-2024']['enrollment'] ?? 0,
-                    'ay_2023_2024_graduates'    => $yearData['2023-2024']['graduates'] ?? 0,
-                    'ay_2022_2023_enrollment'   => $yearData['2022-2023']['enrollment'] ?? 0,
-                    'ay_2022_2023_graduates'    => $yearData['2022-2023']['graduates'] ?? 0,
-                    'ay_2021_2022_enrollment'   => $yearData['2021-2022']['enrollment'] ?? 0,
-                    'ay_2021_2022_graduates'    => $yearData['2021-2022']['graduates'] ?? 0,
-                ];
-            });
-            return response()->json(['statistics' => $statistics, 'services' => $batch->services]);
+            return app(\App\Http\Controllers\HEI\AnnexMController::class)->getBatchData($batchId);
         }
 
         if ($annexType === 'D') {

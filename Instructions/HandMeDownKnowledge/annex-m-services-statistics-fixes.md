@@ -117,3 +117,36 @@ Annex M submission list renderer showed 0 for all enrollment and graduate values
 - Prior-year data is fetched server-side in `getBatchData()`, not client-side. Keeps the renderer stateless and dumb.
 - Rows with no matching prior-year sibling default to `{enrollment: 0, graduates: 0}` — same behavior as the editor's `getPriorValue()` fallback.
 - `academic_year` and `prior_years` are added to the `getBatchData` JSON response. No route or schema changes needed.
+
+---
+
+## Session 4 — Renderer Missing Year Columns (Wrong Controller Called)
+
+## Input
+Renderer showed only Category and Subcategory columns — no year columns at all. Prior-year fix from Session 3 had no visible effect.
+
+## Process
+Session 3 fixed `AnnexMController::getBatchData()` correctly. However, the submission history page routes through a **different controller**: `HEI\SubmissionController::getBatchData()` via `GET /hei/submissions/{annex}/{batchId}/data`. That method had its own hardcoded Annex M branch returning a flat, stale response shape:
+- Flattened `year_data` into hardcoded keys: `ay_2023_2024_enrollment`, `ay_2022_2023_enrollment`, etc.
+- No `year_data` key → `getYearData(row)` in the renderer returned `{}` → `years = []` → zero year columns rendered.
+- Hardcoded 2021–2024 AYs regardless of the batch's actual academic year.
+- No `academic_year` or `prior_years` returned.
+
+The `AnnexMController`-specific route (`GET /hei/annex-m/{batch_id}/data`) is only used by the edit flow, not the history renderer.
+
+## Output
+`SubmissionController::getBatchData()` Annex M branch replaced with a single delegation call to `app(AnnexMController::class)->getBatchData($batchId)`. All prior-year merging, `is_string` decode, and correct response shape are handled by `AnnexMController`.
+
+## Relevant Files
+- `app/Http/Controllers/HEI/SubmissionController.php` — `getBatchData()`, Annex M branch
+- `app/Http/Controllers/HEI/AnnexMController.php` — canonical `getBatchData()`, now the single source of truth
+- `resources/js/Components/Submissions/AnnexRenderers.jsx` — `renderAnnexM`, unchanged
+
+## Key Discoveries
+- Two separate routes serve the same renderer: `SubmissionController` (history page) and `AnnexMController` (edit page). Only the latter was updated in Session 3.
+- `SubmissionController::getBatchData()` has bespoke branches for H, M, G, D, and MER types. Each is an independent implementation — changes to a feature controller do NOT propagate here automatically.
+- `getHeiId()` and `checkOwnership()` in `BaseAnnexController` call `Auth::user()` directly, so delegating via `app()` is safe — no controller-instance state involved.
+
+## Decisions Made
+- Delegate from `SubmissionController` to `AnnexMController` rather than duplicating or extracting to a Service. Single source of truth, minimal change surface.
+- Per README: "Before fixing a problem locally, ask: could this same problem occur across other features?" — Other annexes with bespoke `SubmissionController` branches (H, G, D) should be audited for the same drift risk if their feature controllers are ever updated.
