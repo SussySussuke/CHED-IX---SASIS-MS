@@ -85,9 +85,57 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
     return result;
   };
 
+  // Merge DB rows with the full fixed structure so all 4 categories always render.
+  // DB may only have subtotal rows for B (or nothing for D) after a save where those
+  // categories had no user-added rows — this ensures the category headers + add buttons
+  // are always visible even when the DB returned an incomplete set.
+  const mergeStatisticsWithStructure = (dbRows) => {
+    const merged = [];
+    const emptyYearData = { [selectedYear]: { enrollment: 0, graduates: 0 } };
+    let order = 0;
+
+    // Category A — fixed subcategories
+    CATEGORY_A_SUBCATEGORIES.forEach(sub => {
+      const existing = dbRows.find(r => r.category === 'A. Persons with Disabilities' && r.subcategory === sub && !r.is_subtotal);
+      merged.push(existing
+        ? { ...existing, display_order: order++ }
+        : { category: 'A. Persons with Disabilities', subcategory: sub, year_data: { ...emptyYearData }, is_subtotal: false, display_order: order++ }
+      );
+    });
+    const aSubtotal = dbRows.find(r => r.category === 'A. Persons with Disabilities' && r.is_subtotal);
+    merged.push(aSubtotal ? { ...aSubtotal, display_order: order++ } : { category: 'A. Persons with Disabilities', subcategory: 'Sub-Total', year_data: { ...emptyYearData }, is_subtotal: true, display_order: order++ });
+
+    // Category B — user-addable; preserve any DB rows the user had added
+    const bUserRows = dbRows.filter(r => r.category === 'B. Indigenous People' && !r.is_subtotal);
+    bUserRows.forEach(r => merged.push({ ...r, display_order: order++ }));
+    const bSubtotal = dbRows.find(r => r.category === 'B. Indigenous People' && r.is_subtotal);
+    merged.push(bSubtotal ? { ...bSubtotal, display_order: order++ } : { category: 'B. Indigenous People', subcategory: 'Sub-Total', year_data: { ...emptyYearData }, is_subtotal: true, display_order: order++ });
+
+    // Category C — fixed subcategories
+    CATEGORY_C_SUBCATEGORIES.forEach(sub => {
+      const existing = dbRows.find(r => r.category === 'C. Dependents of Solo Parents / Solo Parents' && r.subcategory === sub && !r.is_subtotal);
+      merged.push(existing
+        ? { ...existing, display_order: order++ }
+        : { category: 'C. Dependents of Solo Parents / Solo Parents', subcategory: sub, year_data: { ...emptyYearData }, is_subtotal: false, display_order: order++ }
+      );
+    });
+    const cSubtotal = dbRows.find(r => r.category === 'C. Dependents of Solo Parents / Solo Parents' && r.is_subtotal);
+    merged.push(cSubtotal ? { ...cSubtotal, display_order: order++ } : { category: 'C. Dependents of Solo Parents / Solo Parents', subcategory: 'Sub-Total', year_data: { ...emptyYearData }, is_subtotal: true, display_order: order++ });
+
+    // Category D — user-addable, no subtotal
+    const dUserRows = dbRows.filter(r => r.category === 'D. Other students with special needs' && !r.is_subtotal);
+    dUserRows.forEach(r => merged.push({ ...r, display_order: order++ }));
+
+    // TOTAL row
+    const totalRow = dbRows.find(r => r.category === 'TOTAL');
+    merged.push(totalRow ? { ...totalRow, display_order: 999 } : { category: 'TOTAL', subcategory: null, year_data: { ...emptyYearData }, is_subtotal: true, display_order: 999 });
+
+    return recalculateStatistics(merged);
+  };
+
   useEffect(() => {
     if (statistics && statistics.length > 0) {
-      setStatisticsData(statistics);
+      setStatisticsData(mergeStatisticsWithStructure(statistics));
     } else {
       initializeStatistics();
     }
@@ -533,7 +581,6 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Category</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Institutional Services/Programs/Activities</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">No. of Beneficiaries/Participants</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Remarks</th>
@@ -543,18 +590,6 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {sectionServices.map((service, index) => (
                   <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                    <td className="px-3 py-2 text-sm border-r border-gray-200 dark:border-gray-600">
-                      <select
-                        value={service.category || ''}
-                        onChange={(e) => handleServiceChange(section, index, 'category', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value="">— Select —</option>
-                        {SECTIONS.map(s => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    </td>
                     <td className="px-3 py-2 text-sm border-r border-gray-200 dark:border-gray-600">
                       <input
                         type="text"
