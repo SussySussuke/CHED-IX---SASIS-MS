@@ -25,7 +25,7 @@ class AnnexHController extends BaseAnnexController
 
         $validated = $request->validate([
             'academic_year' => 'required|string|regex:/^\d{4}-\d{4}$/',
-            'admission_services' => 'required|array|size:8',
+            'admission_services' => 'required|array|size:5',
             'admission_services.*.service_type' => 'required|in:' . implode(',', AnnexHAdmissionService::PREDEFINED_SERVICES),
             'admission_services.*.with' => 'required|boolean',
             'admission_services.*.supporting_documents' => 'nullable|string',

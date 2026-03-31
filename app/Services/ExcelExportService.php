@@ -980,18 +980,18 @@ class ExcelExportService
             $ws->getRowDimension($r)->setRowHeight(15.75);
         }
 
-        // Row 14: spacer. Row 15: stats column headers. Row 16+: stats data.
-        // Matching AnnexHParser::STATS_ROW_START = 16.
-        $ws->getRowDimension(14)->setRowHeight(4);
+        // Row 11: spacer. Row 12: stats column headers. Row 13+: stats data.
+        // Matching AnnexHParser::STATS_ROW_START = 13.
+        $ws->getRowDimension(11)->setRowHeight(4);
 
-        $ws->setCellValue('A15', 'Program/Department');
-        $ws->setCellValue('B15', 'No. of Applicants');
-        $ws->setCellValue('C15', 'No. Admitted/Enrolled');
-        $ws->setCellValue('D15', 'No. Enrolled');
-        $ws->getStyle('A15:D15')->applyFromArray($hdrStyle);
-        $ws->getRowDimension(15)->setRowHeight(22);
+        $ws->setCellValue('A12', 'Program/Department');
+        $ws->setCellValue('B12', 'No. of Applicants');
+        $ws->setCellValue('C12', 'No. Admitted');
+        $ws->setCellValue('D12', 'No. Enrolled');
+        $ws->getStyle('A12:D12')->applyFromArray($hdrStyle);
+        $ws->getRowDimension(12)->setRowHeight(22);
 
-        $row = 16;
+        $row = 13;
         foreach ($batch?->admissionStatistics ?? [] as $stat) {
             $ws->setCellValue('A' . $row, $stat->program);
             $ws->setCellValue('B' . $row, $stat->applicants);

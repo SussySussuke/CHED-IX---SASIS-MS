@@ -29,14 +29,11 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
 
   // Predefined service types for Annex H
   const PREDEFINED_SERVICES = [
-    'General admission guidelines',
-    'Admission guidelines including accepting persons with disabilities',
-    'Admission guidelines accepting foreign students (if applicable)',
-    'Drug testing',
-    'Medical Certificate',
-    'Online enrolment and payment system',
-    'Entrance examination',
-    'Assessment'
+    'Application Assistance and Enrollment Guidance',
+    'Entrance Examination Administration',
+    'Scholarship and Financial Aid Information Desk',
+    'PWD and Special Needs Accommodation Services',
+    'Student Transfer and Cross-Enrollment Processing',
   ];
 
   const initialServices = admissionServices && admissionServices.length > 0
@@ -185,9 +182,9 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
     const servicesArray = [];
     const statisticsArray = [];
 
-    // Must have exactly 8 rows for services
-    if (servicesData.length !== 8) {
-      alert('Error: Must have exactly 8 predefined service types.');
+    // Must have exactly 5 rows for services
+    if (servicesData.length !== 5) {
+      alert('Error: Must have exactly 5 predefined service types.');
       return;
     }
 

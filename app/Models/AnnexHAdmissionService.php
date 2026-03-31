@@ -22,14 +22,11 @@ class AnnexHAdmissionService extends Model
     ];
 
     const PREDEFINED_SERVICES = [
-        'General admission guidelines',
-        'Admission guidelines including accepting persons with disabilities',
-        'Admission guidelines accepting foreign students (if applicable)',
-        'Drug testing',
-        'Medical Certificate',
-        'Online enrolment and payment system',
-        'Entrance examination',
-        'Assessment',
+        'Application Assistance and Enrollment Guidance',
+        'Entrance Examination Administration',
+        'Scholarship and Financial Aid Information Desk',
+        'PWD and Special Needs Accommodation Services',
+        'Student Transfer and Cross-Enrollment Processing',
     ];
 
     public function batch()

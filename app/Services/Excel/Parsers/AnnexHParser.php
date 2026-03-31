@@ -8,17 +8,17 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 /**
  * Annex H — Admission Services
  *
- * Table 1 (Admission Services) — 8 predefined rows, locked service names:
+ * Table 1 (Admission Services) — 5 predefined rows, locked service names:
  *   Row 5: column headers (Service Type | Check YES/NO | Supporting Documents | Remarks)
- *   Row 6..13: Col 1: service_type (locked) | Col 2: with (YES/NO) | Col 3: supporting_docs | Col 4: remarks
+ *   Row 6..10: Col 1: service_type (locked) | Col 2: with (YES/NO) | Col 3: supporting_docs | Col 4: remarks
  *
- * Table 2 (Admission Statistics) starts at row 16 (row 14 spacer, row 15 stats headers):
+ * Table 2 (Admission Statistics) starts at row 12 (row 11 spacer after services, row 12+ stats):
  *   Col 1: program | Col 2: applicants | Col 3: admitted | Col 4: enrolled
  */
 class AnnexHParser extends BaseParser
 {
     private const SERVICES_ROW_START = 6;
-    private const STATS_ROW_START    = 16;
+    private const STATS_ROW_START    = 13;
 
     public function sheetId(): string { return 'ANNEX_H'; }
     public function label(): string   { return 'Annex H - Admission Services'; }

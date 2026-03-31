@@ -50,7 +50,7 @@ All sheets use the original CHED SASTOOL visual design. **All title blocks are c
 
 **Annex G:** Tag row 1, title block rows 2–4 (`ANNEX "G"`, R.A. 7079 subtitle, AY), key-value fields rows 5+, then `[EDITORIAL_BOARD]`, `[OTHER_PUBLICATIONS]`, `[PROGRAMS]` sub-tables with light green headers.
 
-**Annex H:** Tag row 1, title block rows 2–4 (`ANNEX "H"`, list of admission services, AY), spacer row 5, table header row 6, data rows 7+.
+**Annex H:** Tag row 1, title block rows 2–4 (`ANNEX "H"`, list of admission services, AY), services header row 5, 5 service data rows 6–10, spacer row 11, stats header row 12, stats data rows 13+. `SERVICES_ROW_START = 6`, `STATS_ROW_START = 13`. Service types are fixed by `AnnexHAdmissionService::PREDEFINED_SERVICES` (5 entries) — export labels col A from the constant, parser ignores col A and uses the constant directly for `service_type` field.
 
 **Annex M:** Tag row 1, title block rows 2–4 (`ANNEX "M"`, HEIs' initiatives subtitle, AY), spacer row 5, `[STATISTICS]` tag row 6, column headers row 7, data row 8+. `[SERVICES]` sub-table follows statistics data.
 
@@ -84,6 +84,7 @@ All sheets use the original CHED SASTOOL visual design. **All title blocks are c
 - The old export used an invented navy/blue color scheme not present in the original CHED template. All sheets now use the original: `C5E0B3` green headers, `DEEAF6` blue field labels.
 - Annex D's two-column dissemination/type layout means values are split across col B (left side) and col C (right side). The parser cannot use a simple `$r++` loop — explicit (row, col) reads are required.
 - `getFont()->setBold()->setSize()` does not set alignment. Title rows appeared left-aligned until switched to `applyFromArray` with `HORIZONTAL_CENTER`.
+- Annex H `PREDEFINED_SERVICES` was rewritten (8 old services → 5 new ones) without a DB migration or constant update. Existing user data had the new service names; the constant and frontend still had the old names. `$serviceMap` key lookup silently returned null for every row, exporting all service data as blank. Fix: sync `AnnexHAdmissionService::PREDEFINED_SERVICES`, `AnnexHController` validation (`size:5`), `AnnexHCreate.jsx`, and `AnnexHParser::STATS_ROW_START` (16→13 because 5 services now end at row 10, not row 13).
 - Annex H and M had a row collision: the AY line and the first table header were both assigned to row 4. Fixed by pushing the table header down and adjusting all subsequent row offsets.
 - The title block annex name must be formatted as `ANNEX "X"` (all-caps, quoted) to match the original. The tab name format (`Annex A`) is different and must be transformed on export via regex.
 - The AY line (`As of Academic Year (AY) YYYY-YYYY`) was missing entirely from all tabular sheets. It was added as row 5 in the title block.
