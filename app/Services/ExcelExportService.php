@@ -943,7 +943,15 @@ class ExcelExportService
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
         ];
 
-        // Row 5+: service data rows — must start at row 5 to match AnnexHParser::SERVICES_ROW_START = 5.
+        // Row 5: column headers for the admission services table.
+        $ws->setCellValue('A5', 'Service Type');
+        $ws->setCellValue('B5', 'Check (YES/NO)');
+        $ws->setCellValue('C5', 'Supporting Documents');
+        $ws->setCellValue('D5', 'Remarks');
+        $ws->getStyle('A5:D5')->applyFromArray($hdrStyle);
+        $ws->getRowDimension(5)->setRowHeight(22);
+
+        // Row 6+: service data rows — must start at row 6 to match AnnexHParser::SERVICES_ROW_START = 6.
         // Parser reads col 2 (with), col 3 (supporting_documents), col 4 (remarks) positionally.
         // Col 1 (service_type label) is cosmetic only — parser uses the predefined list, not col 1.
         //
@@ -957,7 +965,7 @@ class ExcelExportService
         }
 
         foreach (AnnexHAdmissionService::PREDEFINED_SERVICES as $i => $serviceType) {
-            $r   = $i + 5; // rows 5–12, matching SERVICES_ROW_START = 5 in AnnexHParser
+            $r   = $i + 6; // rows 6–13, matching SERVICES_ROW_START = 6 in AnnexHParser
             $svc = $serviceMap[strtolower(trim($serviceType))] ?? null;
             $ws->setCellValue('A' . $r, $serviceType);
             $ws->setCellValue('B' . $r, $svc !== null ? ($svc->with ? 'YES' : 'NO') : '');
@@ -972,17 +980,18 @@ class ExcelExportService
             $ws->getRowDimension($r)->setRowHeight(15.75);
         }
 
-        // Row 13: spacer. Row 14: stats column headers — matching AnnexHParser::STATS_ROW_START = 14.
-        $ws->getRowDimension(13)->setRowHeight(4);
+        // Row 14: spacer. Row 15: stats column headers. Row 16+: stats data.
+        // Matching AnnexHParser::STATS_ROW_START = 16.
+        $ws->getRowDimension(14)->setRowHeight(4);
 
-        $ws->setCellValue('A14', 'Program/Department');
-        $ws->setCellValue('B14', 'No. of Applicants');
-        $ws->setCellValue('C14', 'No. Admitted/Enrolled');
-        $ws->setCellValue('D14', 'No. Enrolled');
-        $ws->getStyle('A14:D14')->applyFromArray($hdrStyle);
-        $ws->getRowDimension(14)->setRowHeight(22);
+        $ws->setCellValue('A15', 'Program/Department');
+        $ws->setCellValue('B15', 'No. of Applicants');
+        $ws->setCellValue('C15', 'No. Admitted/Enrolled');
+        $ws->setCellValue('D15', 'No. Enrolled');
+        $ws->getStyle('A15:D15')->applyFromArray($hdrStyle);
+        $ws->getRowDimension(15)->setRowHeight(22);
 
-        $row = 15;
+        $row = 16;
         foreach ($batch?->admissionStatistics ?? [] as $stat) {
             $ws->setCellValue('A' . $row, $stat->program);
             $ws->setCellValue('B' . $row, $stat->applicants);
@@ -1006,14 +1015,14 @@ class ExcelExportService
 
         $ws->setCellValue('A1', '[ANNEX_M]');
         $this->styleTagRow($ws, 'A1');
-        foreach (['A2:H2', 'A4:H4'] as $range) {
+        foreach (['A2:E2', 'A4:E4'] as $range) {
             $ws->mergeCells($range);
             $ws->getStyle(explode(':', $range)[0])->applyFromArray([
                 'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial'],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             ]);
         }
-        foreach (['A3:H3'] as $range) {
+        foreach (['A3:E3'] as $range) {
             $ws->mergeCells($range);
             $ws->getStyle(explode(':', $range)[0])->applyFromArray([
                 'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial', 'color' => ['argb' => self::COLOR_TITLE_BLUE]],
@@ -1025,23 +1034,17 @@ class ExcelExportService
         $ws->setCellValue('A4', 'As of Academic Year (AY) ' . $ay);
         $ws->getRowDimension(2)->setRowHeight(22);
 
-        // Row 5: spacer, Row 6: [STATISTICS] tag, Row 7: column headers, Row 8+: data
+        // Row 5: spacer, Row 6: [STATISTICS] tag, Row 7: column headers, Row 8+: data.
+        // Export only the current AY — prior years are read-only in the UI and not submitted in the payload.
         $ws->getRowDimension(5)->setRowHeight(4);
         $ws->setCellValue('A6', '[STATISTICS]');
         $this->styleTagRow($ws, 'A6');
 
-        $years = $this->getLastThreeYears($ay);
-        $colIdx = 3;
-        foreach ($years as $year) {
-            $enrollCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx++);
-            $gradCol   = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx++);
-            $ws->setCellValue($enrollCol . '7', $year . ' Enrollment');
-            $ws->setCellValue($gradCol . '7',   $year . ' Graduates');
-        }
         $ws->setCellValue('A7', 'Category');
         $ws->setCellValue('B7', 'Subcategory');
-        $lastHeaderCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx - 1);
-        $ws->getStyle('A7:' . $lastHeaderCol . '7')->applyFromArray([
+        $ws->setCellValue('C7', $ay . ' Enrollment');
+        $ws->setCellValue('D7', $ay . ' Graduates');
+        $ws->getStyle('A7:D7')->applyFromArray([
             'font'      => ['bold' => true, 'size' => 10],
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_COL_HDR_BG]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
@@ -1057,18 +1060,24 @@ class ExcelExportService
                 if (empty($group['subcategories'])) {
                     $ws->setCellValue('A' . $row, $group['category']);
                     $ws->setCellValue('B' . $row, '');
+                    $ws->setCellValue('C' . $row, 0);
+                    $ws->setCellValue('D' . $row, 0);
                     $row++;
                 } else {
                     foreach ($group['subcategories'] as $sub) {
                         $ws->setCellValue('A' . $row, $group['category']);
                         $ws->setCellValue('B' . $row, $sub);
+                        $ws->setCellValue('C' . $row, 0);
+                        $ws->setCellValue('D' . $row, 0);
                         $row++;
                     }
                 }
                 if ($group['has_subtotal']) {
                     $ws->setCellValue('A' . $row, $group['category']);
                     $ws->setCellValue('B' . $row, 'Sub-Total');
-                    $ws->getStyle('A' . $row . ':B' . $row)->getFont()->setBold(true);
+                    $ws->setCellValue('C' . $row, 0);
+                    $ws->setCellValue('D' . $row, 0);
+                    $ws->getStyle('A' . $row . ':D' . $row)->getFont()->setBold(true);
                     $row++;
                 }
             }
@@ -1076,13 +1085,8 @@ class ExcelExportService
             foreach ($statistics as $stat) {
                 $ws->setCellValue('A' . $row, $stat->category);
                 $ws->setCellValue('B' . $row, $stat->subcategory);
-                $c = 3;
-                foreach ($years as $year) {
-                    $eCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c++);
-                    $gCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c++);
-                    $ws->setCellValue($eCol . $row, $stat->year_data[$year]['enrollment'] ?? '');
-                    $ws->setCellValue($gCol . $row, $stat->year_data[$year]['graduates'] ?? '');
-                }
+                $ws->setCellValue('C' . $row, $stat->year_data[$ay]['enrollment'] ?? 0);
+                $ws->setCellValue('D' . $row, $stat->year_data[$ay]['graduates']  ?? 0);
                 $row++;
             }
         }

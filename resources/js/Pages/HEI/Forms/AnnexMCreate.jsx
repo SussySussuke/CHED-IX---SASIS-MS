@@ -50,23 +50,40 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
   const [requestNotes, setRequestNotes] = useState('');
   const [statisticsData, setStatisticsData] = useState([]);
   const [servicesData, setServicesData] = useState({});
-  
-  // Get last 3 years based on selected academic year
-  const getLastThreeYears = (baseYear) => {
+
+  // Current year is the selected AY (only this is editable).
+  // Previous two years are derived from prior submitted batches — read-only.
+  const getCurrentYear = (baseYear) => baseYear;
+  const getPreviousYears = (baseYear) => {
     const startYear = parseInt(baseYear.split('-')[0]);
     return [
       `${startYear - 2}-${startYear - 1}`,
       `${startYear - 1}-${startYear}`,
-      `${startYear}-${startYear + 1}`,
     ];
   };
-  
-  const [years, setYears] = useState(getLastThreeYears(selectedYear));
+  const getAllYears = (baseYear) => [
+    ...getPreviousYears(baseYear),
+    getCurrentYear(baseYear),
+  ];
+
+  const [years, setYears] = useState(getAllYears(selectedYear));
 
   // Update years when selected year changes
   useEffect(() => {
-    setYears(getLastThreeYears(selectedYear));
+    setYears(getAllYears(selectedYear));
   }, [selectedYear]);
+
+  // Build a map of year → statistics rows from existing batches (for read-only prior years)
+  const getPriorYearData = (baseYear) => {
+    const priorYears = getPreviousYears(baseYear);
+    const result = {};
+    priorYears.forEach(yr => {
+      const batch = existingBatches[yr];
+      const stats = batch?.statistics || [];
+      result[yr] = stats;
+    });
+    return result;
+  };
 
   useEffect(() => {
     if (statistics && statistics.length > 0) {
@@ -96,11 +113,8 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
     const rows = [];
     let displayOrder = 0;
 
-    // Create empty year data structure
-    const emptyYearData = {};
-    years.forEach(year => {
-      emptyYearData[year] = { enrollment: 0, graduates: 0 };
-    });
+    // Only current year gets an editable slot — prior years are read-only overlays from prior batches
+    const emptyYearData = { [selectedYear]: { enrollment: 0, graduates: 0 } };
 
     // Category A: Persons with Disabilities (FIXED)
     CATEGORY_A_SUBCATEGORIES.forEach(subcategory => {
@@ -145,74 +159,60 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
   };
 
   const createSubtotalRow = (category, order) => {
-    const emptyYearData = {};
-    years.forEach(year => {
-      emptyYearData[year] = { enrollment: 0, graduates: 0 };
-    });
-
     return {
       category,
       subcategory: 'Sub-Total',
-      year_data: emptyYearData,
+      year_data: { [selectedYear]: { enrollment: 0, graduates: 0 } },
       is_subtotal: true,
       display_order: order,
     };
   };
 
+  // Look up a value from a prior year's batch statistics for a given subcategory.
+  // Returns 0 if no prior batch exists for that year.
+  const getPriorValue = (priorYearData, year, category, subcategory, field) => {
+    const rows = priorYearData[year] || [];
+    const match = rows.find(r => r.category === category && r.subcategory === subcategory);
+    return match?.year_data?.[year]?.[field] ?? 0;
+  };
+
   const recalculateStatistics = (updatedData) => {
     const newData = [...updatedData];
+    // Only the current year lives in year_data on each row — recalculate subtotals for it only.
+    const yr = selectedYear;
 
-    // Recalculate subtotals for categories that have them (A, B, C)
     ['A. Persons with Disabilities', 'B. Indigenous People', 'C. Dependents of Solo Parents / Solo Parents'].forEach(category => {
       const subtotalIndex = newData.findIndex(row => row.category === category && row.is_subtotal);
       if (subtotalIndex !== -1) {
         const categoryRows = newData.filter(row => row.category === category && !row.is_subtotal);
-        const newYearData = {};
-
-        years.forEach(year => {
-          const enrollmentSum = categoryRows.reduce((sum, row) =>
-            sum + (parseInt(row.year_data?.[year]?.enrollment) || 0), 0);
-          const graduatesSum = categoryRows.reduce((sum, row) =>
-            sum + (parseInt(row.year_data?.[year]?.graduates) || 0), 0);
-
-          newYearData[year] = {
-            enrollment: enrollmentSum,
-            graduates: graduatesSum,
-          };
-        });
-
         newData[subtotalIndex] = {
           ...newData[subtotalIndex],
-          year_data: newYearData,
+          year_data: {
+            [yr]: {
+              enrollment: categoryRows.reduce((s, r) => s + (parseInt(r.year_data?.[yr]?.enrollment) || 0), 0),
+              graduates:  categoryRows.reduce((s, r) => s + (parseInt(r.year_data?.[yr]?.graduates)  || 0), 0),
+            },
+          },
         };
       }
     });
 
-    // Recalculate TOTAL (sum of all subtotals + Category D rows)
     const totalIndex = newData.findIndex(row => row.category === 'TOTAL');
     if (totalIndex !== -1) {
-      const subtotalRows = newData.filter(row => row.is_subtotal && row.category !== 'TOTAL');
+      const subtotalRows  = newData.filter(row => row.is_subtotal && row.category !== 'TOTAL');
       const categoryDRows = newData.filter(row => row.category === 'D. Other students with special needs' && !row.is_subtotal);
-
-      const totalYearData = {};
-      years.forEach(year => {
-        const enrollmentSum =
-          subtotalRows.reduce((sum, row) => sum + (parseInt(row.year_data?.[year]?.enrollment) || 0), 0) +
-          categoryDRows.reduce((sum, row) => sum + (parseInt(row.year_data?.[year]?.enrollment) || 0), 0);
-
-        const graduatesSum =
-          subtotalRows.reduce((sum, row) => sum + (parseInt(row.year_data?.[year]?.graduates) || 0), 0) +
-          categoryDRows.reduce((sum, row) => sum + (parseInt(row.year_data?.[year]?.graduates) || 0), 0);
-
-        totalYearData[year] = {
-          enrollment: enrollmentSum,
-          graduates: graduatesSum,
-        };
-      });
-
       newData[totalIndex] = {
         ...newData[totalIndex],
-        year_data: totalYearData,
+        year_data: {
+          [yr]: {
+            enrollment:
+              subtotalRows.reduce( (s, r) => s + (parseInt(r.year_data?.[yr]?.enrollment) || 0), 0) +
+              categoryDRows.reduce((s, r) => s + (parseInt(r.year_data?.[yr]?.enrollment) || 0), 0),
+            graduates:
+              subtotalRows.reduce( (s, r) => s + (parseInt(r.year_data?.[yr]?.graduates)  || 0), 0) +
+              categoryDRows.reduce((s, r) => s + (parseInt(r.year_data?.[yr]?.graduates)  || 0), 0),
+          },
+        },
       };
     }
 
@@ -237,15 +237,10 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
       insertIndex = newData.findIndex(row => row.category === category && row.is_subtotal);
     }
 
-    const emptyYearData = {};
-    years.forEach(year => {
-      emptyYearData[year] = { enrollment: 0, graduates: 0 };
-    });
-
     const newRow = {
       category,
       subcategory: '',
-      year_data: emptyYearData,
+      year_data: { [selectedYear]: { enrollment: 0, graduates: 0 } },
       is_subtotal: false,
       display_order: insertIndex,
     };
@@ -359,17 +354,9 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
     });
   };
 
-  const getTotalEnrollment = (row) => {
-    if (!row.year_data) return 0;
-    return years.reduce((sum, year) =>
-      sum + (parseInt(row.year_data[year]?.enrollment) || 0), 0);
-  };
-
-  const getTotalGraduates = (row) => {
-    if (!row.year_data) return 0;
-    return years.reduce((sum, year) =>
-      sum + (parseInt(row.year_data[year]?.graduates) || 0), 0);
-  };
+  // Totals now only cover the current year (prior years are read-only, not summed here)
+  const getTotalEnrollment = (row) => parseInt(row.year_data?.[selectedYear]?.enrollment) || 0;
+  const getTotalGraduates = (row)  => parseInt(row.year_data?.[selectedYear]?.graduates)  || 0;
 
   const canAddSubcategory = (category) => {
     return category === 'B. Indigenous People' || category === 'D. Other students with special needs';
@@ -381,11 +368,12 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
   };
 
   const renderStatisticsTable = () => {
+    const priorYears = getPreviousYears(selectedYear);
+    const priorYearData = getPriorYearData(selectedYear);
     let currentCategory = null;
     let categoryRowCount = 0;
     const categoryStartIndices = {};
 
-    // Calculate category row counts
     statisticsData.forEach((row, index) => {
       if (row.category !== currentCategory) {
         if (currentCategory !== null) {
@@ -401,39 +389,44 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
       categoryStartIndices[currentCategory] = { start: statisticsData.length - categoryRowCount, count: categoryRowCount };
     }
 
+    const thBase = 'px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600';
+    const tdRO   = 'px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 italic';
+
     return (
       <div className="overflow-x-auto">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 italic">
+          Prior years (grayed) are auto-filled from previously submitted data and cannot be edited.
+          Only <strong>AY {selectedYear}</strong> is editable.
+        </p>
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
-            {/* First header row - Academic Years */}
             <tr>
               <th rowSpan="2" className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">Category</th>
               <th rowSpan="2" className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">Subcategory</th>
-              {years.map(year => (
-                <th key={year} colSpan="2" className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">
-                  AY {year}
-                </th>
+              {/* Prior years — read-only, grayed */}
+              {priorYears.map(year => (
+                <th key={year} colSpan="2" className={`${thBase} opacity-60`}>AY {year} (view only)</th>
               ))}
-              <th colSpan="2" className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">Total</th>
+              {/* Current year — editable */}
+              <th colSpan="2" className={`${thBase} bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300`}>AY {selectedYear} (current)</th>
               <th rowSpan="2" className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Actions</th>
             </tr>
-            {/* Second header row - Enrollment/Graduates */}
             <tr>
-              {years.map(year => (
+              {priorYears.map(year => (
                 <React.Fragment key={year}>
-                  <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Enroll</th>
-                  <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Grad</th>
+                  <th className={`${thBase} opacity-60 font-normal`}>Enroll</th>
+                  <th className={`${thBase} opacity-60 font-normal`}>Grad</th>
                 </React.Fragment>
               ))}
-              <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Enroll</th>
-              <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Grad</th>
+              <th className={`${thBase} bg-green-50 dark:bg-green-900/20`}>Enroll</th>
+              <th className={`${thBase} bg-green-50 dark:bg-green-900/20`}>Grad</th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {statisticsData.map((row, index) => {
               const isFirstInCategory = index === 0 || statisticsData[index - 1].category !== row.category;
               const categoryInfo = categoryStartIndices[row.category];
-              const rowspan = isFirstInCategory ? categoryInfo.count : 0;
+              const rowspan = isFirstInCategory ? categoryInfo?.count ?? 1 : 0;
               const isReadOnly = row.is_subtotal || row.category === 'TOTAL';
               const bgClass = isReadOnly ? 'bg-gray-100 dark:bg-gray-700 font-semibold' : 'bg-white dark:bg-gray-800';
 
@@ -443,12 +436,8 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
                     <td rowSpan={rowspan} className="px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-600 align-top">
                       {row.category}
                       {canAddSubcategory(row.category) && (
-                        <button
-                          type="button"
-                          onClick={() => handleAddSubcategory(row.category)}
-                          className="ml-2 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
-                          title="Add subcategory"
-                        >
+                        <button type="button" onClick={() => handleAddSubcategory(row.category)}
+                          className="ml-2 text-green-600 hover:text-green-800 dark:text-green-400" title="Add subcategory">
                           <IoAddCircle className="inline text-lg" />
                         </button>
                       )}
@@ -458,90 +447,59 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
                     {isReadOnly ? (
                       <span className="font-semibold text-gray-900 dark:text-gray-100">{row.subcategory || 'TOTAL'}</span>
                     ) : (
-                      <input
-                        type="text"
-                        value={row.subcategory || ''}
+                      <input type="text" value={row.subcategory || ''}
                         onChange={(e) => handleStatisticChange(index, 'subcategory', e.target.value)}
                         className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        placeholder="Enter subcategory"
-                        readOnly={!canAddSubcategory(row.category)}
-                      />
+                        placeholder="Enter subcategory" readOnly={!canAddSubcategory(row.category)} />
                     )}
                   </td>
-                  {years.map(year => (
+
+                  {/* Prior years — read-only, pull from prior batch data */}
+                  {priorYears.map(year => (
                     <React.Fragment key={year}>
-                      <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600">
-                        <input
-                          type="number"
-                          value={row.year_data?.[year]?.enrollment ?? ''}
-                          onChange={(e) => {
-                            if (isReadOnly) return;
-                            const newValue = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
-                            const newData = statisticsData.map((r, i) => {
-                              if (i !== index) return r;
-                              return {
-                                ...r,
-                                year_data: {
-                                  ...r.year_data,
-                                  [year]: {
-                                    ...r.year_data?.[year],
-                                    enrollment: newValue
-                                  }
-                                }
-                              };
-                            });
-                            setStatisticsData(recalculateStatistics(newData));
-                          }}
-                          className={`w-full px-2 py-1 text-sm text-center border border-gray-300 dark:border-gray-600 rounded ${isReadOnly ? 'bg-gray-100 dark:bg-gray-700 font-semibold cursor-not-allowed' : 'bg-white dark:bg-gray-800'} text-gray-900 dark:text-gray-100`}
-                          min="0"
-                          placeholder="0"
-                          readOnly={isReadOnly}
-                        />
-                      </td>
-                      <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600">
-                        <input
-                          type="number"
-                          value={row.year_data?.[year]?.graduates ?? ''}
-                          onChange={(e) => {
-                            if (isReadOnly) return;
-                            const newValue = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
-                            const newData = statisticsData.map((r, i) => {
-                              if (i !== index) return r;
-                              return {
-                                ...r,
-                                year_data: {
-                                  ...r.year_data,
-                                  [year]: {
-                                    ...r.year_data?.[year],
-                                    graduates: newValue
-                                  }
-                                }
-                              };
-                            });
-                            setStatisticsData(recalculateStatistics(newData));
-                          }}
-                          className={`w-full px-2 py-1 text-sm text-center border border-gray-300 dark:border-gray-600 rounded ${isReadOnly ? 'bg-gray-100 dark:bg-gray-700 font-semibold cursor-not-allowed' : 'bg-white dark:bg-gray-800'} text-gray-900 dark:text-gray-100`}
-                          min="0"
-                          placeholder="0"
-                          readOnly={isReadOnly}
-                        />
-                      </td>
+                      <td className={tdRO}>{getPriorValue(priorYearData, year, row.category, row.subcategory, 'enrollment')}</td>
+                      <td className={tdRO}>{getPriorValue(priorYearData, year, row.category, row.subcategory, 'graduates')}</td>
                     </React.Fragment>
                   ))}
-                  <td className="px-2 py-2 text-sm text-center font-semibold border-r border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                    {getTotalEnrollment(row)}
+
+                  {/* Current year — editable (or read-only for subtotals) */}
+                  <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 bg-green-50/30 dark:bg-green-900/10">
+                    <input type="number"
+                      value={row.year_data?.[selectedYear]?.enrollment ?? ''}
+                      onChange={(e) => {
+                        if (isReadOnly) return;
+                        const v = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                        const newData = statisticsData.map((r, i) => i !== index ? r : {
+                          ...r, year_data: { ...r.year_data, [selectedYear]: { ...r.year_data?.[selectedYear], enrollment: v } }
+                        });
+                        setStatisticsData(recalculateStatistics(newData));
+                      }}
+                      className={`w-full px-2 py-1 text-sm text-center border border-gray-300 dark:border-gray-600 rounded ${
+                        isReadOnly ? 'bg-gray-100 dark:bg-gray-700 font-semibold cursor-not-allowed' : 'bg-white dark:bg-gray-800'
+                      } text-gray-900 dark:text-gray-100`}
+                      min="0" placeholder="0" readOnly={isReadOnly} />
                   </td>
-                  <td className="px-2 py-2 text-sm text-center font-semibold border-r border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                    {getTotalGraduates(row)}
+                  <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 bg-green-50/30 dark:bg-green-900/10">
+                    <input type="number"
+                      value={row.year_data?.[selectedYear]?.graduates ?? ''}
+                      onChange={(e) => {
+                        if (isReadOnly) return;
+                        const v = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                        const newData = statisticsData.map((r, i) => i !== index ? r : {
+                          ...r, year_data: { ...r.year_data, [selectedYear]: { ...r.year_data?.[selectedYear], graduates: v } }
+                        });
+                        setStatisticsData(recalculateStatistics(newData));
+                      }}
+                      className={`w-full px-2 py-1 text-sm text-center border border-gray-300 dark:border-gray-600 rounded ${
+                        isReadOnly ? 'bg-gray-100 dark:bg-gray-700 font-semibold cursor-not-allowed' : 'bg-white dark:bg-gray-800'
+                      } text-gray-900 dark:text-gray-100`}
+                      min="0" placeholder="0" readOnly={isReadOnly} />
                   </td>
+
                   <td className="px-2 py-2 text-sm text-center">
                     {canRemoveSubcategory(row) && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSubcategory(index)}
-                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                        title="Remove this row"
-                      >
+                      <button type="button" onClick={() => handleRemoveSubcategory(index)}
+                        className="text-red-600 hover:text-red-800 dark:text-red-400" title="Remove this row">
                         <IoTrash className="inline text-lg" />
                       </button>
                     )}
@@ -586,13 +544,16 @@ const Create = ({ availableYears = [], existingBatches = {}, defaultYear, isEdit
                 {sectionServices.map((service, index) => (
                   <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-750">
                     <td className="px-3 py-2 text-sm border-r border-gray-200 dark:border-gray-600">
-                      <input
-                        type="text"
+                      <select
                         value={service.category || ''}
                         onChange={(e) => handleServiceChange(section, index, 'category', e.target.value)}
                         className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        placeholder="Category"
-                      />
+                      >
+                        <option value="">— Select —</option>
+                        {SECTIONS.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-3 py-2 text-sm border-r border-gray-200 dark:border-gray-600">
                       <input
