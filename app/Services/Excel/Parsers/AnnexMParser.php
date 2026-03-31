@@ -8,11 +8,13 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 /**
  * Annex M — Students with Special Needs / PWD
  *
- * Layout has two sub-sections, each marked with a tag cell:
+ * Layout has two sub-sections, each marked with a tag cell.
  *
  * [STATISTICS] sub-table (fixed structure from AnnexMStatistic::STRUCTURE):
- *   Col 1: category | Col 2: subcategory
- *   Col 3..N: enrollment per AY, Col N+1..M: graduates per AY
+ *   Category header rows (merged, light blue fill): col 1 = category label, col 2 = blank — skipped by parser.
+ *   Subcategory data rows: col 1 = blank (carry-forward), col 2 = subcategory, col 3+ = enrollment/graduates.
+ *   Sub-Total rows: col 2 = "Sub-Total".
+ *   TOTAL row: col 1 = "TOTAL", no numeric data — skipped by isRowBlank check on col 2+.
  *   The academic years are listed in the header row — we read them dynamically.
  *   Row after [STATISTICS] is the header row.
  *
@@ -30,12 +32,13 @@ class AnnexMParser extends BaseParser
         $statistics   = [];
         $services     = [];
         $errors       = [];
-        $anyData      = false;
-        $maxRow       = $ws->getHighestDataRow();
+        $anyData        = false;
+        $maxRow         = $ws->getHighestDataRow();
         $currentSection = null;
         $headerRow      = null;
         $yearColumns    = []; // maps col index => ['year' => AY string, 'type' => 'enrollment'|'graduates']
         $displayOrder   = 0;
+        $lastCategory   = ''; // carry-forward: export writes category header rows with blank col A on subcategory rows
 
         for ($r = 5; $r <= $maxRow; $r++) {
             $marker = strtoupper(trim((string) $this->cell($ws, $r, 1)));
@@ -61,8 +64,23 @@ class AnnexMParser extends BaseParser
                 if ($this->isRowBlank($ws, $r, 1, max(3, count($yearColumns) + 2))) continue;
 
                 $anyData    = true;
-                $category    = $this->str($ws, $r, 1);
+                $rawCategory = $this->str($ws, $r, 1);
+                // Category header rows (merged, blue fill) have subcategory blank.
+                // Data rows beneath them have col 1 blank — carry forward the last seen category.
+                if ($rawCategory) {
+                    $lastCategory = $rawCategory;
+                }
+                $category    = $lastCategory;
                 $subcategory = $this->str($ws, $r, 2);
+
+                // Skip pure category header rows (col A has value, col B is blank, no numeric data).
+                if ($rawCategory && !$subcategory) {
+                    $hasAnyNumeric = false;
+                    foreach ($yearColumns as $col => $meta) {
+                        if ($this->int_($ws, $r, $col) !== 0) { $hasAnyNumeric = true; break; }
+                    }
+                    if (!$hasAnyNumeric) continue;
+                }
 
                 // Skip placeholder rows — exported when a category has no predefined
                 // subcategories (e.g. B, D). They have a category but blank subcategory

@@ -52,7 +52,7 @@ All sheets use the original CHED SASTOOL visual design. **All title blocks are c
 
 **Annex H:** Tag row 1, title block rows 2–4 (`ANNEX "H"`, list of admission services, AY), services header row 5, 5 service data rows 6–10, spacer row 11, stats header row 12, stats data rows 13+. `SERVICES_ROW_START = 6`, `STATS_ROW_START = 13`. Service types are fixed by `AnnexHAdmissionService::PREDEFINED_SERVICES` (5 entries) — export labels col A from the constant, parser ignores col A and uses the constant directly for `service_type` field.
 
-**Annex M:** Tag row 1, title block rows 2–4 (`ANNEX "M"`, HEIs' initiatives subtitle, AY), spacer row 5, `[STATISTICS]` tag row 6, column headers row 7, data row 8+. `[SERVICES]` sub-table follows statistics data.
+**Annex M:** Tag row 1, title block rows 2–5 (`ANNEX "M"`, subtitle split across rows 3–4, AY row 5), spacer row 6, Table 1 label row 7, `[STATISTICS]` tag row 8, column headers row 9, data row 10+. Category header rows styled light blue `DEEAF6`. Sub-Total rows styled light green `E2EFD9`. TOTAL row styled yellow `FFFF00`. Table 2 label row precedes `[SERVICES]` tag. Services table: 5 cols (section, category, program, count, remarks) with `E2EFD9` header. Parser uses string-match for tags — row number shift is transparent.
 
 **Page setup all sheets:** Legal landscape, fit-to-1-page-wide.
 
@@ -86,6 +86,7 @@ All sheets use the original CHED SASTOOL visual design. **All title blocks are c
 - `getFont()->setBold()->setSize()` does not set alignment. Title rows appeared left-aligned until switched to `applyFromArray` with `HORIZONTAL_CENTER`.
 - Annex H `PREDEFINED_SERVICES` was rewritten (8 old services → 5 new ones) without a DB migration or constant update. Existing user data had the new service names; the constant and frontend still had the old names. `$serviceMap` key lookup silently returned null for every row, exporting all service data as blank. Fix: sync `AnnexHAdmissionService::PREDEFINED_SERVICES`, `AnnexHController` validation (`size:5`), `AnnexHCreate.jsx`, and `AnnexHParser::STATS_ROW_START` (16→13 because 5 services now end at row 10, not row 13).
 - Annex H and M had a row collision: the AY line and the first table header were both assigned to row 4. Fixed by pushing the table header down and adjusting all subsequent row offsets.
+- Annex M statistics table: the original CHED template uses category header rows (e.g. "A. Persons with Disabilities") as visually distinct merged rows with light blue fill, separate from the subcategory data rows beneath them. The export emits a category header row whenever `$category !== $prevCategory` (and it is not a Sub-Total row), then writes subcategory data rows with an empty col A. The parser never reads the category header rows — it reads category from col 1 of each data row, which is blank for subcategory rows — but `AnnexMParser` reconstructs category from the stat model’s own `category` field, not from the export column, so this is safe.
 - The title block annex name must be formatted as `ANNEX "X"` (all-caps, quoted) to match the original. The tab name format (`Annex A`) is different and must be transformed on export via regex.
 - The AY line (`As of Academic Year (AY) YYYY-YYYY`) was missing entirely from all tabular sheets. It was added as row 5 in the title block.
 

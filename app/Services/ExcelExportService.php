@@ -1013,108 +1013,196 @@ class ExcelExportService
             ->where('hei_id', $heiId)->where('academic_year', $ay)
             ->whereIn('status', ['submitted', 'published', 'request'])->first();
 
+        // ── Page setup ────────────────────────────────────────────────────
+        $ws->getPageSetup()
+            ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
+            ->setPaperSize(PageSetup::PAPERSIZE_LEGAL)
+            ->setFitToPage(true)->setFitToWidth(1)->setFitToHeight(0);
+        $ws->getPageMargins()->setTop(0.75)->setBottom(0.75)->setLeft(0.7)->setRight(0.7);
+
+        // ── Row 1: machine-readable tag ───────────────────────────────────
         $ws->setCellValue('A1', '[ANNEX_M]');
         $this->styleTagRow($ws, 'A1');
-        foreach (['A2:E2', 'A4:E4'] as $range) {
-            $ws->mergeCells($range);
-            $ws->getStyle(explode(':', $range)[0])->applyFromArray([
-                'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial'],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            ]);
-        }
-        foreach (['A3:E3'] as $range) {
+
+        // ── Rows 2–5: title block matching original CHED SASTOOL ──────────
+        // Row 2: ANNEX "M" — black bold centered
+        // Row 3: subtitle line 1 — blue bold centered
+        // Row 4: subtitle line 2 — blue bold centered
+        // Row 5: AY line — black bold centered
+        $ws->mergeCells('A2:G2');
+        $ws->getStyle('A2')->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial'],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $ws->setCellValue('A2', 'ANNEX "M"');
+        $ws->getRowDimension(2)->setRowHeight(22);
+
+        foreach (['A3:G3', 'A4:G4'] as $range) {
             $ws->mergeCells($range);
             $ws->getStyle(explode(':', $range)[0])->applyFromArray([
                 'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial', 'color' => ['argb' => self::COLOR_TITLE_BLUE]],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             ]);
         }
-        $ws->setCellValue('A2', 'ANNEX "M"');
-        $ws->setCellValue('A3', 'HEIs\' INITIATIVES AND DATA ON STUDENTS WITH SPECIAL NEEDS AND PERSONS WITH DISABILITIES');
-        $ws->setCellValue('A4', 'As of Academic Year (AY) ' . $ay);
-        $ws->getRowDimension(2)->setRowHeight(22);
+        $ws->setCellValue('A3', 'HEIs\' INITIATIVES AND DATA ON STUDENTS WITH SPECIAL NEEDS');
+        $ws->setCellValue('A4', 'AND PERSONS WITH DISABILITIES');
 
-        // Row 5: spacer, Row 6: [STATISTICS] tag, Row 7: column headers, Row 8+: data.
-        // Export only the current AY — prior years are read-only in the UI and not submitted in the payload.
-        $ws->getRowDimension(5)->setRowHeight(4);
-        $ws->setCellValue('A6', '[STATISTICS]');
-        $this->styleTagRow($ws, 'A6');
+        $ws->mergeCells('A5:G5');
+        $ws->getStyle('A5')->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 12, 'name' => 'Arial'],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $ws->setCellValue('A5', 'As of Academic Year (AY) ' . $ay);
 
-        $ws->setCellValue('A7', 'Category');
-        $ws->setCellValue('B7', 'Subcategory');
-        $ws->setCellValue('C7', $ay . ' Enrollment');
-        $ws->setCellValue('D7', $ay . ' Graduates');
-        $ws->getStyle('A7:D7')->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 10],
+        // ── Row 6: spacer ─────────────────────────────────────────────────
+        $ws->getRowDimension(6)->setRowHeight(4);
+
+        // ── Row 7: Table 1 label ──────────────────────────────────────────
+        $ws->mergeCells('A7:G7');
+        $ws->setCellValue('A7', 'Table 1. Basic Statistics');
+        $ws->getStyle('A7')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'name' => 'Arial'],
+        ]);
+
+        // ── Row 8: [STATISTICS] machine-readable tag ──────────────────────
+        $ws->setCellValue('A8', '[STATISTICS]');
+        $this->styleTagRow($ws, 'A8');
+
+        // ── Row 9: column headers ─────────────────────────────────────────
+        $hdrStyle = [
+            'font'      => ['bold' => true, 'size' => 10, 'name' => 'Arial'],
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_COL_HDR_BG]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-        ]);
-        $ws->getRowDimension(7)->setRowHeight(22);
+        ];
+        $ws->setCellValue('A9', 'Category (based on the DOH Categories)');
+        $ws->setCellValue('B9', 'Subcategory');
+        $ws->setCellValue('C9', $ay . ' Enrollment');
+        $ws->setCellValue('D9', $ay . ' Graduates');
+        $ws->getStyle('A9:D9')->applyFromArray($hdrStyle);
+        $ws->getRowDimension(9)->setRowHeight(30);
 
-        $row = 8;
-        $statistics = $batch?->statistics?->sortBy('display_order') ?? collect();
+        // ── Statistics data rows ──────────────────────────────────────────
+        // Category header rows (e.g. "A. Persons with Disabilities"): light blue DEEAF6, bold, merged across all cols.
+        // Sub-Total rows: light green E2EFD9, bold.
+        // Regular subcategory rows: no fill.
+        $categoryStyle = [
+            'font'      => ['bold' => true, 'size' => 10, 'name' => 'Arial'],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_FIELD_BG]],
+            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+        $subtotalStyle = [
+            'font'      => ['bold' => true, 'size' => 10, 'name' => 'Arial'],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFE2EFD9']],
+            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+        $dataRowStyle = [
+            'font'      => ['size' => 10, 'name' => 'Arial'],
+            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+
+        $row         = 10;
+        $statistics  = $batch?->statistics?->sortBy('display_order') ?? collect();
+        $prevCategory = null;
+
+        $writeStatRow = function (string $category, ?string $subcategory, int $enrollment, int $graduates)
+            use ($ws, &$row, &$prevCategory, $categoryStyle, $subtotalStyle, $dataRowStyle): void
+        {
+            $isSubtotal    = strtolower(trim((string) $subcategory)) === 'sub-total';
+            $isCategoryHdr = $category !== $prevCategory && !$isSubtotal;
+
+            if ($isCategoryHdr) {
+                $ws->mergeCells('A' . $row . ':D' . $row);
+                $ws->setCellValue('A' . $row, $category);
+                $ws->getStyle('A' . $row . ':D' . $row)->applyFromArray($categoryStyle);
+                $ws->getRowDimension($row)->setRowHeight(15.75);
+                $row++;
+                $prevCategory = $category;
+            }
+
+            $ws->setCellValue('A' . $row, '');
+            $ws->setCellValue('B' . $row, $isSubtotal ? 'Sub-Total' : $subcategory);
+            $ws->setCellValue('C' . $row, $enrollment);
+            $ws->setCellValue('D' . $row, $graduates);
+            $ws->getStyle('A' . $row . ':D' . $row)->applyFromArray($isSubtotal ? $subtotalStyle : $dataRowStyle);
+            $ws->getRowDimension($row)->setRowHeight(15.75);
+            $row++;
+        };
+
         if ($statistics->isEmpty()) {
-            // Write empty structure — categories with no predefined subcategories (B, D)
-            // get one blank placeholder row so they appear in the exported sheet.
             foreach (AnnexMStatistic::STRUCTURE as $group) {
                 if (empty($group['subcategories'])) {
-                    $ws->setCellValue('A' . $row, $group['category']);
-                    $ws->setCellValue('B' . $row, '');
-                    $ws->setCellValue('C' . $row, 0);
-                    $ws->setCellValue('D' . $row, 0);
-                    $row++;
+                    $writeStatRow($group['category'], null, 0, 0);
                 } else {
                     foreach ($group['subcategories'] as $sub) {
-                        $ws->setCellValue('A' . $row, $group['category']);
-                        $ws->setCellValue('B' . $row, $sub);
-                        $ws->setCellValue('C' . $row, 0);
-                        $ws->setCellValue('D' . $row, 0);
-                        $row++;
+                        $writeStatRow($group['category'], $sub, 0, 0);
                     }
                 }
                 if ($group['has_subtotal']) {
-                    $ws->setCellValue('A' . $row, $group['category']);
-                    $ws->setCellValue('B' . $row, 'Sub-Total');
-                    $ws->setCellValue('C' . $row, 0);
-                    $ws->setCellValue('D' . $row, 0);
-                    $ws->getStyle('A' . $row . ':D' . $row)->getFont()->setBold(true);
-                    $row++;
+                    $writeStatRow($group['category'], 'Sub-Total', 0, 0);
                 }
             }
         } else {
             foreach ($statistics as $stat) {
-                $ws->setCellValue('A' . $row, $stat->category);
-                $ws->setCellValue('B' . $row, $stat->subcategory);
-                $ws->setCellValue('C' . $row, $stat->year_data[$ay]['enrollment'] ?? 0);
-                $ws->setCellValue('D' . $row, $stat->year_data[$ay]['graduates']  ?? 0);
-                $row++;
+                $writeStatRow(
+                    $stat->category,
+                    $stat->subcategory,
+                    $stat->year_data[$ay]['enrollment'] ?? 0,
+                    $stat->year_data[$ay]['graduates']  ?? 0,
+                );
             }
         }
 
-        $row += 2;
+        // ── TOTAL row ─────────────────────────────────────────────────────
+        $ws->setCellValue('A' . $row, 'TOTAL');
+        $ws->setCellValue('B' . $row, '');
+        $ws->setCellValue('C' . $row, '');
+        $ws->setCellValue('D' . $row, '');
+        $ws->getStyle('A' . $row . ':D' . $row)->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 10, 'name' => 'Arial'],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFFFFF00']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $ws->getRowDimension($row)->setRowHeight(15.75);
+        $row++;
 
-        // Services sub-table
+        // ── Spacer + Table 2 label ────────────────────────────────────────
+        $row++;
+        $ws->mergeCells('A' . $row . ':G' . $row);
+        $ws->setCellValue('A' . $row, 'Table 2. List of Institutional Services Offered/Programs Implemented/Activities Conducted');
+        $ws->getStyle('A' . $row)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'name' => 'Arial'],
+        ]);
+        $row++;
+
+        // ── [SERVICES] machine-readable tag + column headers ──────────────
         $ws->setCellValue('A' . $row, '[SERVICES]');
         $this->styleTagRow($ws, 'A' . $row);
         $row++;
-        $ws->setCellValue('A' . $row, 'Section');
-        $ws->setCellValue('B' . $row, 'Category');
-        $ws->setCellValue('C' . $row, 'Institutional Services/Programs/Activities');
-        $ws->setCellValue('D' . $row, 'No. of Beneficiaries/Participants');
-        $ws->setCellValue('E' . $row, 'Remarks');
-        $ws->getStyle('A' . $row . ':E' . $row)->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 10],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_COL_HDR_BG]],
+
+        // Services table uses E2EFD9 (lighter green) to match the original CHED template's Table 2 header.
+        $svcHdrStyle = [
+            'font'      => ['bold' => true, 'size' => 10, 'name' => 'Arial'],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFE2EFD9']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-        ]);
-        $ws->getRowDimension($row)->setRowHeight(22);
+        ];
+        // 5-col layout matches AnnexMParser: col1=section, col2=category, col3=program, col4=count, col5=remarks.
+        $ws->setCellValue('A' . $row, 'Category');
+        $ws->setCellValue('B' . $row, 'Sub-category');
+        $ws->setCellValue('C' . $row, 'Institutional Services offered/ Programs Implemented/ Activities conducted/ and others');
+        $ws->setCellValue('D' . $row, 'No. of Beneficiaries/ Participants');
+        $ws->setCellValue('E' . $row, 'Remarks, if any');
+        $ws->getStyle('A' . $row . ':E' . $row)->applyFromArray($svcHdrStyle);
+        $ws->getRowDimension($row)->setRowHeight(27);
         $row++;
+
         foreach ($batch?->services?->sortBy('display_order') ?? [] as $svc) {
             $ws->setCellValue('A' . $row, $svc->section);
             $ws->setCellValue('B' . $row, $svc->category);
             $ws->setCellValue('C' . $row, $svc->institutional_services_programs_activities);
             $ws->setCellValue('D' . $row, $svc->number_of_beneficiaries_participants);
             $ws->setCellValue('E' . $row, $svc->remarks);
+            $ws->getStyle('A' . $row . ':E' . $row)->applyFromArray($dataRowStyle);
+            $ws->getRowDimension($row)->setRowHeight(15.75);
             $row++;
         }
 
