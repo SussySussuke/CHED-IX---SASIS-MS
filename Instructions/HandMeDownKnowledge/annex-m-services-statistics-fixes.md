@@ -14,9 +14,13 @@ Two bugs reported on Annex M (Students with Special Needs/PWD):
 Root cause: the `useEffect` that seeds statistics state had a simple branch — if `statistics.length > 0` (from DB), set state directly; else call `initializeStatistics()`. After the first save, the DB always returns at least the subtotal rows for A, B, C, so `statistics.length > 0` is true and `initializeStatistics()` never fires. The raw DB rows were used as-is, which meant:
 - Category B: only its Sub-Total row (no user rows = nothing visible above it in the table, add button is there but no rows render)
 - Category C: its 2 fixed subcategory rows were absent if the user never explicitly submitted data for them
-- Category D: nothing at all (no subtotal by design, no rows = category header not rendered at all)
+- Category D: nothing at all (no rows, no subtotal = category header never rendered)
 
-Fix: replaced the direct `setStatisticsData(statistics)` branch with a call to a new `mergeStatisticsWithStructure(dbRows)` function. This function rebuilds the full ordered structure (A fixed rows → A subtotal → B user rows → B subtotal → C fixed rows → C subtotal → D user rows → TOTAL) by walking against the DB rows, filling in missing fixed rows with zero defaults, and preserving any user-added rows for B and D. It calls `recalculateStatistics()` at the end to recompute subtotals.
+Fix: replaced the direct `setStatisticsData(statistics)` branch with a call to a new `mergeStatisticsWithStructure(dbRows)` function. This function rebuilds the full ordered structure (A fixed rows → A subtotal → B user rows → B subtotal → C fixed rows → C subtotal → D user rows → D subtotal → TOTAL) by walking against the DB rows, filling in missing fixed rows with zero defaults, and preserving any user-added rows for B and D. It calls `recalculateStatistics()` at the end to recompute subtotals.
+
+Category D was given a Sub-Total row (matching B). `AnnexMStatistic::STRUCTURE` still declares D as `has_subtotal: false` but the UI and DB both treat it with a subtotal — the model constant is only used by the Excel export/import layer which handles D differently.
+
+Prior-year user rows for B and D (e.g. a custom "Lumad" entry saved in 2023-2024): `mergeStatisticsWithStructure` pulls all user rows from the DB payload for those categories and pushes them into the merged array with their original `year_data` intact. The prior-year read-only columns call `getPriorValue()` which looks up the row by category+subcategory in that year's batch, so the 50-enrollment "Lumad" row will appear in the grayed prior-year columns. The current-year editable cells default to 0 since no current-year data exists for that row yet.
 
 `mergeStatisticsWithStructure` is defined before `recalculateStatistics` in the file but is only *invoked* at runtime inside `useEffect`, so `recalculateStatistics` is already in scope by then — no hoisting issue.
 
@@ -40,5 +44,5 @@ Fix: replaced the direct `setStatisticsData(statistics)` branch with a call to a
 - `category` column stays in DB, model, controller, and Excel. No migration needed. Only the UI column was removed.
 - `mergeStatisticsWithStructure` is an additive path only for the DB-loaded case. Fresh forms (no DB rows) still go through `initializeStatistics()` unchanged.
 - Fixed subcategory rows for A and C that are absent from older DB submissions are silently injected with zero values on load and saved with real values on next submit.
-- Category D placeholder rows are UI-only (`is_placeholder: true`). They are stripped from the submit payload (`statisticsData.filter(r => !r.is_placeholder)`), skipped in validation, and cannot be deleted. When the last real D row is removed, the placeholder is re-injected.
-- Placeholder rows render with a single wide `colSpan` cell saying “No entries yet” with the add icon inline. This communicates intent without fake data in the table.
+- Category D was given a Sub-Total row in the UI, making it behave identically to Category B. `AnnexMStatistic::STRUCTURE` still says `has_subtotal: false` for D — that constant only drives the Excel export/import layer and was not changed. The DB will now store a D Sub-Total row on next submit.
+- `recalculateStatistics` includes D in its subtotal loop; TOTAL now sums all four subtotals uniformly.
