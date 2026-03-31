@@ -87,9 +87,81 @@ class AnnexMController extends BaseAnnexController
             return response()->json([], $batch ? 403 : 404);
         }
 
+        $heiId       = $batch->hei_id;
+        $currentAy   = $batch->academic_year;
+        $startYear   = (int) explode('-', $currentAy)[0];
+
+        // Derive the two prior AYs the editor shows as read-only columns.
+        $priorAys = [
+            ($startYear - 2) . '-' . ($startYear - 1),
+            ($startYear - 1) . '-' . $startYear,
+        ];
+
+        // Load prior batches for the same HEI (if they exist) so the renderer
+        // can show all three years side-by-side, mirroring the editor view.
+        $priorBatches = [];
+        foreach ($priorAys as $ay) {
+            $prior = AnnexMBatch::where('hei_id', $heiId)
+                ->where('academic_year', $ay)
+                ->with('statistics')
+                ->first();
+            if ($prior) {
+                // Index prior stats by category+subcategory for fast lookup.
+                $indexed = [];
+                foreach ($prior->statistics as $stat) {
+                    $yearData = is_string($stat->year_data)
+                        ? json_decode($stat->year_data, true)
+                        : $stat->year_data;
+                    $key = $stat->category . '||' . $stat->subcategory;
+                    $indexed[$key] = [
+                        'enrollment' => (int) ($yearData[$ay]['enrollment'] ?? 0),
+                        'graduates'  => (int) ($yearData[$ay]['graduates']  ?? 0),
+                    ];
+                }
+                $priorBatches[$ay] = $indexed;
+            }
+        }
+
+        // Normalize statistics: ensure year_data is a decoded array, not a
+        // JSON string (MySQL returns the raw string even with the Eloquent cast
+        // when the collection is serialized directly via response()->json()).
+        // Also merge prior-year values into each row's year_data so the
+        // renderer receives a single object keyed by all three AYs.
+        $statistics = $batch->statistics->map(function ($stat) use ($priorAys, $priorBatches, $currentAy) {
+            $yearData = is_string($stat->year_data)
+                ? json_decode($stat->year_data, true)
+                : (array) $stat->year_data;
+
+            // Ensure current AY key exists with integer values.
+            $yearData[$currentAy] = [
+                'enrollment' => (int) ($yearData[$currentAy]['enrollment'] ?? 0),
+                'graduates'  => (int) ($yearData[$currentAy]['graduates']  ?? 0),
+            ];
+
+            // Inject prior-year values from sibling batches.
+            $lookupKey = $stat->category . '||' . $stat->subcategory;
+            foreach ($priorAys as $ay) {
+                if (isset($priorBatches[$ay][$lookupKey])) {
+                    $yearData[$ay] = $priorBatches[$ay][$lookupKey];
+                } else {
+                    $yearData[$ay] = ['enrollment' => 0, 'graduates' => 0];
+                }
+            }
+
+            // Sort by AY key so columns are chronological.
+            ksort($yearData);
+
+            return array_merge($stat->toArray(), ['year_data' => $yearData]);
+        });
+
+        // Normalize services.
+        $services = $batch->services->map(fn ($s) => $s->toArray());
+
         return response()->json([
-            'statistics' => $batch->statistics,
-            'services' => $batch->services,
+            'statistics' => $statistics,
+            'services'   => $services,
+            'academic_year' => $currentAy,
+            'prior_years'   => $priorAys,
         ]);
     }
 

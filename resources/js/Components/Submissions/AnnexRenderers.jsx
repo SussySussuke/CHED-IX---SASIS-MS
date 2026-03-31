@@ -65,30 +65,28 @@ export const renderAnnexH = (data, isDark) => {
     );
 };
 
-// Annex M Renderer (keeping the complex one from original)
+// Annex M Renderer
 export const renderAnnexM = (data, isDark) => {
-    const statistics = data.statistics || [];
-    const services = data.services || [];
+    const statistics   = data.statistics   || [];
+    const services     = data.services     || [];
+    const currentAy    = data.academic_year || null;  // injected by getBatchData
 
-    // Extract years from year_data
+    // Build sorted year list from all year_data keys across all rows.
+    // The controller now merges prior-year values into each row's year_data,
+    // so every row has the same 3 AY keys — just scan the first non-empty one.
+    const getYearData = (row) => {
+        const yd = row.year_data;
+        if (!yd) return {};
+        if (typeof yd === 'string') {
+            try { return JSON.parse(yd); } catch { return {}; }
+        }
+        return yd;
+    };
+
     let years = [];
-    if (statistics.length > 0) {
-        const yearSet = new Set();
-        statistics.forEach(stat => {
-            let yearData = stat.year_data;
-            if (typeof yearData === 'string') {
-                try {
-                    yearData = JSON.parse(yearData);
-                } catch (e) {
-                    console.error('Failed to parse year_data:', e);
-                    return;
-                }
-            }
-            if (yearData && typeof yearData === 'object' && !Array.isArray(yearData)) {
-                Object.keys(yearData).forEach(year => yearSet.add(year));
-            }
-        });
-        years = Array.from(yearSet).sort();
+    for (const row of statistics) {
+        const keys = Object.keys(getYearData(row));
+        if (keys.length > 0) { years = keys.sort(); break; }
     }
 
     const SECTIONS = [
@@ -102,35 +100,11 @@ export const renderAnnexM = (data, isDark) => {
         servicesBySection[section] = services.filter(s => s.section === section);
     });
 
-    const getYearData = (row) => {
-        let yearData = row.year_data;
-        if (typeof yearData === 'string') {
-            try {
-                yearData = JSON.parse(yearData);
-            } catch (e) {
-                return {};
-            }
-        }
-        return yearData || {};
-    };
-
-    const getTotalEnrollment = (row) => {
-        const yearData = getYearData(row);
-        return years.reduce((sum, year) =>
-            sum + (parseInt(yearData[year]?.enrollment) || 0), 0);
-    };
-
-    const getTotalGraduates = (row) => {
-        const yearData = getYearData(row);
-        return years.reduce((sum, year) =>
-            sum + (parseInt(yearData[year]?.graduates) || 0), 0);
-    };
-
     const renderStatisticsTable = () => {
+        // Build category → rowspan map
         let currentCategory = null;
         let categoryRowCount = 0;
         const categoryStartIndices = {};
-
         statistics.forEach((row, index) => {
             if (row.category !== currentCategory) {
                 if (currentCategory !== null) {
@@ -146,38 +120,60 @@ export const renderAnnexM = (data, isDark) => {
             categoryStartIndices[currentCategory] = { start: statistics.length - categoryRowCount, count: categoryRowCount };
         }
 
+        const thBase = 'px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600';
+        const tdRO   = 'px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 italic';
+
         return (
             <div className="overflow-x-auto">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 italic">
+                    Prior years (grayed) are read-only. Current AY <strong>{currentAy}</strong> is highlighted.
+                </p>
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 text-sm">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
                             <th rowSpan="2" className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">Category</th>
                             <th rowSpan="2" className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">Subcategory</th>
-                            {years.map(year => (
-                                <th key={year} colSpan="2" className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">
-                                    AY {year}
-                                </th>
-                            ))}
-                            <th colSpan="2" className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-b border-gray-200 dark:border-gray-600">Total</th>
+                            {years.map(year => {
+                                const isCurrent = year === currentAy;
+                                return (
+                                    <th key={year} colSpan="2" className={`${thBase} ${
+                                        isCurrent
+                                            ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                                            : 'opacity-60'
+                                    }`}>
+                                        AY {year}{isCurrent ? ' (current)' : ' (view only)'}
+                                    </th>
+                                );
+                            })}
                         </tr>
                         <tr>
-                            {years.map(year => (
-                                <React.Fragment key={year}>
-                                    <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Enroll</th>
-                                    <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Grad</th>
-                                </React.Fragment>
-                            ))}
-                            <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Enroll</th>
-                            <th className="px-2 py-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">Grad</th>
+                            {years.map(year => {
+                                const isCurrent = year === currentAy;
+                                return (
+                                    <React.Fragment key={year}>
+                                        <th className={`${thBase} font-normal ${
+                                            isCurrent
+                                                ? 'bg-green-50 dark:bg-green-900/20'
+                                                : 'opacity-60'
+                                        }`}>Enroll</th>
+                                        <th className={`${thBase} font-normal ${
+                                            isCurrent
+                                                ? 'bg-green-50 dark:bg-green-900/20'
+                                                : 'opacity-60'
+                                        }`}>Grad</th>
+                                    </React.Fragment>
+                                );
+                            })}
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         {statistics.map((row, index) => {
                             const isFirstInCategory = index === 0 || statistics[index - 1].category !== row.category;
                             const categoryInfo = categoryStartIndices[row.category];
-                            const rowspan = isFirstInCategory ? categoryInfo.count : 0;
-                            const isReadOnly = row.is_subtotal || row.category === 'TOTAL';
-                            const bgClass = isReadOnly ? 'bg-gray-100 dark:bg-gray-700/50 font-semibold' : 'bg-white dark:bg-gray-800';
+                            const rowspan = isFirstInCategory ? (categoryInfo?.count ?? 1) : 0;
+                            const isSubtotalRow = row.is_subtotal || row.category === 'TOTAL';
+                            const bgClass = isSubtotalRow ? 'bg-gray-100 dark:bg-gray-700/50 font-semibold' : 'bg-white dark:bg-gray-800';
+                            const yearData = getYearData(row);
 
                             return (
                                 <tr key={index} className={bgClass}>
@@ -190,24 +186,22 @@ export const renderAnnexM = (data, isDark) => {
                                         {row.subcategory || (row.category === 'TOTAL' ? 'TOTAL' : '')}
                                     </td>
                                     {years.map(year => {
-                                        const yearData = getYearData(row);
+                                        const isCurrent = year === currentAy;
+                                        const enroll = parseInt(yearData[year]?.enrollment) || 0;
+                                        const grads  = parseInt(yearData[year]?.graduates)  || 0;
                                         return (
                                             <React.Fragment key={year}>
-                                                <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-                                                    {yearData[year]?.enrollment ?? 0}
-                                                </td>
-                                                <td className="px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-                                                    {yearData[year]?.graduates ?? 0}
-                                                </td>
+                                                <td className={isCurrent
+                                                    ? 'px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 bg-green-50/30 dark:bg-green-900/10 text-gray-900 dark:text-gray-100'
+                                                    : tdRO
+                                                }>{enroll}</td>
+                                                <td className={isCurrent
+                                                    ? 'px-2 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-600 bg-green-50/30 dark:bg-green-900/10 text-gray-900 dark:text-gray-100'
+                                                    : tdRO
+                                                }>{grads}</td>
                                             </React.Fragment>
                                         );
                                     })}
-                                    <td className="px-2 py-2 text-sm text-center font-semibold border-r border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                                        {getTotalEnrollment(row)}
-                                    </td>
-                                    <td className="px-2 py-2 text-sm text-center font-semibold bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                                        {getTotalGraduates(row)}
-                                    </td>
                                 </tr>
                             );
                         })}

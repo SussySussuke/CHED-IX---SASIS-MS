@@ -82,3 +82,38 @@ Three mismatches found:
 - `year_data` stores only the current batch's AY key per row (matching how the controller saves it and how `mergeStatisticsWithStructure` reads it).
 - Sub-Total rows are seeded for all four categories including D, consistent with the UI's behavior after the Session 1 fix (D Sub-Total is rendered in UI even though `STRUCTURE` says `has_subtotal: false`).
 - Must run `php artisan migrate:fresh --seed` to replace stale seeded data with corrected rows.
+
+---
+
+## Session 3 — Renderer Zeros & Prior-Year Columns
+
+## Input
+Annex M submission list renderer showed 0 for all enrollment and graduate values. Request to also show the prior 2 academic years (like the editor does).
+
+## Process
+**Root cause of zeros:** `getBatchData()` returned `$batch->statistics` directly. Laravel's `'array'` cast on `year_data` decodes the JSON string when accessed via the model accessor, but when the collection is serialized via `response()->json()` it calls `toArray()` — which in some MySQL/Laravel version combinations returns `year_data` still as a raw JSON string. The renderer's `typeof yearData === 'string'` guard existed but was never hit in testing; in production MySQL it was consistently a string. The fix is to explicitly decode with `is_string()` check in the controller before returning, casting values to `int`.
+
+**Prior-year columns:** The editor gets all years via `getExistingBatches()` (all batches passed as props). `getBatchData()` only fetched the single requested batch, so the renderer had no prior-year data at all. Fix: controller now derives the two prior AYs from the current batch's `academic_year`, loads those sibling batches, indexes their stats by `category||subcategory`, and merges the values into each current-batch row's `year_data`. The renderer receives a single row with all 3 AY keys populated.
+
+**Renderer changes:** Removed the now-redundant Total columns (summing across 3 years is misleading since they are distinct annual counts, not cumulative). Added `academic_year` prop from the controller response to distinguish current AY from prior years visually (green highlight for current, grayed italic for prior — matching editor styling). `years` array is now built by scanning only the first non-empty row's keys (all rows have identical keys after the controller merge) instead of scanning all rows.
+
+## Output
+- `app/Http/Controllers/HEI/AnnexMController.php`: `getBatchData()` rewritten — explicit `is_string` decode, prior-batch merge, returns `academic_year` and `prior_years` alongside `statistics` and `services`
+- `resources/js/Components/Submissions/AnnexRenderers.jsx`: `renderAnnexM` updated — reads `data.academic_year`, removed Total columns, added current/prior year visual distinction, moved `getYearData` before `years` derivation
+
+## Relevant Files
+- `app/Http/Controllers/HEI/AnnexMController.php` — `getBatchData()` is the only endpoint that feeds the renderer
+- `resources/js/Components/Submissions/AnnexRenderers.jsx` — `renderAnnexM`
+- `resources/js/Hooks/useSubmissionData.js` — fetches via `fetchDataUrl`, calls `response.json()`, passes result directly to renderer as `data`
+- `resources/js/Components/Submissions/renderers/index.jsx` — routes `annex === 'M'` to `renderAnnexM`
+
+## Key Discoveries
+- `response()->json($batch->statistics)` with an Eloquent cast of `'array'` does NOT guarantee a decoded object on the JS side in all environments. Always explicitly decode with `is_string()` check in the controller before returning JSON responses that contain cast fields.
+- The renderer previously called `getYearData()` inside the `years.map()` loop per-cell (redundant). Moved to once per row.
+- `categoryInfo.count` (no null guard) would crash if a TOTAL row appeared before its category was registered. Added `?? 1` null-safe fallback.
+- Total columns were removed: summing enrollment + graduates across 3 separate academic years produces a meaningless number (it is not a 3-year total enrollment, it is triple-counting students).
+
+## Decisions Made
+- Prior-year data is fetched server-side in `getBatchData()`, not client-side. Keeps the renderer stateless and dumb.
+- Rows with no matching prior-year sibling default to `{enrollment: 0, graduates: 0}` — same behavior as the editor's `getPriorValue()` fallback.
+- `academic_year` and `prior_years` are added to the `getBatchData` JSON response. No route or schema changes needed.
