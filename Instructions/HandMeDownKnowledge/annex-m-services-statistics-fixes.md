@@ -171,6 +171,7 @@ Fixed export column headers: col A now reads "Category of Students with Special 
 - `app/Http/Controllers/HEI/AnnexMController.php` — removed `services.*.category` validation rule
 - `app/Services/ExcelExportService.php` — `addAnnexMSheet()` services table: 5→4 cols, corrected headers
 - `app/Services/Excel/Parsers/AnnexMParser.php` — services section: removed `category` read, shifted col indices, updated `isRowBlank` span
+- `resources/js/Components/Submissions/AnnexRenderers.jsx` — `renderServicesTable`: removed "Category" column header and `service.category` cell
 
 ## Key Discoveries
 - The export had inverted column header names: "Category" (col A) held `section` data, "Sub-category" (col B) held `category` data. Misleading even before the field was dead weight.
