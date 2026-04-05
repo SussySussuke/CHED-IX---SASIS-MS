@@ -90,7 +90,7 @@ const RecentSubmissionsTable = ({ submissions, style = {} }) => {
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {submissions.map((submission, i) => (
               <tr
-                key={submission.id}
+                key={`${submission.annex}-${submission.id}`}
                 className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                 style={{
                   animation: `fadeUp 0.35s ease-out ${i * 40}ms both`,

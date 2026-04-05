@@ -54,10 +54,17 @@ export default function ExcelImport({ availableYears, defaultYear }) {
     const form = new FormData();
     form.append('file', file);
     form.append('academic_year', academicYear);
-    form.append('_token', document.querySelector('meta[name="csrf-token"]')?.content ?? '');
 
     try {
-      const res  = await fetch('/hei/excel/import', { method: 'POST', body: form, credentials: 'same-origin' });
+      const res  = await fetch('/hei/excel/import', {
+        method:      'POST',
+        body:        form,
+        credentials: 'same-origin',
+        headers: {
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+          'Accept':       'application/json',
+        },
+      });
       const json = await res.json();
 
       if (!res.ok) {
