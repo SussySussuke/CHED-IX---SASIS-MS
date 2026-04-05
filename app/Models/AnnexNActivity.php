@@ -14,7 +14,8 @@ class AnnexNActivity extends Model
         'title_of_activity',
         'implementation_date',
         'implementation_venue',
-        'number_of_participants',
+        'participants_online',
+        'participants_face_to_face',
         'organizer',
         'remarks',
     ];

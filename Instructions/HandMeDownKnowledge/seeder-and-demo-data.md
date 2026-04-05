@@ -142,6 +142,8 @@ All annexes seeded with `status = 'submitted'`. Each follows the batch → child
 - Partial HEI coverage is controlled solely by which seeder methods `seedYearPartialX` calls — the data shape is identical to full HEIs.
 - `seedAnnexJ()` originally inserted a single `number_of_participants` total. After the schema fix (see `annex-j-participant-split.md`), it now inserts `participants_online` + `participants_face_to_face` using a fixed 30/70 split from the original total values.
 - `seedAnnexM()` was previously seeding data for a completely different version of the form (health services tracking with `sem1`/`sem2` year_data keys and section strings like `'Health Services'`). After the Annex M UI rewrite to PWD/special needs tracking, the seeder was never updated. All seeded data was structurally invisible to the UI. Rewritten in Session 2 — see `annex-m-services-statistics-fixes.md`.
+- `seedAnnexM()` services rows were written with a `category` column that was subsequently dropped from `annex_m_services` by migration `2026_03_31_000001`. The seeder still referenced `category` in the insert array and foreach destructuring — causing `SQLSTATE[42S22]: Column not found: 1054 Unknown column 'category'` on `migrate:fresh --seed`. Fixed by removing `category` from the insert data and the tuple destructuring in `seedAnnexM()`.
+- `seedAnnexN()` inserted a single `number_of_participants` total. After the schema fix (migration `2026_03_31_000002`), it must insert `participants_online` + `participants_face_to_face` using a 30/70 split — same pattern as `seedAnnexJ()`. See `annex-n-participant-split.md`.
 
 ## Decisions Made
 

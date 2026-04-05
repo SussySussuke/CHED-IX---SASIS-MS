@@ -82,7 +82,7 @@ class ExcelImportService
      * [
      *   'clean'     => ParseResult[],  // no existing record — safe to insert
      *   'conflicts' => [               // existing record found — needs user decision
-     *     ['incoming' => ParseResult, 'existing_summary' => string]
+     *     ['incoming' => ParseResult, 'existing_summary' => string, 'existing_data' => array]
      *   ],
      *   'errors'    => ParseResult[],  // had row-level validation errors
      *   'skipped'   => ParseResult[],  // empty sheets
@@ -126,7 +126,8 @@ class ExcelImportService
             if ($conflict) {
                 $conflicts[] = [
                     'incoming'         => $result,
-                    'existing_summary' => $conflict,
+                    'existing_summary' => $conflict['summary'],
+                    'existing_data'    => $conflict['data'],
                 ];
             } else {
                 $clean[] = $result;
@@ -153,7 +154,12 @@ class ExcelImportService
 
     // ── private helpers ────────────────────────────────────────────────────
 
-    private function detectConflict(string $tag, int $heiId, string $academicYear): ?string
+    /**
+     * Detect a conflicting existing record.
+     * Returns ['summary' => string, 'data' => array] or null if no conflict.
+     * 'data' uses the same payload keys the parsers use — safe for the frontend.
+     */
+    private function detectConflict(string $tag, int $heiId, string $academicYear): ?array
     {
         $modelClass = self::MODEL_MAP[$tag] ?? null;
         if (!$modelClass) return null;
@@ -165,7 +171,164 @@ class ExcelImportService
 
         if (!$existing) return null;
 
-        return "Status: {$existing->status}, submitted on " . $existing->created_at?->format('M d, Y');
+        return [
+            'summary' => "Status: {$existing->status}, submitted on " . $existing->created_at?->format('M d, Y'),
+            'data'    => $this->serializeExisting($tag, $existing),
+        ];
+    }
+
+    /**
+     * Serialize an existing model record into the same payload shape the parsers produce.
+     * No raw column names or model class names reach the frontend.
+     */
+    private function serializeExisting(string $tag, mixed $existing): array
+    {
+        return match ($tag) {
+            // Tabular batch forms — load the relation and return rows as plain arrays
+            'ANNEX_A', 'ANNEX_B', 'ANNEX_C', 'ANNEX_C1'
+                => ['programs' => $existing->programs()->get()->map->only([
+                        'title', 'objectives', 'target_group', 'duration_hours',
+                        'number_of_sessions', 'number_of_participants', 'budget',
+                        'fund_source', 'implementing_office', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_E'
+                => ['organizations' => $existing->organizations()->get()->map->only([
+                        'organization_name', 'description', 'number_of_members',
+                        'president', 'adviser', 'recognition_status', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_F'
+                => [
+                    'activities'                   => $existing->activities()->get()->map->only([
+                        'activity_title', 'objectives', 'date', 'budget', 'fund_source',
+                        'implementing_office', 'remarks',
+                    ])->toArray(),
+                    'student_discipline_committee' => $existing->student_discipline_committee,
+                    'procedure_mechanism'          => $existing->procedure_mechanism,
+                    'complaint_desk'               => $existing->complaint_desk,
+                ],
+
+            'ANNEX_G'
+                => [
+                    'form_data' => [
+                        'official_school_name'            => $existing->official_school_name,
+                        'student_publication_name'        => $existing->student_publication_name,
+                        'publication_fee_per_student'     => $existing->publication_fee_per_student,
+                        'adviser_name'                    => $existing->adviser_name,
+                        'adviser_position_designation'    => $existing->adviser_position_designation,
+                        'frequency_monthly'               => $existing->frequency_monthly,
+                        'frequency_quarterly'             => $existing->frequency_quarterly,
+                        'frequency_annual'                => $existing->frequency_annual,
+                        'frequency_per_semester'          => $existing->frequency_per_semester,
+                        'frequency_others'                => $existing->frequency_others,
+                        'frequency_others_specify'        => $existing->frequency_others_specify,
+                        'publication_type_newsletter'     => $existing->publication_type_newsletter,
+                        'publication_type_gazette'        => $existing->publication_type_gazette,
+                        'publication_type_magazine'       => $existing->publication_type_magazine,
+                        'publication_type_others'         => $existing->publication_type_others,
+                        'publication_type_others_specify' => $existing->publication_type_others_specify,
+                    ],
+                    'editorial_boards'   => $existing->editorialBoards()->get()->map->only([
+                        'name', 'position', 'course', 'year_level',
+                    ])->toArray(),
+                    'other_publications' => $existing->otherPublications()->get()->map->only([
+                        'title', 'type', 'frequency', 'remarks',
+                    ])->toArray(),
+                    'programs'           => $existing->programs()->get()->map->only([
+                        'title', 'objectives', 'duration_hours', 'number_of_participants',
+                        'budget', 'fund_source', 'implementing_office', 'remarks',
+                    ])->toArray(),
+                ],
+
+            'ANNEX_H'
+                => [
+                    'admission_services'   => $existing->admissionServices()->get()->map->only([
+                        'service_type', 'with', 'supporting_documents', 'remarks',
+                    ])->toArray(),
+                    'admission_statistics' => $existing->admissionStatistics()->get()->map->only([
+                        'program', 'applicants', 'admitted', 'enrolled',
+                    ])->toArray(),
+                ],
+
+            'ANNEX_I'
+                => ['scholarships' => $existing->scholarships()->get()->map->only([
+                        'scholarship_name', 'granting_body', 'number_of_grantees',
+                        'amount_per_grantee', 'total_amount', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_I1'
+                => ['foodServices' => $existing->foodServices()->get()->map->only([
+                        'type_of_service', 'location', 'capacity', 'operating_hours', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_J'
+                => ['programs' => $existing->programs()->get()->map->only([
+                        'title', 'objectives', 'date', 'venue', 'budget', 'fund_source',
+                        'implementing_office', 'participants_online',
+                        'participants_face_to_face', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_K'
+                => ['committees' => $existing->committees()->get()->map->only([
+                        'committee_name', 'chairperson', 'members', 'mandate', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_L'
+                => ['housing' => $existing->housing()->get()->map->only([
+                        'type_of_facility', 'capacity', 'actual_occupancy',
+                        'monthly_rate', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_L1'
+                => ['internationalServices' => $existing->internationalServices()->get()->map->only([
+                        'service_type', 'description', 'number_served', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_M'
+                => [
+                    'statistics' => $existing->statistics()->get()->map->only([
+                        'category', 'subcategory', 'year_data', 'is_subtotal',
+                    ])->toArray(),
+                    'services'   => $existing->services()->get()->map->only([
+                        'section', 'institutional_services_programs_activities',
+                        'number_of_beneficiaries_participants', 'remarks',
+                    ])->toArray(),
+                ],
+
+            'ANNEX_N'
+                => ['activities' => $existing->activities()->get()->map->only([
+                        'activity_title', 'objectives', 'date', 'venue', 'budget',
+                        'fund_source', 'implementing_office', 'participants_online',
+                        'participants_face_to_face', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_N1'
+                => ['sportsPrograms' => $existing->sportsPrograms()->get()->map->only([
+                        'sport', 'level', 'achievement', 'number_of_participants', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_O'
+                => ['programs' => $existing->programs()->get()->map->only([
+                        'title', 'objectives', 'duration_hours', 'number_of_participants',
+                        'budget', 'fund_source', 'implementing_office', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_D'
+                => ['submission' => collect($existing->getAttributes())->only([
+                        'version_publication_date', 'officer_in_charge', 'handbook_committee',
+                        'mode_print', 'mode_digital', 'mode_online', 'mode_others',
+                        'type_student', 'type_faculty', 'type_administrative', 'type_others',
+                        'contains_vision_mission', 'contains_core_values', 'contains_history',
+                        'contains_organizational_chart', 'contains_services', 'contains_programs',
+                        'contains_policies', 'contains_code_of_conduct', 'contains_scholarships',
+                        'contains_health_services', 'contains_library_services',
+                        'contains_sports_facilities', 'contains_dormitory', 'contains_canteen',
+                        'contains_others',
+                    ])->toArray()],
+
+            default => [],
+        };
     }
 
     private function buildParsers(): array

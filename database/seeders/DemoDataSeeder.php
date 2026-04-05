@@ -1258,23 +1258,22 @@ class DemoDataSeeder extends Seeder
         // were invisible (services.filter(s => s.section === section) = []).
         $services = [
             // Section A
-            ['A. Persons with Disabilities', null,             'Accessibility ramp installation and maintenance across campus buildings', 320, 'Completed AY '.$ay, 1],
-            ['A. Persons with Disabilities', null,             'Sign language interpretation services during university events',           85, null,                  2],
+            ['A. Persons with Disabilities',                 'Accessibility ramp installation and maintenance across campus buildings', 320, 'Completed AY '.$ay, 1],
+            ['A. Persons with Disabilities',                 'Sign language interpretation services during university events',           85, null,                  2],
             // Section B
-            ['B. Indigenous People',         null,             'Indigenous Peoples scholarship orientation and application assistance',   120, null,                  3],
-            ['B. Indigenous People',         null,             'Lumad and Mangyan cultural integration program — orientation week',       95, 'Annual',              4],
+            ['B. Indigenous People',                         'Indigenous Peoples scholarship orientation and application assistance',   120, null,                  3],
+            ['B. Indigenous People',                         'Lumad and Mangyan cultural integration program — orientation week',       95, 'Annual',              4],
             // Section C
-            ['C. Dependents of Solo Parents / Solo Parents', null, 'Solo parent ID processing assistance and DSWD coordination',          68, null,                  5],
+            ['C. Dependents of Solo Parents / Solo Parents', 'Solo parent ID processing assistance and DSWD coordination',             68, null,                  5],
             // Section D
-            ['D. Other students with special needs', null,    'Student athlete academic monitoring and tutorial program',                 50, 'Per semester',        6],
-            ['D. Other students with special needs', null,    'Counseling referral for students under financial distress',                40, null,                  7],
+            ['D. Other students with special needs',         'Student athlete academic monitoring and tutorial program',                50, 'Per semester',        6],
+            ['D. Other students with special needs',         'Counseling referral for students under financial distress',               40, null,                  7],
         ];
 
-        foreach ($services as [$section, $category, $program, $beneficiaries, $remarks, $order]) {
+        foreach ($services as [$section, $program, $beneficiaries, $remarks, $order]) {
             DB::table('annex_m_services')->insert(array_merge([
                 'batch_id'                                   => $batchId,
                 'section'                                    => $section,
-                'category'                                   => $category,
                 'institutional_services_programs_activities' => $program,
                 'number_of_beneficiaries_participants'       => $beneficiaries,
                 'remarks'                                    => $remarks,
@@ -1326,14 +1325,17 @@ class DemoDataSeeder extends Seeder
         ];
 
         foreach (($allActivities[$ay] ?? $allActivities['2025-2026']) as [$title, $venue, $organizer, $participants]) {
+            $online = (int) round($participants * 0.3);
+            $f2f    = $participants - $online;
             DB::table('annex_n_activities')->insert(array_merge([
-                'batch_id'               => $batchId,
-                'title_of_activity'      => $title,
-                'implementation_date'    => $this->ayDate($ay),
-                'implementation_venue'   => $venue,
-                'number_of_participants' => $participants,
-                'organizer'              => $organizer,
-                'remarks'                => null,
+                'batch_id'                  => $batchId,
+                'title_of_activity'         => $title,
+                'implementation_date'       => $this->ayDate($ay),
+                'implementation_venue'      => $venue,
+                'participants_online'       => $online,
+                'participants_face_to_face' => $f2f,
+                'organizer'                 => $organizer,
+                'remarks'                   => null,
             ], $this->ts()));
         }
     }

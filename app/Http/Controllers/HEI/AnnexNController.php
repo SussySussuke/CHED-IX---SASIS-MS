@@ -58,12 +58,13 @@ class AnnexNController extends BaseAnnexController
 
         foreach ($validated['activities'] as $activity) {
             $batch->activities()->create([
-                'title_of_activity' => $activity['title_of_activity'],
-                'implementation_date' => $activity['implementation_date'],
-                'implementation_venue' => $activity['implementation_venue'],
-                'number_of_participants' => ($activity['participants_online'] ?? 0) + ($activity['participants_face_to_face'] ?? 0),
-                'organizer' => $activity['organizer'],
-                'remarks' => $activity['remarks'] ?? null,
+                'title_of_activity'        => $activity['title_of_activity'],
+                'implementation_date'      => $activity['implementation_date'],
+                'implementation_venue'     => $activity['implementation_venue'],
+                'participants_online'      => $activity['participants_online'] ?? 0,
+                'participants_face_to_face' => $activity['participants_face_to_face'] ?? 0,
+                'organizer'                => $activity['organizer'],
+                'remarks'                  => $activity['remarks'] ?? null,
             ]);
         }
 

@@ -181,3 +181,6 @@ Fixed export column headers: col A now reads "Category of Students with Special 
 ## Decisions Made
 - Hard delete (migration) rather than leaving the column nullable and ignored. Dead columns create confusion for future devs.
 - `php artisan migrate` required to apply; no `migrate:fresh` needed since data loss is intentional (column was always null).
+
+## Known Drift Risk
+`DemoDataSeeder::seedAnnexM()` still referenced `category` in its services insert after the column was dropped. On `migrate:fresh --seed` this throws `SQLSTATE[42S22]: Column not found`. Fixed in the same session by removing `category` from the insert array and the foreach tuple. Rule: any time a column is dropped by migration, grep the seeder for that column name before committing.

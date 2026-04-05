@@ -104,6 +104,8 @@ class ExcelController extends Controller
                 'label'           => $c['incoming']->label,
                 'rowCount'        => $this->countRows($c['incoming']),
                 'existingSummary' => $c['existing_summary'],
+                'existingData'    => $c['existing_data'],
+                'incomingData'    => $c['incoming']->payload,
             ], $result['conflicts']),
             'errors'    => array_map(fn(ParseResult $r) => [
                 'sheetId' => $r->sheetId,
