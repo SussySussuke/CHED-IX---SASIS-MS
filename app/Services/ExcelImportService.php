@@ -184,25 +184,36 @@ class ExcelImportService
     private function serializeExisting(string $tag, mixed $existing): array
     {
         return match ($tag) {
-            // Tabular batch forms — load the relation and return rows as plain arrays
-            'ANNEX_A', 'ANNEX_B', 'ANNEX_C', 'ANNEX_C1'
+            // Tabular batch forms — fields match TabularProgramParser + formConfig.js dataMapper
+            'ANNEX_A', 'ANNEX_B'
                 => ['programs' => $existing->programs()->get()->map->only([
-                        'title', 'objectives', 'target_group', 'duration_hours',
-                        'number_of_sessions', 'number_of_participants', 'budget',
-                        'fund_source', 'implementing_office', 'remarks',
+                        'title', 'venue', 'implementation_date', 'target_group',
+                        'participants_online', 'participants_face_to_face', 'organizer', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_C'
+                => ['programs' => $existing->programs()->get()->map->only([
+                        'title', 'venue', 'implementation_date',
+                        'participants_online', 'participants_face_to_face', 'organizer', 'remarks',
+                    ])->toArray()],
+
+            'ANNEX_C1'
+                => ['programs' => $existing->programs()->get()->map->only([
+                        'title', 'venue', 'implementation_date', 'target_group',
+                        'participants_online', 'participants_face_to_face', 'organizer', 'remarks',
                     ])->toArray()],
 
             'ANNEX_E'
                 => ['organizations' => $existing->organizations()->get()->map->only([
-                        'organization_name', 'description', 'number_of_members',
-                        'president', 'adviser', 'recognition_status', 'remarks',
+                        'name_of_accredited', 'years_of_existence', 'accredited_since',
+                        'faculty_adviser', 'president_and_officers', 'specialization',
+                        'fee_collected', 'programs_projects_activities',
                     ])->toArray()],
 
             'ANNEX_F'
                 => [
                     'activities'                   => $existing->activities()->get()->map->only([
-                        'activity_title', 'objectives', 'date', 'budget', 'fund_source',
-                        'implementing_office', 'remarks',
+                        'activity', 'date', 'status',
                     ])->toArray(),
                     'student_discipline_committee' => $existing->student_discipline_committee,
                     'procedure_mechanism'          => $existing->procedure_mechanism,
@@ -230,14 +241,14 @@ class ExcelImportService
                         'publication_type_others_specify' => $existing->publication_type_others_specify,
                     ],
                     'editorial_boards'   => $existing->editorialBoards()->get()->map->only([
-                        'name', 'position', 'course', 'year_level',
+                        'name', 'position_in_editorial_board', 'degree_program_year_level',
                     ])->toArray(),
                     'other_publications' => $existing->otherPublications()->get()->map->only([
-                        'title', 'type', 'frequency', 'remarks',
+                        'name_of_publication', 'department_unit_in_charge', 'type_of_publication',
                     ])->toArray(),
                     'programs'           => $existing->programs()->get()->map->only([
-                        'title', 'objectives', 'duration_hours', 'number_of_participants',
-                        'budget', 'fund_source', 'implementing_office', 'remarks',
+                        'title_of_program', 'implementation_date', 'implementation_venue',
+                        'target_group_of_participants',
                     ])->toArray(),
                 ],
 
@@ -253,36 +264,38 @@ class ExcelImportService
 
             'ANNEX_I'
                 => ['scholarships' => $existing->scholarships()->get()->map->only([
-                        'scholarship_name', 'granting_body', 'number_of_grantees',
-                        'amount_per_grantee', 'total_amount', 'remarks',
+                        'scholarship_name', 'type', 'category_intended_beneficiaries',
+                        'number_of_beneficiaries', 'remarks',
                     ])->toArray()],
 
             'ANNEX_I1'
                 => ['foodServices' => $existing->foodServices()->get()->map->only([
-                        'type_of_service', 'location', 'capacity', 'operating_hours', 'remarks',
+                        'service_name', 'service_type', 'operator_name', 'location',
+                        'number_of_students_served', 'remarks',
                     ])->toArray()],
 
             'ANNEX_J'
                 => ['programs' => $existing->programs()->get()->map->only([
-                        'title', 'objectives', 'date', 'venue', 'budget', 'fund_source',
-                        'implementing_office', 'participants_online',
-                        'participants_face_to_face', 'remarks',
+                        'title_of_program', 'organizer',
+                        'participants_online', 'participants_face_to_face', 'remarks',
                     ])->toArray()],
 
             'ANNEX_K'
                 => ['committees' => $existing->committees()->get()->map->only([
-                        'committee_name', 'chairperson', 'members', 'mandate', 'remarks',
+                        'committee_name', 'committee_head_name', 'members_composition',
+                        'programs_projects_activities_trainings', 'remarks',
                     ])->toArray()],
 
             'ANNEX_L'
                 => ['housing' => $existing->housing()->get()->map->only([
-                        'type_of_facility', 'capacity', 'actual_occupancy',
-                        'monthly_rate', 'remarks',
+                        'housing_name', 'complete_address', 'house_manager_name',
+                        'male', 'female', 'coed', 'others', 'remarks',
                     ])->toArray()],
 
             'ANNEX_L1'
                 => ['internationalServices' => $existing->internationalServices()->get()->map->only([
-                        'service_type', 'description', 'number_served', 'remarks',
+                        'service_name', 'service_type', 'target_nationality',
+                        'number_of_students_served', 'officer_in_charge', 'remarks',
                     ])->toArray()],
 
             'ANNEX_M'
@@ -298,33 +311,34 @@ class ExcelImportService
 
             'ANNEX_N'
                 => ['activities' => $existing->activities()->get()->map->only([
-                        'activity_title', 'objectives', 'date', 'venue', 'budget',
-                        'fund_source', 'implementing_office', 'participants_online',
-                        'participants_face_to_face', 'remarks',
+                        'title_of_activity', 'implementation_date', 'implementation_venue',
+                        'participants_online', 'participants_face_to_face', 'organizer', 'remarks',
                     ])->toArray()],
 
             'ANNEX_N1'
                 => ['sportsPrograms' => $existing->sportsPrograms()->get()->map->only([
-                        'sport', 'level', 'achievement', 'number_of_participants', 'remarks',
+                        'program_title', 'sport_type', 'implementation_date',
+                        'venue', 'participants_count', 'organizer', 'remarks',
                     ])->toArray()],
 
             'ANNEX_O'
                 => ['programs' => $existing->programs()->get()->map->only([
-                        'title', 'objectives', 'duration_hours', 'number_of_participants',
-                        'budget', 'fund_source', 'implementing_office', 'remarks',
+                        'title_of_program', 'date_conducted', 'number_of_beneficiaries',
+                        'type_of_community_service', 'community_population_served',
                     ])->toArray()],
 
             'ANNEX_D'
                 => ['submission' => collect($existing->getAttributes())->only([
                         'version_publication_date', 'officer_in_charge', 'handbook_committee',
-                        'mode_print', 'mode_digital', 'mode_online', 'mode_others',
-                        'type_student', 'type_faculty', 'type_administrative', 'type_others',
-                        'contains_vision_mission', 'contains_core_values', 'contains_history',
-                        'contains_organizational_chart', 'contains_services', 'contains_programs',
-                        'contains_policies', 'contains_code_of_conduct', 'contains_scholarships',
-                        'contains_health_services', 'contains_library_services',
-                        'contains_sports_facilities', 'contains_dormitory', 'contains_canteen',
-                        'contains_others',
+                        'dissemination_orientation', 'orientation_dates', 'mode_of_delivery',
+                        'dissemination_uploaded', 'dissemination_others', 'dissemination_others_text',
+                        'type_digital', 'type_printed', 'type_others', 'type_others_text',
+                        'has_academic_policies', 'has_admission_requirements', 'has_code_of_conduct',
+                        'has_scholarships', 'has_student_publication', 'has_housing_services',
+                        'has_disability_services', 'has_student_council', 'has_refund_policies',
+                        'has_drug_education', 'has_foreign_students', 'has_disaster_management',
+                        'has_safe_spaces', 'has_anti_hazing', 'has_anti_bullying',
+                        'has_violence_against_women', 'has_gender_fair', 'has_others', 'has_others_text',
                     ])->toArray()],
 
             default => [],

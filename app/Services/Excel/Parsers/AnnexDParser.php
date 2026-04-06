@@ -91,7 +91,7 @@ class AnnexDParser extends BaseParser
             || $dissemination_orientation || $dissemination_uploaded || $type_digital
             || $type_printed || $has_academic_policies;
 
-        $payload = compact(
+        $payload = ['submission' => compact(
             'version_publication_date', 'officer_in_charge', 'handbook_committee',
             'dissemination_orientation', 'orientation_dates', 'mode_of_delivery',
             'dissemination_uploaded', 'dissemination_others', 'dissemination_others_text',
@@ -102,7 +102,7 @@ class AnnexDParser extends BaseParser
             'has_drug_education', 'has_foreign_students', 'has_disaster_management',
             'has_safe_spaces', 'has_anti_hazing', 'has_anti_bullying',
             'has_violence_against_women', 'has_gender_fair', 'has_others', 'has_others_text'
-        );
+        )];
 
         return new ParseResult(
             sheetId: $this->sheetId(),

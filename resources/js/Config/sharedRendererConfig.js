@@ -447,19 +447,55 @@ export const MER4A_CONFIG = {
 
 /**
  * Standard Annex Configuration Template
- * Most annexes (A, B, C, C-1, E, F, I, I-1, J, K, L, L-1, N, N-1, O) follow this pattern
+ * Most annexes (A, B, C, C-1, E, F, I, I-1, J, K, L, L-1, N, N-1, O) follow this pattern.
+ *
+ * The 'entities' key is what the HEI submission API returns (batch + entities).
+ * The import payload uses semantic keys (programs, activities, etc.).
+ * We resolve whichever key is present at render time via a fallback list.
  */
+const ENTITY_KEYS_BY_ANNEX = {
+  A:     'programs',
+  B:     'programs',
+  C:     'programs',
+  'C-1': 'programs',
+  E:     'organizations',
+  F:     'activities',
+  I:     'scholarships',
+  'I-1': 'foodServices',
+  J:     'programs',
+  K:     'committees',
+  L:     'housing',
+  'L-1': 'internationalServices',
+  N:     'activities',
+  'N-1': 'sportsPrograms',
+  O:     'programs',
+};
+
 export const STANDARD_ANNEX_CONFIG = {
   renderType: 'table-only',
-  
+
   tableSections: [
     {
+      // 'entities' = HEI submission API key; resolved at render time via getTableKey()
       key: 'entities',
       title: null,
       useAnnexConfig: true
     }
   ]
 };
+
+/**
+ * Resolve the correct data key for a standard annex.
+ * The submission API returns { batch, entities }.
+ * The import payload uses semantic keys (programs, activities, etc.).
+ * Try both so the renderer works for both contexts.
+ */
+export function getTableKey(annexType, data) {
+  if (data && data.entities !== undefined) return 'entities';
+  const semantic = ENTITY_KEYS_BY_ANNEX[annexType];
+  if (semantic && data && data[semantic] !== undefined) return semantic;
+  return 'entities'; // fallback — will be [] if missing
+}
 
 /**
  * Get renderer configuration for a given form/annex

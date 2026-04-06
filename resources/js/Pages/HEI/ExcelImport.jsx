@@ -475,6 +475,7 @@ export default function ExcelImport({ availableYears, defaultYear }) {
           isDark={isDark}
           onApprove={handleConflictApprove}
           onSkip={handleConflictSkip}
+          onCancel={handleReset}
         />
       )}
     </HEILayout>

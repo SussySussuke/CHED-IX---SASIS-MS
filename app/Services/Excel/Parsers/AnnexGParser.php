@@ -198,17 +198,19 @@ class AnnexGParser extends BaseParser
         $anyData = $official_school_name || $student_publication_name
             || count($editorialBoards) > 0 || count($programs) > 0;
 
-        $payload = compact(
-            'official_school_name', 'student_publication_name', 'publication_fee_per_student',
-            'frequency_monthly', 'frequency_quarterly', 'frequency_annual',
-            'frequency_per_semester', 'frequency_others', 'frequency_others_specify',
-            'publication_type_newsletter', 'publication_type_gazette',
-            'publication_type_magazine', 'publication_type_others',
-            'publication_type_others_specify', 'adviser_name', 'adviser_position_designation'
-        );
-        $payload['editorial_boards']   = $editorialBoards;
-        $payload['other_publications'] = $otherPublications;
-        $payload['programs']           = $programs;
+        $payload = [
+            'form_data' => compact(
+                'official_school_name', 'student_publication_name', 'publication_fee_per_student',
+                'frequency_monthly', 'frequency_quarterly', 'frequency_annual',
+                'frequency_per_semester', 'frequency_others', 'frequency_others_specify',
+                'publication_type_newsletter', 'publication_type_gazette',
+                'publication_type_magazine', 'publication_type_others',
+                'publication_type_others_specify', 'adviser_name', 'adviser_position_designation'
+            ),
+            'editorial_boards'   => $editorialBoards,
+            'other_publications' => $otherPublications,
+            'programs'           => $programs,
+        ];
 
         return new ParseResult(
             sheetId: $this->sheetId(),

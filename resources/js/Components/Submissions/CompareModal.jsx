@@ -41,12 +41,10 @@ export default function CompareModal({
                             {/* Comparison Content */}
                             <div className="p-6 overflow-y-auto max-h-[70vh]">
                                 <div className="grid grid-cols-2 gap-6">
-                                    {/* Published (Old) Version */}
+                                    {/* Current (Old) Version */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300">
-                                                Published
-                                            </span> Current
+                                            Current
                                         </h3>
                                         {renderBatchContent(
                                             compareModal.oldBatch.annex,
@@ -55,12 +53,10 @@ export default function CompareModal({
                                         )}
                                     </div>
 
-                                    {/* Request (New) Version */}
+                                    {/* New Version */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300">
-                                                Request
-                                            </span> New
+                                            New
                                         </h3>
                                         {renderBatchContent(
                                             compareModal.newBatch.annex,

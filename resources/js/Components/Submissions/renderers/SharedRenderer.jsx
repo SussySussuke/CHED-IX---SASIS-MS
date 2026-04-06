@@ -3,7 +3,7 @@ import { IoCheckmarkCircle } from 'react-icons/io5';
 import AGGridViewer from '../../Common/AGGridViewer';
 import CustomTable from '../../Common/CustomTable';
 import { getAnnexConfig } from '../../../Config/formConfig';
-import { getSharedRendererConfig } from '../../../Config/sharedRendererConfig';
+import { getSharedRendererConfig, getTableKey } from '../../../Config/sharedRendererConfig';
 
 /**
  * SharedRenderer - Universal renderer for standard forms
@@ -108,7 +108,8 @@ function renderFormOnly(annex, data, config, isDark) {
  */
 function renderTableOnly(annex, data, config, isDark) {
   const tableSection = config.tableSections[0];
-  const tableData = data[tableSection.key] || [];
+  const resolvedKey  = getTableKey(annex, data);
+  const tableData    = data[resolvedKey] || [];
 
   // If using ANNEX_CONFIG columns
   if (tableSection.useAnnexConfig) {

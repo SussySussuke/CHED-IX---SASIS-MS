@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { IoWarning, IoCheckmarkCircle, IoArrowForward, IoClose, IoEye } from 'react-icons/io5';
 import CompareModal from './CompareModal';
+import ConfirmationModal from '../Common/ConfirmationModal';
 
 /**
  * ImportConflictModal
@@ -8,9 +9,11 @@ import CompareModal from './CompareModal';
  * Steps through conflicts one at a time.
  * Shows a summary of existing vs incoming with an option to open a full
  * side-by-side CompareModal so the user can see exactly what they're overwriting.
+ * X button / backdrop asks for confirmation before cancelling the entire import.
  */
-export default function ImportConflictModal({ conflict, step, total, isDark, onApprove, onSkip }) {
-  const [showCompare, setShowCompare] = useState(false);
+export default function ImportConflictModal({ conflict, step, total, isDark, onApprove, onSkip, onCancel }) {
+  const [showCompare, setShowCompare]       = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   if (!conflict) return null;
 
@@ -43,7 +46,7 @@ export default function ImportConflictModal({ conflict, step, total, isDark, onA
         <div className="flex items-center justify-center min-h-screen px-4">
 
           {/* Backdrop */}
-          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onSkip} />
+          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowCancelConfirm(true)} />
 
           {/* Modal */}
           <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg">
@@ -62,9 +65,9 @@ export default function ImportConflictModal({ conflict, step, total, isDark, onA
                 </h2>
               </div>
               <button
-                onClick={onSkip}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-                title="Skip (keep existing)"
+                onClick={() => setShowCancelConfirm(true)}
+                className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                title="Cancel entire import"
               >
                 <IoClose className="w-5 h-5" />
               </button>
@@ -179,6 +182,18 @@ export default function ImportConflictModal({ conflict, step, total, isDark, onA
           />
         </div>
       )}
+
+      {/* Cancel confirmation — z-70 sits above everything */}
+      <ConfirmationModal
+        isOpen={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={() => { setShowCancelConfirm(false); onCancel(); }}
+        title="Cancel Import?"
+        message="This will discard all conflict decisions made so far. Your existing data will not be changed. Are you sure?"
+        confirmText="Yes, cancel import"
+        cancelText="Keep going"
+        variant="warning"
+      />
     </>
   );
 }
