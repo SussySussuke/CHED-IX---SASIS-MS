@@ -1,7 +1,15 @@
+# ignore system junk
 NUL
+
+# folders
 /vendor/
 /node_modules/
+/.claude/
+/instructions/
+
+# files
 .env
 /config.php
+
+# logs
 *.log
-.claude/

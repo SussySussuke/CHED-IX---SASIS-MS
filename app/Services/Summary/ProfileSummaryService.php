@@ -41,7 +41,7 @@ class ProfileSummaryService
 
             $base = [
                 'hei_id'               => $hei->id,
-                'hei_code'             => $hei->code,
+                'hei_code'             => $hei->abbreviation,
                 'hei_name'             => $hei->name,
                 'hei_type'             => $hei->type,
                 'academic_year'        => $year,

@@ -38,7 +38,7 @@ class SubmissionController extends Controller
                 return [
                     'id' => $hei->id,
                     'name' => $hei->name,
-                    'code' => $hei->code,
+                    'code' => $hei->abbreviation,
                     'pending_requests' => $pendingCount,
                 ];
             });
@@ -599,7 +599,7 @@ class SubmissionController extends Controller
         $breakdown = $this->dashboardService->getHeiFormBreakdown($hei->id, $year);
 
         return response()->json([
-            'hei'       => ['id' => $hei->id, 'name' => $hei->name, 'code' => $hei->code],
+            'hei'       => ['id' => $hei->id, 'name' => $hei->name, 'code' => $hei->abbreviation],
             'year'      => $year,
             'breakdown' => $breakdown,
         ]);
